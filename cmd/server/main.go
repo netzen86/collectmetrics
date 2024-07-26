@@ -51,6 +51,9 @@ func getMetrics(storage *MemStorage) http.HandlerFunc {
 			// io.WriteString(w, r.RequestURI)
 			if len(uri) == 5 {
 				err := storage.AddData(uri[2], uri[3], uri[4])
+				if uri[1] != "update" {
+					err = errors.New("wrong method use update")
+				}
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					w.WriteHeader(http.StatusBadRequest)
