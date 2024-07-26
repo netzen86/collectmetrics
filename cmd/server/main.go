@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,44 +25,46 @@ func NewMemStorage() *MemStorage {
 func (storage *MemStorage) AddData(metricType, metricName string, metricValue string) error {
 	if metricType == "gauge" {
 		mv, convOk := strconv.ParseFloat(metricValue, 64)
-		// mv, convOk := metricValue.(float64)
 		if convOk == nil {
 			storage.gauge[metricName] = mv
+			return nil
 		} else {
 			return errors.New("value wrong type")
 		}
 	}
 	if metricType == "counter" {
 		mv, convOk := strconv.ParseInt(metricValue, 10, 64)
-		// mv, convOk := metricValue.(int64)
 		if convOk == nil {
-			_, ok := storage.counter[metricName]
-			if !ok {
-				storage.counter[metricName] = mv
-			} else {
-				storage.counter[metricName] += mv
-			}
+			storage.counter[metricName] += mv
+			return nil
 		} else {
 			return errors.New("value wrong type")
 
 		}
 	}
-	return nil
+	return errors.New("wrong metic type")
 }
 
 func getMetrics(storage *MemStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			uri := strings.Split(r.RequestURI, "/")
-			io.WriteString(w, r.RequestURI)
+			// io.WriteString(w, r.RequestURI)
 			if len(uri) == 5 {
-				storage.AddData(uri[2], uri[3], uri[4])
+				err := storage.AddData(uri[2], uri[3], uri[4])
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+				w.WriteHeader(http.StatusOK)
 			} else {
+				http.Error(w, "Metrics name not found!", http.StatusNotFound)
 				w.WriteHeader(http.StatusNotFound)
 			}
 			fmt.Println("*****", storage)
 			return
 		} else {
+			http.Error(w, "Use POST method!", http.StatusBadRequest)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 	}
@@ -72,6 +73,10 @@ func getMetrics(storage *MemStorage) http.HandlerFunc {
 func main() {
 	memSto := NewMemStorage()
 	http.HandleFunc("/", getMetrics(memSto))
+	http.Handle("/update", http.NotFoundHandler())
+	http.Handle("/update/counter", http.NotFoundHandler())
+	http.Handle("/update/gauge", http.NotFoundHandler())
+
 	err := http.ListenAndServe(`:8080`, nil)
 	if err != nil {
 		panic(err)
