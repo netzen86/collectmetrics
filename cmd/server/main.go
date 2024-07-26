@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -61,7 +60,6 @@ func getMetrics(storage *MemStorage) http.HandlerFunc {
 				http.Error(w, "Metrics name not found!", http.StatusNotFound)
 				w.WriteHeader(http.StatusNotFound)
 			}
-			fmt.Println("*****", storage)
 			return
 		} else {
 			http.Error(w, "Use POST method!", http.StatusBadRequest)
