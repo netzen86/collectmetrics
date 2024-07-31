@@ -11,33 +11,41 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
-// type Storage interface {
-// 	AddData()
-// }
-
 func NewMemStorage() (*MemStorage, error) {
 	return &MemStorage{gauge: make(map[string]float64), counter: make(map[string]int64)}, nil
 }
 
-func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricName, metricValue string) error {
+func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error {
 	if metricType == "gauge" {
-		mv, convOk := strconv.ParseFloat(metricValue, 64)
-		if convOk == nil {
-			storage.gauge[metricName] = mv
-			return nil
-		} else {
+		var mv float64
+		var convOk error
+		switch metricValue.(type) {
+		case string:
+			mv, convOk = strconv.ParseFloat(metricValue.(string), 64)
+			if convOk != nil {
+				return errors.New("value wrong type")
+			}
+		case float64:
+			mv = metricValue.(float64)
+		default:
 			return errors.New("value wrong type")
 		}
+		storage.gauge[metricName] = mv
 	}
 	if metricType == "counter" {
-		mv, convOk := strconv.ParseInt(metricValue, 10, 64)
-		if convOk == nil {
-			storage.counter[metricName] += mv
-			return nil
-		} else {
-			return errors.New("value wrong type")
+		var mv int64
+		var convOk error
+		switch metricValue.(type) {
+		case string:
+			mv, convOk = strconv.ParseInt(metricValue.(string), 10, 64)
+			if convOk != nil {
+				return errors.New("value wrong type")
+			}
+		case int64:
+			mv = metricValue.(int64)
 
 		}
+		storage.counter[metricName] += mv
 	}
-	return errors.New("wrong metic type")
+	return nil
 }
