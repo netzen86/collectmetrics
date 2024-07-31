@@ -46,10 +46,37 @@ const (
 
 func CollectMetrics(storage *memstorage.MemStorage) {
 	ctx := context.Background()
+	runtime.GC()
 	var memStats runtime.MemStats
 
 	runtime.ReadMemStats(&memStats)
+	fmt.Println(memStats.GCSys)
 	storage.UpdateParam(ctx, gag, Alloc, float64(memStats.Alloc))
+	storage.UpdateParam(ctx, gag, BuckHashSys, float64(memStats.BuckHashSys))
+	storage.UpdateParam(ctx, gag, Frees, float64(memStats.Frees))
+	storage.UpdateParam(ctx, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+	storage.UpdateParam(ctx, gag, GCSys, float64(memStats.GCSys))
+	storage.UpdateParam(ctx, gag, HeapAlloc, float64(memStats.HeapAlloc))
+	storage.UpdateParam(ctx, gag, HeapIdle, float64(memStats.HeapIdle))
+	storage.UpdateParam(ctx, gag, HeapInuse, float64(memStats.HeapInuse))
+	storage.UpdateParam(ctx, gag, HeapObjects, float64(memStats.HeapObjects))
+	storage.UpdateParam(ctx, gag, HeapReleased, float64(memStats.HeapReleased))
+	storage.UpdateParam(ctx, gag, HeapSys, float64(memStats.HeapSys))
+	storage.UpdateParam(ctx, gag, LastGC, float64(memStats.LastGC))
+	storage.UpdateParam(ctx, gag, Lookups, float64(memStats.Lookups))
+	storage.UpdateParam(ctx, gag, MCacheInuse, float64(memStats.MCacheInuse))
+	storage.UpdateParam(ctx, gag, MCacheSys, float64(memStats.MCacheSys))
+	storage.UpdateParam(ctx, gag, MSpanInuse, float64(memStats.MSpanInuse))
+	storage.UpdateParam(ctx, gag, Mallocs, float64(memStats.Mallocs))
+	storage.UpdateParam(ctx, gag, NextGC, float64(memStats.NextGC))
+	storage.UpdateParam(ctx, gag, NumForcedGC, float64(memStats.NumForcedGC))
+	storage.UpdateParam(ctx, gag, NumGC, float64(memStats.NumGC))
+	storage.UpdateParam(ctx, gag, OtherSys, float64(memStats.OtherSys))
+	storage.UpdateParam(ctx, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+	storage.UpdateParam(ctx, gag, StackInuse, float64(memStats.StackInuse))
+	storage.UpdateParam(ctx, gag, StackSys, float64(memStats.StackSys))
+	storage.UpdateParam(ctx, gag, Sys, float64(memStats.Sys))
+	storage.UpdateParam(ctx, gag, TotalAlloc, float64(memStats.TotalAlloc))
 }
 
 func SendMetrics(url, metricData string) error {
@@ -74,6 +101,6 @@ func main() {
 		panic("couldnt alloc mem")
 	}
 	CollectMetrics(storage)
-	fmt.Println(*storage)
+	fmt.Println(storage.Gauge)
 
 }
