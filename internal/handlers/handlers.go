@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,7 +14,6 @@ func GetMetrics(storage *memstorage.MemStorage) http.HandlerFunc {
 		ctx := context.Background()
 		if r.Method == http.MethodPost {
 			uri := strings.Split(r.RequestURI, "/")
-			// io.WriteString(w, r.RequestURI)
 			if len(uri) == 5 {
 				err := storage.UpdateParam(ctx, uri[2], uri[3], uri[4])
 				if uri[1] != "update" {
@@ -26,7 +24,6 @@ func GetMetrics(storage *memstorage.MemStorage) http.HandlerFunc {
 					w.WriteHeader(http.StatusBadRequest)
 				}
 				w.WriteHeader(http.StatusOK)
-				fmt.Println("!!!!", storage)
 			} else {
 				http.Error(w, "Metrics name not found!", http.StatusNotFound)
 				w.WriteHeader(http.StatusNotFound)
