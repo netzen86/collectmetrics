@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
-	"strconv"
 
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
@@ -50,7 +49,7 @@ func CollectMetrics(storage *memstorage.MemStorage) {
 	var memStats runtime.MemStats
 
 	runtime.ReadMemStats(&memStats)
-	storage.UpdateParam(ctx, gag, Alloc, strconv.FormatUint(memStats.Alloc, 10))
+	storage.UpdateParam(ctx, gag, Alloc, float64(memStats.Alloc))
 }
 
 func SendMetrics(url, metricData string) error {
@@ -70,5 +69,11 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 func main() {
+	storage, err := memstorage.NewMemStorage()
+	if err != nil {
+		panic("couldnt alloc mem")
+	}
+	CollectMetrics(storage)
+	fmt.Println(*storage)
 
 }
