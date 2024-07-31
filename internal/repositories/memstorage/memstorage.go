@@ -16,36 +16,39 @@ func NewMemStorage() (*MemStorage, error) {
 }
 
 func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error {
-	if metricType == "gauge" {
+	switch {
+	case metricType == "gauge":
 		var mv float64
 		var convOk error
-		switch metricValue.(type) {
+		switch metricValue := metricValue.(type) {
 		case string:
-			mv, convOk = strconv.ParseFloat(metricValue.(string), 64)
+			mv, convOk = strconv.ParseFloat(metricValue, 64)
 			if convOk != nil {
 				return errors.New("value wrong type")
 			}
 		case float64:
-			mv = metricValue.(float64)
+			mv = metricValue
 		default:
 			return errors.New("value wrong type")
 		}
 		storage.gauge[metricName] = mv
-	}
-	if metricType == "counter" {
+
+	case metricType == "counter":
 		var mv int64
 		var convOk error
-		switch metricValue.(type) {
+		switch metricValue := metricValue.(type) {
 		case string:
-			mv, convOk = strconv.ParseInt(metricValue.(string), 10, 64)
+			mv, convOk = strconv.ParseInt(metricValue, 10, 64)
 			if convOk != nil {
 				return errors.New("value wrong type")
 			}
 		case int64:
-			mv = metricValue.(int64)
+			mv = metricValue
 
 		}
 		storage.counter[metricName] += mv
+	default:
+		return errors.New("wrong metric type")
 	}
 	return nil
 }
