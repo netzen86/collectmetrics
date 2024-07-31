@@ -7,12 +7,12 @@ import (
 )
 
 type MemStorage struct {
-	gauge   map[string]float64
-	counter map[string]int64
+	Gauge   map[string]float64
+	Counter map[string]int64
 }
 
 func NewMemStorage() (*MemStorage, error) {
-	return &MemStorage{gauge: make(map[string]float64), counter: make(map[string]int64)}, nil
+	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}, nil
 }
 
 func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error {
@@ -31,7 +31,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricNa
 		default:
 			return errors.New("value wrong type")
 		}
-		storage.gauge[metricName] = mv
+		storage.Gauge[metricName] = mv
 
 	case metricType == "counter":
 		var mv int64
@@ -46,7 +46,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricNa
 			mv = metricValue
 
 		}
-		storage.counter[metricName] += mv
+		storage.Counter[metricName] += mv
 	default:
 		return errors.New("wrong metric type")
 	}
