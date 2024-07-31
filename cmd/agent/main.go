@@ -1,43 +1,57 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
+	"strconv"
+
+	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
 const (
 	addressServer string = "http://localhost:8080"
-	ct            string = "text/html"
-	Alloc
-	BuckHashSys
-	Frees
-	GCCPUFraction
-	GCSys
-	HeapAlloc
-	HeapIdle
-	HeapInuse
-	HeapObjects
-	HeapReleased
-	HeapSys
-	LastGC
-	Lookups
-	MCacheInuse
-	MCacheSys
-	MSpanInuse
-	MSpanSys
-	Mallocs
-	NextGC
-	NumForcedGC
-	NumGC
-	OtherSys
-	PauseTotalNs
-	StackInuse
-	StackSys
-	Sys
-	TotalAlloc
+	ct                   = "text/html"
+	gag                  = "gauge"
+	cnt                  = "counter"
+	Alloc                = "Alloc"
+	BuckHashSys          = "BuckHashSys"
+	Frees                = "Frees"
+	GCCPUFraction        = "GCCPUFraction"
+	GCSys                = "GCSys"
+	HeapAlloc            = "HeapAlloc"
+	HeapIdle             = "HeapIdle"
+	HeapInuse            = "HeapInuse"
+	HeapObjects          = "HeapObjects"
+	HeapReleased         = "HeapReleased"
+	HeapSys              = "HeapSys"
+	LastGC               = "LastGC"
+	Lookups              = "Lookups"
+	MCacheInuse          = "MCacheInuse"
+	MCacheSys            = "MCacheSys"
+	MSpanInuse           = "MSpanInuse"
+	MSpanSys             = "MSpanSys"
+	Mallocs              = "Mallocs"
+	NextGC               = "NextGC"
+	NumForcedGC          = "NumForcedGC"
+	NumGC                = "NumGC"
+	OtherSys             = "OtherSys"
+	PauseTotalNs         = "PauseTotalNs"
+	StackInuse           = "StackInuse"
+	StackSys             = "StackSys"
+	Sys                  = "Sys"
+	TotalAlloc           = "TotalAlloc"
 )
+
+func CollectMetrics(storage *memstorage.MemStorage) {
+	ctx := context.Background()
+	var memStats runtime.MemStats
+
+	runtime.ReadMemStats(&memStats)
+	storage.UpdateParam(ctx, gag, Alloc, strconv.FormatUint(memStats.Alloc, 10))
+}
 
 func SendMetrics(url, metricData string) error {
 	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s", url, metricData), nil)
@@ -56,14 +70,5 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 func main() {
-	runtime.GC()
-
-	var memStats runtime.MemStats
-
-	runtime.ReadMemStats(&memStats)
-
-	fmt.Printf("Total allocated memory (in bytes): %d\n", memStats.Alloc)
-	fmt.Printf("Heap memory (in bytes): %d\n", memStats.BuckHashSys)
-	fmt.Printf("Number of garbage collections: %d\n", memStats.Sys)
 
 }
