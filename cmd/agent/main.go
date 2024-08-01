@@ -4,53 +4,59 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"runtime"
+	"time"
 
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
 const (
-	addressServer string = "http://localhost:8080"
-	ct                   = "text/html"
-	gag                  = "gauge"
-	cnt                  = "counter"
-	Alloc                = "Alloc"
-	BuckHashSys          = "BuckHashSys"
-	Frees                = "Frees"
-	GCCPUFraction        = "GCCPUFraction"
-	GCSys                = "GCSys"
-	HeapAlloc            = "HeapAlloc"
-	HeapIdle             = "HeapIdle"
-	HeapInuse            = "HeapInuse"
-	HeapObjects          = "HeapObjects"
-	HeapReleased         = "HeapReleased"
-	HeapSys              = "HeapSys"
-	LastGC               = "LastGC"
-	Lookups              = "Lookups"
-	MCacheInuse          = "MCacheInuse"
-	MCacheSys            = "MCacheSys"
-	MSpanInuse           = "MSpanInuse"
-	MSpanSys             = "MSpanSys"
-	Mallocs              = "Mallocs"
-	NextGC               = "NextGC"
-	NumForcedGC          = "NumForcedGC"
-	NumGC                = "NumGC"
-	OtherSys             = "OtherSys"
-	PauseTotalNs         = "PauseTotalNs"
-	StackInuse           = "StackInuse"
-	StackSys             = "StackSys"
-	Sys                  = "Sys"
-	TotalAlloc           = "TotalAlloc"
+	addressServer  string = "http://localhost:8080/update/"
+	ct                    = "text/html"
+	gag                   = "gauge"
+	cnt                   = "counter"
+	Alloc                 = "Alloc"
+	BuckHashSys           = "BuckHashSys"
+	Frees                 = "Frees"
+	GCCPUFraction         = "GCCPUFraction"
+	GCSys                 = "GCSys"
+	HeapAlloc             = "HeapAlloc"
+	HeapIdle              = "HeapIdle"
+	HeapInuse             = "HeapInuse"
+	HeapObjects           = "HeapObjects"
+	HeapReleased          = "HeapReleased"
+	HeapSys               = "HeapSys"
+	LastGC                = "LastGC"
+	Lookups               = "Lookups"
+	MCacheInuse           = "MCacheInuse"
+	MCacheSys             = "MCacheSys"
+	MSpanInuse            = "MSpanInuse"
+	MSpanSys              = "MSpanSys"
+	Mallocs               = "Mallocs"
+	NextGC                = "NextGC"
+	NumForcedGC           = "NumForcedGC"
+	NumGC                 = "NumGC"
+	OtherSys              = "OtherSys"
+	PauseTotalNs          = "PauseTotalNs"
+	StackInuse            = "StackInuse"
+	StackSys              = "StackSys"
+	Sys                   = "Sys"
+	TotalAlloc            = "TotalAlloc"
+	PollCount             = "PollCount"
+	RandomValue           = "RandomValue"
+	pollInterval          = 2 * time.Second
+	reportInterval        = 10 * time.Second
 )
 
 func CollectMetrics(storage *memstorage.MemStorage) {
 	ctx := context.Background()
-	runtime.GC()
 	var memStats runtime.MemStats
 
+	runtime.GC()
+
 	runtime.ReadMemStats(&memStats)
-	fmt.Println(memStats.GCSys)
 	storage.UpdateParam(ctx, gag, Alloc, float64(memStats.Alloc))
 	storage.UpdateParam(ctx, gag, BuckHashSys, float64(memStats.BuckHashSys))
 	storage.UpdateParam(ctx, gag, Frees, float64(memStats.Frees))
@@ -77,6 +83,8 @@ func CollectMetrics(storage *memstorage.MemStorage) {
 	storage.UpdateParam(ctx, gag, StackSys, float64(memStats.StackSys))
 	storage.UpdateParam(ctx, gag, Sys, float64(memStats.Sys))
 	storage.UpdateParam(ctx, gag, TotalAlloc, float64(memStats.TotalAlloc))
+	storage.UpdateParam(ctx, gag, RandomValue, rand.Float64())
+	storage.UpdateParam(ctx, cnt, PollCount, int64(1))
 }
 
 func SendMetrics(url, metricData string) error {
@@ -96,11 +104,24 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 func main() {
+	pollTik := time.NewTicker(pollInterval)
+	reportTik := time.NewTicker(reportInterval)
+
 	storage, err := memstorage.NewMemStorage()
 	if err != nil {
-		panic("couldnt alloc mem")
+		panic("couldn't alloc mem")
 	}
-	CollectMetrics(storage)
-	fmt.Println(storage.Gauge)
-
+	for {
+		select {
+		case <-pollTik.C:
+			CollectMetrics(storage)
+		case <-reportTik.C:
+			for k, v := range storage.Gauge {
+				SendMetrics(addressServer, fmt.Sprintf("gauge/%s/%v", k, v))
+			}
+			for k, v := range storage.Counter {
+				SendMetrics(addressServer, fmt.Sprintf("counter/%s/%v", k, v))
+			}
+		}
+	}
 }
