@@ -98,10 +98,10 @@ func SendMetrics(url, metricData string) error {
 	if err != nil {
 		return err
 	}
+	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		return errors.New(response.Status)
 	}
-	response.Body.Close()
 	return nil
 }
 func main() {
