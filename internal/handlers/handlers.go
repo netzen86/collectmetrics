@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/repositories"
 )
 
-func GetMetrics(storage *memstorage.MemStorage) http.HandlerFunc {
+func GetMetrics(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 		if r.Method == http.MethodPost {

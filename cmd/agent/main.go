@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
@@ -50,7 +51,7 @@ const (
 	reportInterval        = 10 * time.Second
 )
 
-func CollectMetrics(storage *memstorage.MemStorage) {
+func CollectMetrics(storage repositories.Repo) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
