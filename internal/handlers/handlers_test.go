@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
 
@@ -9,19 +8,38 @@ import (
 )
 
 func TestGetMetrics(t *testing.T) {
-	type args struct {
-		storage *memstorage.MemStorage
+	// type url struct {
+	// 	url string
+	// }
+	type want struct {
+		code        int
+		response    string
+		contentType string
 	}
 	tests := []struct {
 		name string
-		args args
-		want http.HandlerFunc
+		url  string
+		want want
 	}{
-		// TODO: Add test cases.
+		// {
+		// 	name: "test gauge",
+		// 	url:  "update/gauge/Alloc/100",
+		// 	want: want{
+		// 		code:        http.StatusOK,
+		// 		response:    `{"status":"ok"}`,
+		// 		contentType: "text/html",
+		// 	},
+		// },
+	}
+	storage, err := memstorage.NewMemStorage()
+	if err != nil {
+		t.Errorf("expected err to be nil got %v", err)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetMetrics(tt.args.storage); !reflect.DeepEqual(got, tt.want) {
+			// httptest.NewRequest(http.MethodPost, tt.url, nil)
+
+			if got := GetMetrics(storage); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetMetrics() = %v, want %v", got, tt.want)
 			}
 		})
