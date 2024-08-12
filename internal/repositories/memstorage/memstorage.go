@@ -52,3 +52,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricNa
 	}
 	return nil
 }
+
+func (storage *MemStorage) GetMemStorage(ctx context.Context) *MemStorage {
+	return storage
+}
