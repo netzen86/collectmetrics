@@ -13,7 +13,10 @@ func main() {
 	gw := chi.NewRouter()
 	memSto, errm := memstorage.NewMemStorage()
 	gw.Route("/", func(gw chi.Router) {
+		gw.Post("/update/{mType}/{mName}", handlers.BadRequest)
+		gw.Post("/update/{mType}/{mName}/", handlers.BadRequest)
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.UpdateMHandle(memSto))
+		gw.Get("/value/{mType}/{mName}", handlers.RetrieveOneMHandle(memSto))
 		gw.Get("/", handlers.RetrieveMHandle(memSto))
 	},
 	)
