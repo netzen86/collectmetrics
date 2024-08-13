@@ -28,7 +28,6 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Println(storage)
 	}
 }
 
@@ -71,5 +70,4 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 
 func BadRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
-	return
 }
