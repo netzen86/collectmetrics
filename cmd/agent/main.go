@@ -153,8 +153,6 @@ func main() {
 		}
 	}
 
-	fmt.Println(endpoint, pInterv, rInterv)
-
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 
