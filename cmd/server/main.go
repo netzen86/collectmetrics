@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/netzen86/collectmetrics/internal/handlers"
@@ -10,6 +12,13 @@ import (
 )
 
 func main() {
+	var endpoint string
+	flag.StringVar(&endpoint, "a", "localhost:8080", "Used to set the address and port on which the server runs.")
+	flag.Parse()
+	if len(flag.Args()) != 0 {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 	gw := chi.NewRouter()
 	memSto, errm := memstorage.NewMemStorage()
 	gw.Route("/", func(gw chi.Router) {
@@ -20,8 +29,7 @@ func main() {
 		gw.Get("/", handlers.RetrieveMHandle(memSto))
 	},
 	)
-
-	errs := http.ListenAndServe(":8080", gw)
+	errs := http.ListenAndServe(endpoint, gw)
 	if errm != nil || errs != nil {
 		panic(fmt.Sprintf("%s %s", errm, errs))
 	}
