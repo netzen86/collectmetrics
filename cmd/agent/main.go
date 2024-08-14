@@ -6,49 +6,51 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/spf13/pflag"
 )
 
 const (
-	addressServer  string = "http://localhost:8080/update/"
-	ct                    = "text/html"
-	gag                   = "gauge"
-	cnt                   = "counter"
-	Alloc                 = "Alloc"
-	BuckHashSys           = "BuckHashSys"
-	Frees                 = "Frees"
-	GCCPUFraction         = "GCCPUFraction"
-	GCSys                 = "GCSys"
-	HeapAlloc             = "HeapAlloc"
-	HeapIdle              = "HeapIdle"
-	HeapInuse             = "HeapInuse"
-	HeapObjects           = "HeapObjects"
-	HeapReleased          = "HeapReleased"
-	HeapSys               = "HeapSys"
-	LastGC                = "LastGC"
-	Lookups               = "Lookups"
-	MCacheInuse           = "MCacheInuse"
-	MCacheSys             = "MCacheSys"
-	MSpanInuse            = "MSpanInuse"
-	MSpanSys              = "MSpanSys"
-	Mallocs               = "Mallocs"
-	NextGC                = "NextGC"
-	NumForcedGC           = "NumForcedGC"
-	NumGC                 = "NumGC"
-	OtherSys              = "OtherSys"
-	PauseTotalNs          = "PauseTotalNs"
-	StackInuse            = "StackInuse"
-	StackSys              = "StackSys"
-	Sys                   = "Sys"
-	TotalAlloc            = "TotalAlloc"
-	PollCount             = "PollCount"
-	RandomValue           = "RandomValue"
-	pollInterval          = 2 * time.Second
-	reportInterval        = 10 * time.Second
+	addressServer  string        = "localhost:8080"
+	ct             string        = "text/html"
+	gag            string        = "gauge"
+	cnt            string        = "counter"
+	Alloc          string        = "Alloc"
+	BuckHashSys    string        = "BuckHashSys"
+	Frees          string        = "Frees"
+	GCCPUFraction  string        = "GCCPUFraction"
+	GCSys          string        = "GCSys"
+	HeapAlloc      string        = "HeapAlloc"
+	HeapIdle       string        = "HeapIdle"
+	HeapInuse      string        = "HeapInuse"
+	HeapObjects    string        = "HeapObjects"
+	HeapReleased   string        = "HeapReleased"
+	HeapSys        string        = "HeapSys"
+	LastGC         string        = "LastGC"
+	Lookups        string        = "Lookups"
+	MCacheInuse    string        = "MCacheInuse"
+	MCacheSys      string        = "MCacheSys"
+	MSpanInuse     string        = "MSpanInuse"
+	MSpanSys       string        = "MSpanSys"
+	Mallocs        string        = "Mallocs"
+	NextGC         string        = "NextGC"
+	NumForcedGC    string        = "NumForcedGC"
+	NumGC          string        = "NumGC"
+	OtherSys       string        = "OtherSys"
+	PauseTotalNs   string        = "PauseTotalNs"
+	StackInuse     string        = "StackInuse"
+	StackSys       string        = "StackSys"
+	Sys            string        = "Sys"
+	TotalAlloc     string        = "TotalAlloc"
+	PollCount      string        = "PollCount"
+	RandomValue    string        = "RandomValue"
+	pollInterval   time.Duration = 2 * time.Second
+	reportInterval time.Duration = 10 * time.Second
 )
 
 func CollectMetrics(storage repositories.Repo) {
@@ -106,8 +108,19 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 func main() {
-	pollTik := time.NewTicker(pollInterval)
-	reportTik := time.NewTicker(reportInterval)
+	var endpoint string
+	var pInterv time.Duration
+	var rInterv time.Duration
+	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
+	pflag.DurationVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
+	pflag.DurationVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
+	pflag.Parse()
+	if len(pflag.Args()) != 0 {
+		pflag.PrintDefaults()
+		os.Exit(1)
+	}
+	pollTik := time.NewTicker(pInterv)
+	reportTik := time.NewTicker(rInterv)
 
 	storage, err := memstorage.NewMemStorage()
 	if err != nil {
@@ -119,10 +132,10 @@ func main() {
 			CollectMetrics(storage)
 		case <-reportTik.C:
 			for k, v := range storage.Gauge {
-				SendMetrics(addressServer, fmt.Sprintf("gauge/%s/%v", k, v))
+				SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
 			}
 			for k, v := range storage.Counter {
-				SendMetrics(addressServer, fmt.Sprintf("counter/%s/%v", k, v))
+				SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("counter/%s/%v", k, v))
 			}
 		}
 	}
