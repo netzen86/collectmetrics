@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/repositories"
@@ -111,14 +112,49 @@ func main() {
 	var endpoint string
 	var pInterv int
 	var rInterv int
+	var err error
+
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
+
+	// pInterv, err = strconv.Atoi(pIntervTmp)
+	// if err != nil {
+	// 	fmt.Printf("%e\n", err)
+	// 	os.Exit(1)
+	// }
 	pflag.Parse()
+
 	if len(pflag.Args()) != 0 {
 		pflag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	endpointTMP := os.Getenv("ADDRESS")
+	if len(endpointTMP) != 0 {
+		endpoint = endpointTMP
+	}
+
+	pIntervTmp := os.Getenv("POLL_INTERVAL")
+	if len(pIntervTmp) != 0 {
+		pInterv, err = strconv.Atoi(pIntervTmp)
+		if err != nil {
+			fmt.Printf("%e\n", err)
+			os.Exit(1)
+		}
+	}
+
+	rIntervTmp := os.Getenv("REPORT_INTERVAL")
+	if len(rIntervTmp) != 0 {
+		rInterv, err = strconv.Atoi(rIntervTmp)
+		if err != nil {
+			fmt.Printf("%e\n", err)
+			os.Exit(1)
+		}
+	}
+
+	fmt.Println(endpoint, pInterv, rInterv)
+
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 
