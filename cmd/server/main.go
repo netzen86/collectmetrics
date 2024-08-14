@@ -15,10 +15,19 @@ func main() {
 	var endpoint string
 	flag.StringVar(&endpoint, "a", "localhost:8080", "Used to set the address and port on which the server runs.")
 	flag.Parse()
+
+	endpointTMP := os.Getenv("ADDRESS")
+	if len(endpointTMP) != 0 {
+		endpoint = endpointTMP
+	}
+
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
+	fmt.Println(endpoint)
+
 	gw := chi.NewRouter()
 	memSto, errm := memstorage.NewMemStorage()
 	gw.Route("/", func(gw chi.Router) {
