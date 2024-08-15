@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"text/template"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/netzen86/collectmetrics/internal/loger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 )
 
@@ -36,6 +38,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 		ctx := context.Background()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
 		t.Execute(w, storage.GetMemStorage(ctx))
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -51,6 +54,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(fmt.Sprintf("%d", valueNum)))
 			return
 		}
@@ -61,6 +65,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
+			w.WriteHeader(http.StatusOK)
 			valueStr := fmt.Sprintf("%g", valueNum)
 			w.Write([]byte(valueStr))
 			return
@@ -69,5 +74,42 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 }
 
 func BadRequest(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
+	http.Error(w, fmt.Sprintf("%d Bad Request", http.StatusBadRequest), http.StatusBadRequest)
+}
+
+func NotFound(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, fmt.Sprintf("%d Not Found", http.StatusNotFound), http.StatusNotFound)
+}
+
+func WithLogging(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sugar := loger.Loger()
+
+		// функция Now() возвращает текущее время
+		start := time.Now()
+
+		// эндпоинт
+		uri := r.RequestURI
+		// метод запроса
+		method := r.Method
+
+		lw, rd := loger.NewLRW(w)
+
+		// точка, где выполняется хендлер pingHandler
+		h.ServeHTTP(lw, r) // обслуживание оригинального запроса
+
+		// Since возвращает разницу во времени между start
+		// и моментом вызова Since. Таким образом можно посчитать
+		// время выполнения запроса.
+		duration := time.Since(start)
+		// fmt.Println(uri, method, duration)
+		// отправляем сведения о запросе в zap
+		sugar.Infoln(
+			"uri", uri,
+			"method", method,
+			"duration", duration,
+			"status", rd.Status,
+			"size", rd.Size,
+		)
+	}
 }

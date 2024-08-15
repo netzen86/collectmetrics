@@ -26,16 +26,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(endpoint)
-
 	gw := chi.NewRouter()
 	memSto, errm := memstorage.NewMemStorage()
 	gw.Route("/", func(gw chi.Router) {
-		gw.Post("/update/{mType}/{mName}", handlers.BadRequest)
-		gw.Post("/update/{mType}/{mName}/", handlers.BadRequest)
-		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.UpdateMHandle(memSto))
-		gw.Get("/value/{mType}/{mName}", handlers.RetrieveOneMHandle(memSto))
-		gw.Get("/", handlers.RetrieveMHandle(memSto))
+		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
+		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
+		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
+		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(memSto)))
+		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
+
+		gw.Get("/value/{mType}/{mName}", handlers.WithLogging(handlers.RetrieveOneMHandle(memSto)))
+		gw.Get("/", handlers.WithLogging(handlers.RetrieveMHandle(memSto)))
+		gw.Get("/*", handlers.WithLogging(handlers.NotFound))
+
 	},
 	)
 	errs := http.ListenAndServe(endpoint, gw)
