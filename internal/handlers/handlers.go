@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"text/template"
@@ -12,9 +13,16 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories"
 )
 
+type Metrics struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
 func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.Background()
+		ctx := r.Context()
 		mType := chi.URLParam(r, "mType")
 		if mType != "counter" && mType != "gauge" {
 			http.Error(w, "wrong metric type", http.StatusBadRequest)
@@ -35,7 +43,7 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 
 func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.Background()
+		ctx := r.Context()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
 		t.Execute(w, storage.GetMemStorage(ctx))
 		w.WriteHeader(http.StatusOK)
@@ -46,7 +54,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		mName := chi.URLParam(r, "mName")
-		ctx := context.Background()
+		ctx := r.Context()
 		if mType == "counter" {
 			counter := storage.GetMemStorage(ctx).Counter
 			valueNum, ok := counter[mName]
@@ -73,12 +81,59 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
-func BadRequest(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, fmt.Sprintf("%d Bad Request", http.StatusBadRequest), http.StatusBadRequest)
-}
+func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		var metrics Metrics
+		var buf bytes.Buffer
+		newStorage := storage.GetMemStorage(ctx)
+		// читаем тело запроса
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, http.StatusText(400), 400)
+			return
+		}
+		// десериализуем JSON в metrics
+		if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
+			http.Error(w, http.StatusText(400), 400)
+			return
+		}
 
-func NotFound(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, fmt.Sprintf("%d Not Found", http.StatusNotFound), http.StatusNotFound)
+		if metrics.MType == "counter" {
+			if metrics.Delta == nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				return
+
+			}
+			err := storage.UpdateParam(ctx, metrics.MType, metrics.ID, *metrics.Delta)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+				return
+			}
+			*metrics.Delta = newStorage.Counter[metrics.ID]
+		} else if metrics.MType == "gauge" {
+			if metrics.Value == nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				return
+
+			}
+			err := storage.UpdateParam(ctx, metrics.MType, metrics.ID, *metrics.Value)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+				return
+			}
+			*metrics.Value = newStorage.Gauge[metrics.ID]
+		}
+
+		resp, err := json.Marshal(metrics)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+	}
 }
 
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
@@ -112,4 +167,12 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 			"size", rd.Size,
 		)
 	}
+}
+
+func BadRequest(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(400), 400)
+}
+
+func NotFound(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(404), 404)
 }

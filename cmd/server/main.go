@@ -30,6 +30,7 @@ func main() {
 	memSto, errm := memstorage.NewMemStorage()
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
+		gw.Post("/update", handlers.WithLogging(handlers.JsonUpdateMHandle(memSto)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(memSto)))
