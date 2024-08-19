@@ -136,6 +136,53 @@ func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
+func JsonRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		var metrics Metrics
+		var buf bytes.Buffer
+		// resMetrics := new(Metrics)
+
+		newStorage := storage.GetMemStorage(ctx)
+		// читаем тело запроса
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, http.StatusText(400), 400)
+			return
+		}
+		// десериализуем JSON в metrics
+		if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
+			http.Error(w, http.StatusText(400), 400)
+			return
+		}
+		if metrics.MType == "counter" {
+			value, ok := newStorage.Counter[metrics.ID]
+			if !ok {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				return
+			}
+			metrics.Delta = &value
+		}
+		if metrics.MType == "gauge" {
+			value, ok := newStorage.Gauge[metrics.ID]
+			if !ok {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				return
+			}
+			metrics.Value = &value
+		}
+
+		resp, err := json.Marshal(metrics)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+	}
+}
+
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sugar := loger.Loger()
