@@ -153,8 +153,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			if !ok {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s\n",
-					http.StatusText(500),
-					metrics.ID, metrics.MType), 500)
+					http.StatusText(404),
+					metrics.ID, metrics.MType), 404)
 				return
 			}
 			metrics.Delta = &value
@@ -164,8 +164,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			if !ok {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s\n",
-					http.StatusText(500),
-					metrics.ID, metrics.MType), 500)
+					http.StatusText(404),
+					metrics.ID, metrics.MType), 404)
 				return
 			}
 			metrics.Value = &value
