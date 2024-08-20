@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -11,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/spf13/pflag"
@@ -19,6 +23,7 @@ import (
 const (
 	addressServer  string = "localhost:8080"
 	ct             string = "text/html"
+	js             string = "application/json"
 	gag            string = "gauge"
 	cnt            string = "counter"
 	Alloc          string = "Alloc"
@@ -108,21 +113,42 @@ func SendMetrics(url, metricData string) error {
 	}
 	return nil
 }
+
+func JsonSendMetrics(url string, metricsData api.Metrics) error {
+	data, err := json.Marshal(metricsData)
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(data)))
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	request.Header.Set("Content-Type", js)
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	if response.StatusCode != 200 {
+		return errors.New(response.Status)
+	}
+	defer response.Body.Close()
+	return nil
+}
+
 func main() {
 	var endpoint string
+	var nojson bool
 	var pInterv int
 	var rInterv int
 	var err error
 
+	log.SetFlags(log.Ldate | log.Ltime)
+
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
-
-	// pInterv, err = strconv.Atoi(pIntervTmp)
-	// if err != nil {
-	// 	fmt.Printf("%e\n", err)
-	// 	os.Exit(1)
-	// }
+	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
 	pflag.Parse()
 
 	if len(pflag.Args()) != 0 {
@@ -166,10 +192,30 @@ func main() {
 			CollectMetrics(storage)
 		case <-reportTik.C:
 			for k, v := range storage.Gauge {
-				SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
+				if nojson {
+					err := SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
+					if err != nil {
+						log.Print(err)
+					}
+				} else if !nojson {
+					err := JsonSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "gauge", ID: k, Value: &v})
+					if err != nil {
+						log.Print(err)
+					}
+				}
 			}
 			for k, v := range storage.Counter {
-				SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("counter/%s/%v", k, v))
+				if nojson {
+					err := SendMetrics(fmt.Sprintf("http://%s/update/", endpoint), fmt.Sprintf("counter/%s/%v", k, v))
+					if err != nil {
+						log.Print(err)
+					}
+				} else if !nojson {
+					err := JsonSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "counter", ID: k, Delta: &v})
+					if err != nil {
+						log.Print(err)
+					}
+				}
 			}
 		}
 	}
