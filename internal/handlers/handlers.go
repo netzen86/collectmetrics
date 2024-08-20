@@ -9,16 +9,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/loger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 )
-
-type Metrics struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
 
 func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +78,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		var metrics Metrics
+		var metrics api.Metrics
 		var buf bytes.Buffer
 		newStorage := storage.GetMemStorage(ctx)
 		// читаем тело запроса
@@ -139,9 +133,8 @@ func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 func JsonRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		var metrics Metrics
+		var metrics api.Metrics
 		var buf bytes.Buffer
-		// resMetrics := new(Metrics)
 
 		newStorage := storage.GetMemStorage(ctx)
 		// читаем тело запроса
@@ -158,7 +151,10 @@ func JsonRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 		if metrics.MType == "counter" {
 			value, ok := newStorage.Counter[metrics.ID]
 			if !ok {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s\n",
+					http.StatusText(500),
+					metrics.ID, metrics.MType), 500)
 				return
 			}
 			metrics.Delta = &value
@@ -166,7 +162,10 @@ func JsonRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 		if metrics.MType == "gauge" {
 			value, ok := newStorage.Gauge[metrics.ID]
 			if !ok {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s\n",
+					http.StatusText(500),
+					metrics.ID, metrics.MType), 500)
 				return
 			}
 			metrics.Value = &value
