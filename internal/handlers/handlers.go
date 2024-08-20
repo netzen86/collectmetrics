@@ -75,7 +75,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
-func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
+func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics api.Metrics
@@ -130,7 +130,7 @@ func JsonUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
-func JsonRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
+func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics api.Metrics

@@ -114,7 +114,7 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 
-func JsonSendMetrics(url string, metricsData api.Metrics) error {
+func JSONSendMetrics(url string, metricsData api.Metrics) error {
 	data, err := json.Marshal(metricsData)
 	if err != nil {
 		return fmt.Errorf("%v", err)
@@ -198,7 +198,7 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JsonSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "gauge", ID: k, Value: &v})
+					err := JSONSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
 						log.Print(err)
 					}
@@ -211,7 +211,7 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JsonSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "counter", ID: k, Delta: &v})
+					err := JSONSendMetrics(fmt.Sprintf("http://%s/update", endpoint), api.Metrics{MType: "counter", ID: k, Delta: &v})
 					if err != nil {
 						log.Print(err)
 					}
