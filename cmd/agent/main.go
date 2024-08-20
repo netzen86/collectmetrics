@@ -84,6 +84,7 @@ func CollectMetrics(storage repositories.Repo) {
 	storage.UpdateParam(ctx, gag, MCacheSys, float64(memStats.MCacheSys))
 	storage.UpdateParam(ctx, gag, MSpanInuse, float64(memStats.MSpanInuse))
 	storage.UpdateParam(ctx, gag, Mallocs, float64(memStats.Mallocs))
+	storage.UpdateParam(ctx, gag, MSpanSys, float64(memStats.MSpanSys))
 	storage.UpdateParam(ctx, gag, NextGC, float64(memStats.NextGC))
 	storage.UpdateParam(ctx, gag, NumForcedGC, float64(memStats.NumForcedGC))
 	storage.UpdateParam(ctx, gag, NumGC, float64(memStats.NumGC))
