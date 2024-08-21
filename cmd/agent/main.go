@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,8 +24,9 @@ import (
 const (
 	addressServer      string = "localhost:8080"
 	templateAddressSrv string = "http://%s/update/"
-	ct                 string = "text/html"
+	th                 string = "text/html"
 	js                 string = "application/json"
+	gz                 string = "gzip"
 	gag                string = "gauge"
 	cnt                string = "counter"
 	Alloc              string = "Alloc"
@@ -103,7 +105,7 @@ func SendMetrics(url, metricData string) error {
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Content-Type", ct)
+	request.Header.Set("Content-Type", th)
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
@@ -116,14 +118,65 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 
-func JSONSendMetrics(url string, metricsData api.Metrics) error {
+func GzipCompress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+
+	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return nil, err
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	err = w.Close()
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), err
+}
+
+func GetAccEnc(url, contEnc string) (string, error) {
+	request, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("%v", err)
+	}
+	request.Header.Set("Content-Encoding", contEnc)
+	request.Header.Set("Content-Type", js)
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("%v", err)
+	}
+	return response.Header.Get("Accept-Encoding"), nil
+}
+
+func JSONSendMetrics(url, ce string, metricsData api.Metrics) error {
+
+	encoding, err := GetAccEnc(url, ce)
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+
 	data, err := json.Marshal(metricsData)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(data)))
+
+	if encoding == "gzip" {
+		data, err = GzipCompress(data)
+		if err != nil {
+			return fmt.Errorf("%v", err)
+		}
+	}
+
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("%v", err)
+	}
+	if encoding == "gzip" {
+		request.Header.Set("Content-Encoding", gz)
+
 	}
 	request.Header.Set("Content-Type", js)
 	client := &http.Client{}
@@ -140,6 +193,7 @@ func JSONSendMetrics(url string, metricsData api.Metrics) error {
 
 func main() {
 	var endpoint string
+	var contentEnc string
 	var nojson bool
 	var pInterv int
 	var rInterv int
@@ -148,6 +202,7 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime)
 
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
+	pflag.StringVarP(&contentEnc, "contentenc", "c", gz, "Used to set content encoding to connect server.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
@@ -200,7 +255,10 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JSONSendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), api.Metrics{MType: "gauge", ID: k, Value: &v})
+					err := JSONSendMetrics(
+						fmt.Sprintf(templateAddressSrv, endpoint),
+						contentEnc,
+						api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
 						log.Print(err)
 					}
@@ -213,7 +271,10 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JSONSendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), api.Metrics{MType: "counter", ID: k, Delta: &v})
+					err := JSONSendMetrics(
+						fmt.Sprintf(templateAddressSrv, endpoint),
+						contentEnc,
+						api.Metrics{MType: "counter", ID: k, Delta: &v})
 					if err != nil {
 						log.Print(err)
 					}

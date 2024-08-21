@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"text/template"
 	"time"
 
@@ -81,15 +83,42 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		var metrics api.Metrics
 		var buf bytes.Buffer
 		newStorage := storage.GetMemStorage(ctx)
+
 		// читаем тело запроса
-		_, err := buf.ReadFrom(r.Body)
+		readedbytes, err := buf.ReadFrom(r.Body)
 		if err != nil {
-			http.Error(w, http.StatusText(400), 400)
+			http.Error(
+				w,
+				fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"),
+				400)
 			return
 		}
+		// отвечаем агенту что поддерживаем компрессию
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && readedbytes == 0 {
+			w.Header().Set("Accept-Encoding", "gzip")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// распаковываем если контент упакован
+		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+			gz, err := gzip.NewReader(&buf)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+			buf.Reset()
+			buf.ReadFrom(gz)
+			// if err != nil {
+			// 	http.Error(w, http.StatusText(400), 400)
+			// 	return
+			// }
+			defer gz.Close()
+		}
+
 		// десериализуем JSON в metrics
 		if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-			http.Error(w, http.StatusText(400), 400)
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode to json error"), 400)
 			return
 		}
 
@@ -216,7 +245,7 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func BadRequest(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, http.StatusText(400), 400)
+	http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "from function"), 400)
 }
 
 func NotFound(w http.ResponseWriter, r *http.Request) {
