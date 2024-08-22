@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/loger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
@@ -87,12 +87,10 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		// читаем тело запроса
 		readedbytes, err := buf.ReadFrom(r.Body)
 		if err != nil {
-			http.Error(
-				w,
-				fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"),
-				400)
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
 			return
 		}
+
 		// отвечаем агенту что поддерживаем компрессию
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && readedbytes == 0 {
 			w.Header().Set("Accept-Encoding", "gzip")
@@ -102,18 +100,17 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 
 		// распаковываем если контент упакован
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			gz, err := gzip.NewReader(&buf)
+			data, err := utils.GzipDecompress(buf.Bytes())
 			if err != nil {
 				http.Error(w, http.StatusText(500), 500)
 				return
 			}
 			buf.Reset()
-			buf.ReadFrom(gz)
-			// if err != nil {
-			// 	http.Error(w, http.StatusText(400), 400)
-			// 	return
-			// }
-			defer gz.Close()
+			_, err = buf.ReadFrom(bytes.NewReader(data))
+			if err != nil {
+				http.Error(w, http.StatusText(400), 400)
+				return
+			}
 		}
 
 		// десериализуем JSON в metrics

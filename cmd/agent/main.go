@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +17,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/utils"
 	"github.com/spf13/pflag"
 )
 
@@ -118,24 +118,6 @@ func SendMetrics(url, metricData string) error {
 	return nil
 }
 
-func GzipCompress(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-
-	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
-	if err != nil {
-		return nil, err
-	}
-	_, err = w.Write(data)
-	if err != nil {
-		return nil, err
-	}
-	err = w.Close()
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), err
-}
-
 func GetAccEnc(url, contEnc string) (string, error) {
 	request, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
@@ -162,9 +144,8 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) error {
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-
 	if encoding == "gzip" {
-		data, err = GzipCompress(data)
+		data, err = utils.GzipCompress(data)
 		if err != nil {
 			return fmt.Errorf("%v", err)
 		}
@@ -260,7 +241,7 @@ func main() {
 						contentEnc,
 						api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
-						log.Print(err)
+						log.Print("Gauge error ", err)
 					}
 				}
 			}
