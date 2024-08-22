@@ -1,5 +1,11 @@
 package api
 
+const (
+	Th string = "text/html"
+	Js string = "application/json"
+	Gz string = "gzip"
+)
+
 type Metrics struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter

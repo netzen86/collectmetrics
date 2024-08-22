@@ -92,14 +92,14 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 
 		// отвечаем агенту что поддерживаем компрессию
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") && readedbytes == 0 {
-			w.Header().Set("Accept-Encoding", "gzip")
+		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
+			w.Header().Add("Accept-Encoding", api.Gz)
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
 		// распаковываем если контент упакован
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) {
 			data, err := utils.GzipDecompress(buf.Bytes())
 			if err != nil {
 				http.Error(w, http.StatusText(500), 500)
@@ -150,7 +150,15 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
+			resp, err = utils.GzipCompress(resp)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+			w.Header().Set("Content-Encoding", api.Gz)
+		}
+		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 	}

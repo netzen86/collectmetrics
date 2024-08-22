@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -24,42 +25,42 @@ import (
 const (
 	addressServer      string = "localhost:8080"
 	templateAddressSrv string = "http://%s/update/"
-	th                 string = "text/html"
-	js                 string = "application/json"
-	gz                 string = "gzip"
-	gag                string = "gauge"
-	cnt                string = "counter"
-	Alloc              string = "Alloc"
-	BuckHashSys        string = "BuckHashSys"
-	Frees              string = "Frees"
-	GCCPUFraction      string = "GCCPUFraction"
-	GCSys              string = "GCSys"
-	HeapAlloc          string = "HeapAlloc"
-	HeapIdle           string = "HeapIdle"
-	HeapInuse          string = "HeapInuse"
-	HeapObjects        string = "HeapObjects"
-	HeapReleased       string = "HeapReleased"
-	HeapSys            string = "HeapSys"
-	LastGC             string = "LastGC"
-	Lookups            string = "Lookups"
-	MCacheInuse        string = "MCacheInuse"
-	MCacheSys          string = "MCacheSys"
-	MSpanInuse         string = "MSpanInuse"
-	MSpanSys           string = "MSpanSys"
-	Mallocs            string = "Mallocs"
-	NextGC             string = "NextGC"
-	NumForcedGC        string = "NumForcedGC"
-	NumGC              string = "NumGC"
-	OtherSys           string = "OtherSys"
-	PauseTotalNs       string = "PauseTotalNs"
-	StackInuse         string = "StackInuse"
-	StackSys           string = "StackSys"
-	Sys                string = "Sys"
-	TotalAlloc         string = "TotalAlloc"
-	PollCount          string = "PollCount"
-	RandomValue        string = "RandomValue"
-	pollInterval       int    = 2
-	reportInterval     int    = 10
+	// th                 string = "text/html"
+	// js                 string = "application/json"
+	// gz                 string = "gzip"
+	gag            string = "gauge"
+	cnt            string = "counter"
+	Alloc          string = "Alloc"
+	BuckHashSys    string = "BuckHashSys"
+	Frees          string = "Frees"
+	GCCPUFraction  string = "GCCPUFraction"
+	GCSys          string = "GCSys"
+	HeapAlloc      string = "HeapAlloc"
+	HeapIdle       string = "HeapIdle"
+	HeapInuse      string = "HeapInuse"
+	HeapObjects    string = "HeapObjects"
+	HeapReleased   string = "HeapReleased"
+	HeapSys        string = "HeapSys"
+	LastGC         string = "LastGC"
+	Lookups        string = "Lookups"
+	MCacheInuse    string = "MCacheInuse"
+	MCacheSys      string = "MCacheSys"
+	MSpanInuse     string = "MSpanInuse"
+	MSpanSys       string = "MSpanSys"
+	Mallocs        string = "Mallocs"
+	NextGC         string = "NextGC"
+	NumForcedGC    string = "NumForcedGC"
+	NumGC          string = "NumGC"
+	OtherSys       string = "OtherSys"
+	PauseTotalNs   string = "PauseTotalNs"
+	StackInuse     string = "StackInuse"
+	StackSys       string = "StackSys"
+	Sys            string = "Sys"
+	TotalAlloc     string = "TotalAlloc"
+	PollCount      string = "PollCount"
+	RandomValue    string = "RandomValue"
+	pollInterval   int    = 2
+	reportInterval int    = 10
 )
 
 func CollectMetrics(storage repositories.Repo) {
@@ -105,7 +106,7 @@ func SendMetrics(url, metricData string) error {
 	if err != nil {
 		return err
 	}
-	request.Header.Set("Content-Type", th)
+	request.Header.Set("Content-Type", api.Th)
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
@@ -123,53 +124,97 @@ func GetAccEnc(url, contEnc string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%v", err)
 	}
-	request.Header.Set("Content-Encoding", contEnc)
-	request.Header.Set("Content-Type", js)
+	request.Header.Add("Content-Encoding", contEnc)
+	request.Header.Add("Content-Type", api.Js)
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("%v", err)
 	}
-	return response.Header.Get("Accept-Encoding"), nil
+	log.Printf("%s %s\n", "GetAccEnc", response.Status)
+	encoding := response.Header.Get("Accept-Encoding")
+	response.Body.Close()
+	return encoding, nil
 }
 
-func JSONSendMetrics(url, ce string, metricsData api.Metrics) error {
+func JSONdecode(resp *http.Response) {
+	var buf bytes.Buffer
+	var metrics api.Metrics
+	_, err := buf.ReadFrom(resp.Body)
+	if err != nil {
+		log.Print("Gauge error ", err)
+		return
+	}
 
+	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		data, err := utils.GzipDecompress(buf.Bytes())
+		if err != nil {
+			log.Print("unpack data error", err)
+			return
+		}
+		buf.Reset()
+		_, err = buf.ReadFrom(bytes.NewReader(data))
+		if err != nil {
+			log.Print("read unpacked data error", err)
+			return
+		}
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
+		log.Print("parse json", err)
+		return
+	}
+	resp.Body.Close()
+	if metrics.MType == "counter" {
+		log.Printf("%s %v\n", metrics.ID, *metrics.Delta)
+	}
+	if metrics.MType == "gauge" {
+		log.Printf("%s %v\n", metrics.ID, *metrics.Value)
+	}
+}
+
+func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, error) {
+
+	// получаем от сервера ответ о поддерживаемыж методах сжатия
 	encoding, err := GetAccEnc(url, ce)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%v", err)
 	}
 
+	// сериализуем данные в JSON
 	data, err := json.Marshal(metricsData)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%v", err)
 	}
+	// если сервер поддерживает сжатие сжимаем данные
 	if encoding == "gzip" {
 		data, err = utils.GzipCompress(data)
 		if err != nil {
-			return fmt.Errorf("%v", err)
+			return nil, fmt.Errorf("%v", err)
 		}
 	}
 
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%v", err)
 	}
 	if encoding == "gzip" {
-		request.Header.Set("Content-Encoding", gz)
+		request.Header.Add("Content-Encoding", api.Gz)
 
 	}
-	request.Header.Set("Content-Type", js)
+	request.Header.Add("Content-Type", api.Js)
+	request.Header.Add("Accept-Encoding", api.Gz)
+
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return fmt.Errorf("%v", err)
+		return nil, fmt.Errorf("%v", err)
 	}
 	if response.StatusCode != 200 {
-		return errors.New(response.Status)
+		return nil, errors.New(response.Status)
 	}
-	defer response.Body.Close()
-	return nil
+	// defer response.Body.Close()
+	return response, nil
 }
 
 func main() {
@@ -180,20 +225,25 @@ func main() {
 	var rInterv int
 	var err error
 
+	// устанвливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
 
+	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
-	pflag.StringVarP(&contentEnc, "contentenc", "c", gz, "Used to set content encoding to connect server.")
+	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
 	pflag.Parse()
 
+	// если переданы аргументы не флаги печатаем подсказку
 	if len(pflag.Args()) != 0 {
 		pflag.PrintDefaults()
 		os.Exit(1)
 	}
 
+	// получаем данные для работы програмы из переменных окружения
+	// переменные окружения имеют наивысший приоритет
 	endpointTMP := os.Getenv("ADDRESS")
 	if len(endpointTMP) != 0 {
 		endpoint = endpointTMP
@@ -236,13 +286,14 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JSONSendMetrics(
+					resp, err := JSONSendMetrics(
 						fmt.Sprintf(templateAddressSrv, endpoint),
 						contentEnc,
 						api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
 						log.Print("Gauge error ", err)
 					}
+					JSONdecode(resp)
 				}
 			}
 			for k, v := range storage.Counter {
@@ -252,13 +303,14 @@ func main() {
 						log.Print(err)
 					}
 				} else if !nojson {
-					err := JSONSendMetrics(
+					resp, err := JSONSendMetrics(
 						fmt.Sprintf(templateAddressSrv, endpoint),
 						contentEnc,
 						api.Metrics{MType: "counter", ID: k, Delta: &v})
 					if err != nil {
 						log.Print(err)
 					}
+					JSONdecode(resp)
 				}
 			}
 		}
