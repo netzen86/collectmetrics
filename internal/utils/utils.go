@@ -67,9 +67,7 @@ func SelectDeCoHTTP(buf *bytes.Buffer, r interface{}) error {
 
 func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
 	var err error
-	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) &&
-		(strings.Contains(r.Header.Get("Content-Type"), api.Th) ||
-			strings.Contains(r.Header.Get("Content-Type"), api.Js)) {
+	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
 		data, err = GzipCompress(data)
 		if err != nil {
 			return nil, fmt.Errorf("%s pack data error", err)
