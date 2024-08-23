@@ -39,10 +39,17 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 
 func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
 		ctx := r.Context()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
-		t.Execute(w, storage.GetMemStorage(ctx))
+		t.Execute(&buf, storage.GetMemStorage(ctx))
+		data, err := utils.CoHttp(buf.Bytes(), r, w)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
+		w.Write(data)
 	}
 }
 
