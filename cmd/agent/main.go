@@ -140,6 +140,10 @@ func GetAccEnc(url, contEnc string) (string, error) {
 func JSONdecode(resp *http.Response) {
 	var buf bytes.Buffer
 	var metrics api.Metrics
+	if resp == nil {
+		log.Print("error nil response")
+		return
+	}
 	defer resp.Body.Close()
 	_, err := buf.ReadFrom(resp.Body)
 	if err != nil {
@@ -274,7 +278,7 @@ func main() {
 				if nojson {
 					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
 					if err != nil {
-						log.Fatal(err)
+						log.Println(err)
 					}
 				} else if !nojson {
 					resp, err := JSONSendMetrics(
@@ -282,7 +286,7 @@ func main() {
 						contentEnc,
 						api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
-						log.Fatal("Gauge error ", err)
+						log.Println("Gauge error ", err)
 					}
 					JSONdecode(resp)
 				}
@@ -291,7 +295,7 @@ func main() {
 				if nojson {
 					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", k, v))
 					if err != nil {
-						log.Fatal(err)
+						log.Println(err)
 					}
 				} else if !nojson {
 					resp, err := JSONSendMetrics(
@@ -299,7 +303,7 @@ func main() {
 						contentEnc,
 						api.Metrics{MType: "counter", ID: k, Delta: &v})
 					if err != nil {
-						log.Fatal(err)
+						log.Println(err)
 					}
 					JSONdecode(resp)
 				}

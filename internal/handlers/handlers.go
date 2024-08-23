@@ -149,13 +149,19 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-		if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
-			resp, err = utils.GzipCompress(resp)
-			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
-				return
-			}
-			w.Header().Set("Content-Encoding", api.Gz)
+		// if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
+		// 	resp, err = utils.GzipCompress(resp)
+		// 	if err != nil {
+		// 		http.Error(w, http.StatusText(500), 500)
+		// 		return
+		// 	}
+		// 	w.Header().Set("Content-Encoding", api.Gz)
+		// }
+
+		resp, err = utils.CoHTTP(resp, r, w)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
 		}
 
 		w.Header().Set("Content-Type", api.Js)
