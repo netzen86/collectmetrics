@@ -3,7 +3,12 @@ package utils
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
+	"github.com/netzen86/collectmetrics/internal/api"
 )
 
 func GzipCompress(data []byte) ([]byte, error) {
@@ -24,18 +29,50 @@ func GzipCompress(data []byte) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func GzipDecompress(data []byte) ([]byte, error) {
-
-	// переменная r будет читать входящие данные и распаковывать их
-	gz, err := gzip.NewReader(bytes.NewReader(data))
+func GzipDecompress(buf *bytes.Buffer) error {
+	// переменная buf будет читать входящие данные и распаковывать их
+	gz, err := gzip.NewReader(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return fmt.Errorf("%s unpacking data error", err)
+	}
 	defer gz.Close()
 
-	var b bytes.Buffer
-	// в переменную b записываются распакованные данные
-	_, err = b.ReadFrom(gz)
+	// в отчищенную переменную buf записываются распакованные данные
+	buf.Reset()
+	_, err = buf.ReadFrom(gz)
 	if err != nil {
-		return nil, fmt.Errorf("failed decompress data: %v", err)
+		return fmt.Errorf("%s read unpacked data error", err)
 	}
+	return nil
+}
 
-	return b.Bytes(), nil
+func SelectDeCoHttp(buf *bytes.Buffer, r interface{}) error {
+	var key string
+	switch value := r.(type) {
+	case *http.Request:
+		key = value.Header.Get("Content-Encoding")
+	case *http.Response:
+		key = value.Header.Get("Content-Encoding")
+	default:
+		return errors.New("func get second arg - http.Request/Response")
+	}
+	if strings.Contains(key, "gzip") {
+		err := GzipDecompress(buf)
+		if err != nil {
+			return fmt.Errorf("%s unpack data error", err)
+		}
+	}
+	return nil
+}
+
+func CoHttp(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
+	var err error
+	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
+		data, err = GzipCompress(data)
+		if err != nil {
+			return nil, fmt.Errorf("%s pack data error", err)
+		}
+		w.Header().Set("Content-Encoding", api.Gz)
+	}
+	return data, nil
 }

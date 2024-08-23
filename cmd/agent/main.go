@@ -12,7 +12,6 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -131,40 +130,32 @@ func GetAccEnc(url, contEnc string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%v", err)
 	}
+	defer response.Body.Close()
+
 	log.Printf("%s %s\n", "GetAccEnc", response.Status)
 	encoding := response.Header.Get("Accept-Encoding")
-	response.Body.Close()
 	return encoding, nil
 }
 
 func JSONdecode(resp *http.Response) {
 	var buf bytes.Buffer
 	var metrics api.Metrics
+	defer resp.Body.Close()
 	_, err := buf.ReadFrom(resp.Body)
 	if err != nil {
-		log.Print("Gauge error ", err)
+		log.Print("reading body error ", err)
 		return
 	}
-
-	if strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
-		data, err := utils.GzipDecompress(buf.Bytes())
-		if err != nil {
-			log.Print("unpack data error", err)
-			return
-		}
-		buf.Reset()
-		_, err = buf.ReadFrom(bytes.NewReader(data))
-		if err != nil {
-			log.Print("read unpacked data error", err)
-			return
-		}
+	// если данные запакованные
+	err = utils.SelectDeCoHttp(&buf, resp)
+	if err != nil {
+		log.Print("unpack data error", err)
+		return
 	}
-
 	if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-		log.Print("parse json", err)
+		log.Print("parse json error", err)
 		return
 	}
-	resp.Body.Close()
 	if metrics.MType == "counter" {
 		log.Printf("%s %v\n", metrics.ID, *metrics.Delta)
 	}
@@ -200,8 +191,8 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, e
 	}
 	if encoding == "gzip" {
 		request.Header.Add("Content-Encoding", api.Gz)
-
 	}
+
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
 
@@ -283,7 +274,7 @@ func main() {
 				if nojson {
 					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
 					if err != nil {
-						log.Print(err)
+						log.Fatal(err)
 					}
 				} else if !nojson {
 					resp, err := JSONSendMetrics(
@@ -291,7 +282,7 @@ func main() {
 						contentEnc,
 						api.Metrics{MType: "gauge", ID: k, Value: &v})
 					if err != nil {
-						log.Print("Gauge error ", err)
+						log.Fatal("Gauge error ", err)
 					}
 					JSONdecode(resp)
 				}
@@ -300,7 +291,7 @@ func main() {
 				if nojson {
 					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", k, v))
 					if err != nil {
-						log.Print(err)
+						log.Fatal(err)
 					}
 				} else if !nojson {
 					resp, err := JSONSendMetrics(
@@ -308,7 +299,7 @@ func main() {
 						contentEnc,
 						api.Metrics{MType: "counter", ID: k, Delta: &v})
 					if err != nil {
-						log.Print(err)
+						log.Fatal(err)
 					}
 					JSONdecode(resp)
 				}

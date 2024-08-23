@@ -99,18 +99,10 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 
 		// распаковываем если контент упакован
-		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) {
-			data, err := utils.GzipDecompress(buf.Bytes())
-			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
-				return
-			}
-			buf.Reset()
-			_, err = buf.ReadFrom(bytes.NewReader(data))
-			if err != nil {
-				http.Error(w, http.StatusText(400), 400)
-				return
-			}
+		err = utils.SelectDeCoHttp(&buf, r)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+			return
 		}
 
 		// десериализуем JSON в metrics
@@ -158,6 +150,7 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			}
 			w.Header().Set("Content-Encoding", api.Gz)
 		}
+
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
@@ -210,6 +203,13 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
+
+		resp, err = utils.CoHttp(resp, r, w)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
