@@ -46,7 +46,7 @@ func GzipDecompress(buf *bytes.Buffer) error {
 	return nil
 }
 
-func SelectDeCoHttp(buf *bytes.Buffer, r interface{}) error {
+func SelectDeCoHTTP(buf *bytes.Buffer, r interface{}) error {
 	var key string
 	switch value := r.(type) {
 	case *http.Request:
@@ -65,7 +65,7 @@ func SelectDeCoHttp(buf *bytes.Buffer, r interface{}) error {
 	return nil
 }
 
-func CoHttp(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
+func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
 	var err error
 	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
 		data, err = GzipCompress(data)

@@ -147,7 +147,7 @@ func JSONdecode(resp *http.Response) {
 		return
 	}
 	// если данные запакованные
-	err = utils.SelectDeCoHttp(&buf, resp)
+	err = utils.SelectDeCoHTTP(&buf, resp)
 	if err != nil {
 		log.Print("unpack data error", err)
 		return

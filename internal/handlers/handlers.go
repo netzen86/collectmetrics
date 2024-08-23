@@ -43,7 +43,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 		ctx := r.Context()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
 		t.Execute(&buf, storage.GetMemStorage(ctx))
-		data, err := utils.CoHttp(buf.Bytes(), r, w)
+		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
@@ -106,7 +106,7 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 
 		// распаковываем если контент упакован
-		err = utils.SelectDeCoHttp(&buf, r)
+		err = utils.SelectDeCoHTTP(&buf, r)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
 			return
@@ -211,7 +211,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 
-		resp, err = utils.CoHttp(resp, r, w)
+		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
