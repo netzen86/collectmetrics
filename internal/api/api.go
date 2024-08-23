@@ -1,7 +1,7 @@
 package api
 
 const (
-	Th string = "text/html"
+	Th string = "text"
 	Js string = "application/json"
 	Gz string = "gzip"
 )

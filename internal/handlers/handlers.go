@@ -40,6 +40,10 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
+		if r == nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
 		ctx := r.Context()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
 		t.Execute(&buf, storage.GetMemStorage(ctx))
