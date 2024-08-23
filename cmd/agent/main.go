@@ -107,16 +107,15 @@ func SendMetrics(url, metricData string) error {
 	}
 	request.Header.Set("Content-Type", api.Th)
 	client := &http.Client{}
-	for {
-		response, err := client.Do(request)
-		if err != nil {
-			return err
-		}
-		defer response.Body.Close()
-		if response.StatusCode == 200 {
-			return errors.New(response.Status)
-		}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
 	}
+	defer response.Body.Close()
+	if response.StatusCode != 200 {
+		return errors.New(response.Status)
+	}
+	return nil
 }
 
 func GetAccEnc(url, contEnc string) (string, error) {
