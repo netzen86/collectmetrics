@@ -46,7 +46,12 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 		ctx := r.Context()
 		t, _ := template.ParseFiles("../../web/template/metrics.html")
-		t.Execute(&buf, storage.GetMemStorage(ctx))
+		storage, err := storage.GetMemStorage(ctx)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+		t.Execute(&buf, storage)
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
@@ -63,7 +68,12 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 		mName := chi.URLParam(r, "mName")
 		ctx := r.Context()
 		if mType == "counter" {
-			counter := storage.GetMemStorage(ctx).Counter
+			storage, err := storage.GetMemStorage(ctx)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+			counter := storage.Counter
 			valueNum, ok := counter[mName]
 			if !ok {
 				w.WriteHeader(http.StatusNotFound)
@@ -74,7 +84,12 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 		if mType == "gauge" {
-			gauge := storage.GetMemStorage(ctx).Gauge
+			storage, err := storage.GetMemStorage(ctx)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+			gauge := storage.Gauge
 			valueNum, ok := gauge[mName]
 			if !ok {
 				w.WriteHeader(http.StatusNotFound)
@@ -93,7 +108,11 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		ctx := r.Context()
 		var metrics api.Metrics
 		var buf bytes.Buffer
-		newStorage := storage.GetMemStorage(ctx)
+		newStorage, err := storage.GetMemStorage(ctx)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "error create new storage"), 500)
+			return
+		}
 
 		// читаем тело запроса
 		readedbytes, err := buf.ReadFrom(r.Body)
@@ -180,9 +199,13 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 		var metrics api.Metrics
 		var buf bytes.Buffer
 
-		newStorage := storage.GetMemStorage(ctx)
+		storage, err := storage.GetMemStorage(ctx)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
 		// читаем тело запроса
-		_, err := buf.ReadFrom(r.Body)
+		_, err = buf.ReadFrom(r.Body)
 		if err != nil {
 			http.Error(w, http.StatusText(400), 400)
 			return
@@ -193,7 +216,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 		if metrics.MType == "counter" {
-			value, ok := newStorage.Counter[metrics.ID]
+			value, ok := storage.Counter[metrics.ID]
 			if !ok {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s\n",
@@ -204,7 +227,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 			metrics.Delta = &value
 		}
 		if metrics.MType == "gauge" {
-			value, ok := newStorage.Gauge[metrics.ID]
+			value, ok := storage.Gauge[metrics.ID]
 			if !ok {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s\n",

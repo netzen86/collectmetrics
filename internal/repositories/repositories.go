@@ -8,5 +8,5 @@ import (
 
 type Repo interface {
 	UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error
-	GetMemStorage(ctx context.Context) *memstorage.MemStorage
+	GetMemStorage(ctx context.Context) (*memstorage.MemStorage, error)
 }
