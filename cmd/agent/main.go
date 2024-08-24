@@ -77,6 +77,7 @@ func CollectMetrics(storage repositories.Repo) {
 	storage.UpdateParam(ctx, gag, HeapAlloc, float64(memStats.HeapAlloc))
 	storage.UpdateParam(ctx, gag, HeapIdle, float64(memStats.HeapIdle))
 	storage.UpdateParam(ctx, gag, HeapInuse, float64(memStats.HeapInuse))
+	log.Println(memStats.HeapInuse)
 	storage.UpdateParam(ctx, gag, HeapObjects, float64(memStats.HeapObjects))
 	storage.UpdateParam(ctx, gag, HeapReleased, float64(memStats.HeapReleased))
 	storage.UpdateParam(ctx, gag, HeapSys, float64(memStats.HeapSys))
