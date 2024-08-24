@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -69,7 +70,9 @@ func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error)
 	var err error
 	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) &&
 		(strings.Contains(r.Header.Get("Content-Type"), api.Th) ||
-			strings.Contains(r.Header.Get("Content-Type"), api.Js)) {
+			strings.Contains(r.Header.Get("Content-Type"), api.Js) ||
+			strings.Contains(r.Header.Get("Accept"), api.Js) ||
+			strings.Contains(r.Header.Get("Accept"), api.Th)) {
 		data, err = GzipCompress(data)
 		if err != nil {
 			return nil, fmt.Errorf("%s pack data error", err)
@@ -77,4 +80,11 @@ func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error)
 		w.Header().Set("Content-Encoding", api.Gz)
 	}
 	return data, nil
+}
+
+func ChkFileExist(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	return true
 }

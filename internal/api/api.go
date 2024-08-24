@@ -1,9 +1,10 @@
 package api
 
 const (
-	Th string = "text"
-	Js string = "application/json"
-	Gz string = "gzip"
+	Th           string = "text"
+	Js           string = "application/json"
+	Gz           string = "gzip"
+	TemplatePath string = "../../web/template/metrics.html"
 )
 
 type Metrics struct {

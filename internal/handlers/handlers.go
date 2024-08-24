@@ -45,14 +45,18 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 		ctx := r.Context()
-		t, _ := template.ParseFiles("../../web/template/metrics.html")
+		if !utils.ChkFileExist(api.TemplatePath) {
+			http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
+			return
+		}
+		t, err := template.ParseFiles(api.TemplatePath)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
+			return
+		}
 		storage, err := storage.GetMemStorage(ctx)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
-			return
-		}
-		if t == nil {
-			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
 			return
 		}
 		t.Execute(&buf, storage)
