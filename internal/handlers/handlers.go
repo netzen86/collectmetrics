@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"text/template"
@@ -45,11 +46,13 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 			return
 		}
 		ctx := r.Context()
-		if !utils.ChkFileExist(api.TemplatePath) {
+		workDir := utils.WorkingDir()
+		log.Println(workDir + api.TemplatePath)
+		if !utils.ChkFileExist(workDir + api.TemplatePath) {
 			http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
 			return
 		}
-		t, err := template.ParseFiles(api.TemplatePath)
+		t, err := template.ParseFiles(workDir + api.TemplatePath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
 			return

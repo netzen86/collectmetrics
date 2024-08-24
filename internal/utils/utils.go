@@ -88,3 +88,12 @@ func ChkFileExist(path string) bool {
 	}
 	return true
 }
+
+func WorkingDir() string {
+	// Working Directory
+	wd, _ := os.Getwd()
+	return wd
+}
+
+// Template
+// tpl, err := template.ParseFiles(wd + "/templates/index.html")
