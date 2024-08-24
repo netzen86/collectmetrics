@@ -51,6 +51,10 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
+		if t == nil {
+			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
+			return
+		}
 		t.Execute(&buf, storage)
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
