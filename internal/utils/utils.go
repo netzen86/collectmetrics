@@ -5,8 +5,10 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -95,5 +97,17 @@ func WorkingDir() string {
 	return wd
 }
 
-// Template
-// tpl, err := template.ParseFiles(wd + "/templates/index.html")
+func ListDir(path string) error {
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		log.Printf("dir: %v: name: %s\n", info.IsDir(), path)
+		return nil
+	})
+	if err != nil {
+		log.Println(err)
+	}
+	return nil
+}

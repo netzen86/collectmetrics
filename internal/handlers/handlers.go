@@ -47,6 +47,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 		ctx := r.Context()
 		workDir := utils.WorkingDir()
+		utils.ListDir(workDir)
 		log.Println(workDir + api.TemplatePath)
 		if !utils.ChkFileExist(workDir + api.TemplatePath) {
 			http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
