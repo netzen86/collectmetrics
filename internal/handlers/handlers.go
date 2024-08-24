@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"text/template"
@@ -47,9 +46,8 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 		ctx := r.Context()
 		workDir := utils.WorkingDir()
-		log.Println("work dir:", workDir, "template: ", api.TemplatePath)
 		if !utils.ChkFileExist(workDir + api.TemplatePath) {
-			http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
+			http.Error(w, http.StatusText(500), 500)
 			return
 		}
 		t, err := template.ParseFiles(workDir + api.TemplatePath)
@@ -68,6 +66,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
+		w.Header().Set("Content-Type", api.HTML)
 		w.WriteHeader(http.StatusOK)
 		w.Write(data)
 	}
