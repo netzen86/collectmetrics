@@ -107,8 +107,15 @@ func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInt
 			log.Fatal("can't create producer")
 		}
 		for k, v := range storage.Gauge {
-			log.Println("METRICS WRITE")
+			log.Println("METRICS GAUGE WRITE")
 			err := producer.WriteMetric(api.Metrics{MType: "gauge", ID: k, Value: &v})
+			if err != nil {
+				log.Fatal("can't write metric")
+			}
+		}
+		for k, v := range storage.Counter {
+			log.Println("METRICS COUNTER WRITE")
+			err := producer.WriteMetric(api.Metrics{MType: "counter", ID: k, Delta: &v})
 			if err != nil {
 				log.Fatal("can't write metric")
 			}
