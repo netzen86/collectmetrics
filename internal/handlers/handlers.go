@@ -113,7 +113,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
-func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
+func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics api.Metrics
@@ -182,15 +182,10 @@ func JSONUpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-		// if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) {
-		// 	resp, err = utils.GzipCompress(resp)
-		// 	if err != nil {
-		// 		http.Error(w, http.StatusText(500), 500)
-		// 		return
-		// 	}
-		// 	w.Header().Set("Content-Encoding", api.Gz)
-		// }
 
+		if time == 0 {
+			utils.SyncSaveMetrics(newStorage, filename)
+		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
