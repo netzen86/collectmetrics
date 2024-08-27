@@ -73,6 +73,7 @@ func main() {
 	}
 
 	dbaddressTMP := os.Getenv("DATABASE_DSN")
+	log.Println(dbaddressTMP, conparam.Host)
 	if len(dbaddressTMP) != 0 {
 		conparam.Host = endpointTMP
 	}
