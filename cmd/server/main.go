@@ -10,36 +10,29 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/handlers"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
-	addressServer    string = "localhost:8080"
-	storeIntervalDef int    = 300
-	metricFileName   string = "metrics.json"
+	addressServer     string = "localhost:8080"
+	storeIntervalDef  int    = 300
+	metricFileName    string = "metrics.json"
+	dataBaseConString string = "postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
 )
 
 func main() {
 	var endpoint string
 	var fileStoragePath string
+	var dbconstring string
 	var storeInterval int
 	var restore bool
 	var err error
 
-	conparam := db.ConParam{
-		Host:     "localhost",
-		User:     "postgres",
-		Password: "collectmetrics",
-		DBname:   "collectmetrics",
-		SSLmode:  "disable",
-	}
-
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", metricFileName, "Used to set file path to save metrics.")
-	flag.StringVar(&conparam.Host, "d", conparam.Host, "Used to set file path to save metrics.")
+	flag.StringVar(&dbconstring, "d", dataBaseConString, "Used to set file path to save metrics.")
 	flag.BoolVar(&restore, "r", false, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
@@ -73,9 +66,9 @@ func main() {
 	}
 
 	dbaddressTMP := os.Getenv("DATABASE_DSN")
-	log.Println(dbaddressTMP, conparam.Host)
+	log.Println("get env ", dbaddressTMP, "flag d ", dbconstring)
 	if len(dbaddressTMP) != 0 {
-		conparam.Host = endpointTMP
+		dbconstring = endpointTMP
 	}
 
 	if len(flag.Args()) != 0 {
@@ -108,7 +101,7 @@ func main() {
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(memSto)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
-		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(conparam)))
+		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))
 		gw.Get("/value/{mType}/{mName}", handlers.WithLogging(handlers.RetrieveOneMHandle(memSto)))
 		gw.Get("/", handlers.WithLogging(handlers.RetrieveMHandle(memSto)))
 		gw.Get("/*", handlers.WithLogging(handlers.NotFound))
