@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/loger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/utils"
@@ -258,6 +260,25 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
+	}
+}
+
+func PingDB(conparam db.ConParam) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		dataBase, err := db.NewDB(conparam)
+		if err != nil {
+			panic(err)
+		}
+		defer dataBase.Close()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+		defer cancel()
+		if err := dataBase.PingContext(ctx); err != nil {
+			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
