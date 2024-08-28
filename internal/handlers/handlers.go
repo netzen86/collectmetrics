@@ -265,7 +265,6 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 
 func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		dataBase, err := db.NewDB(dbconstring)
 		if err != nil {
 			panic(err)

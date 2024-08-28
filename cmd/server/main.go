@@ -66,9 +66,8 @@ func main() {
 	}
 
 	dbaddressTMP := os.Getenv("DATABASE_DSN")
-	log.Println("get env ", dbaddressTMP, "flag d ", dbconstring)
 	if len(dbaddressTMP) != 0 {
-		dbconstring = endpointTMP
+		dbconstring = dbaddressTMP
 	}
 
 	if len(flag.Args()) != 0 {
