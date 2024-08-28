@@ -70,6 +70,8 @@ func main() {
 		dbconstring = dbaddressTMP
 	}
 
+	dbconstring = fmt.Sprintf("postgres://%s", dbconstring)
+	log.Println("in server main ", dbconstring)
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		os.Exit(1)

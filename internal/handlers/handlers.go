@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"text/template"
@@ -265,6 +266,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo) http.HandlerFunc {
 
 func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("in handler ", dbconstring)
+
 		dataBase, err := db.NewDB(dbconstring)
 		if err != nil {
 			panic(err)
