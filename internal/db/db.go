@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -15,7 +16,7 @@ type ConParam struct {
 }
 
 func NewDB(dbconstring string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dbconstring)
+	db, err := sql.Open("pgx", fmt.Sprint("postgres://", dbconstring))
 	if err != nil {
 		return nil, err
 	}
