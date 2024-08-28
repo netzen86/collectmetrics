@@ -274,7 +274,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 		}
 		defer dataBase.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 		defer cancel()
 		if err := dataBase.PingContext(ctx); err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
