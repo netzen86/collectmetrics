@@ -10,16 +10,16 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/handlers"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
-	addressServer     string = "localhost:8080"
-	storeIntervalDef  int    = 300
-	metricFileName    string = "metrics.json"
-	dataBaseConString string = "postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
+	addressServer    string = "localhost:8080"
+	storeIntervalDef int    = 300
+	metricFileName   string = "metrics.json"
 )
 
 func main() {
@@ -32,7 +32,7 @@ func main() {
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", metricFileName, "Used to set file path to save metrics.")
-	flag.StringVar(&dbconstring, "d", dataBaseConString, "Used to set file path to save metrics.")
+	flag.StringVar(&dbconstring, "d", db.DataBaseConString, "Used to set file path to save metrics.")
 	flag.BoolVar(&restore, "r", false, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 

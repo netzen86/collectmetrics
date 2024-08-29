@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
@@ -24,42 +25,40 @@ import (
 const (
 	addressServer      string = "localhost:8080"
 	templateAddressSrv string = "http://%s/update/"
-	// th                 string = "text/html"
-	// js                 string = "application/json"
-	// gz                 string = "gzip"
-	gag            string = "gauge"
-	cnt            string = "counter"
-	Alloc          string = "Alloc"
-	BuckHashSys    string = "BuckHashSys"
-	Frees          string = "Frees"
-	GCCPUFraction  string = "GCCPUFraction"
-	GCSys          string = "GCSys"
-	HeapAlloc      string = "HeapAlloc"
-	HeapIdle       string = "HeapIdle"
-	HeapInuse      string = "HeapInuse"
-	HeapObjects    string = "HeapObjects"
-	HeapReleased   string = "HeapReleased"
-	HeapSys        string = "HeapSys"
-	LastGC         string = "LastGC"
-	Lookups        string = "Lookups"
-	MCacheInuse    string = "MCacheInuse"
-	MCacheSys      string = "MCacheSys"
-	MSpanInuse     string = "MSpanInuse"
-	MSpanSys       string = "MSpanSys"
-	Mallocs        string = "Mallocs"
-	NextGC         string = "NextGC"
-	NumForcedGC    string = "NumForcedGC"
-	NumGC          string = "NumGC"
-	OtherSys       string = "OtherSys"
-	PauseTotalNs   string = "PauseTotalNs"
-	StackInuse     string = "StackInuse"
-	StackSys       string = "StackSys"
-	Sys            string = "Sys"
-	TotalAlloc     string = "TotalAlloc"
-	PollCount      string = "PollCount"
-	RandomValue    string = "RandomValue"
-	pollInterval   int    = 2
-	reportInterval int    = 10
+	fileSP             string = "metrics.json"
+	gag                string = "gauge"
+	cnt                string = "counter"
+	Alloc              string = "Alloc"
+	BuckHashSys        string = "BuckHashSys"
+	Frees              string = "Frees"
+	GCCPUFraction      string = "GCCPUFraction"
+	GCSys              string = "GCSys"
+	HeapAlloc          string = "HeapAlloc"
+	HeapIdle           string = "HeapIdle"
+	HeapInuse          string = "HeapInuse"
+	HeapObjects        string = "HeapObjects"
+	HeapReleased       string = "HeapReleased"
+	HeapSys            string = "HeapSys"
+	LastGC             string = "LastGC"
+	Lookups            string = "Lookups"
+	MCacheInuse        string = "MCacheInuse"
+	MCacheSys          string = "MCacheSys"
+	MSpanInuse         string = "MSpanInuse"
+	MSpanSys           string = "MSpanSys"
+	Mallocs            string = "Mallocs"
+	NextGC             string = "NextGC"
+	NumForcedGC        string = "NumForcedGC"
+	NumGC              string = "NumGC"
+	OtherSys           string = "OtherSys"
+	PauseTotalNs       string = "PauseTotalNs"
+	StackInuse         string = "StackInuse"
+	StackSys           string = "StackSys"
+	Sys                string = "Sys"
+	TotalAlloc         string = "TotalAlloc"
+	PollCount          string = "PollCount"
+	RandomValue        string = "RandomValue"
+	pollInterval       int    = 2
+	reportInterval     int    = 10
 )
 
 func CollectMetrics(storage repositories.Repo) {
@@ -77,7 +76,6 @@ func CollectMetrics(storage repositories.Repo) {
 	storage.UpdateParam(ctx, gag, HeapAlloc, float64(memStats.HeapAlloc))
 	storage.UpdateParam(ctx, gag, HeapIdle, float64(memStats.HeapIdle))
 	storage.UpdateParam(ctx, gag, HeapInuse, float64(memStats.HeapInuse))
-	// log.Println(memStats.HeapInuse)
 	storage.UpdateParam(ctx, gag, HeapObjects, float64(memStats.HeapObjects))
 	storage.UpdateParam(ctx, gag, HeapReleased, float64(memStats.HeapReleased))
 	storage.UpdateParam(ctx, gag, HeapSys, float64(memStats.HeapSys))
@@ -216,6 +214,8 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, e
 func main() {
 	var endpoint string
 	var contentEnc string
+	var dbconstring string
+	var fileStoragePath string
 	var nojson bool
 	var pInterv int
 	var rInterv int
@@ -227,6 +227,8 @@ func main() {
 	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
+	pflag.StringVarP(&fileStoragePath, "filepath", "f", fileSP, "Used to set file path to save metrics.")
+	pflag.StringVarP(&dbconstring, "dbconstring", "d", db.DataBaseConString, "Used to set file path to save metrics.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
@@ -263,13 +265,29 @@ func main() {
 		}
 	}
 
+	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
+	if len(fileStoragePathTMP) != 0 {
+		fileStoragePath = fileStoragePathTMP
+	}
+
+	dbaddressTMP := os.Getenv("DATABASE_DSN")
+	if len(dbaddressTMP) != 0 {
+		dbconstring = dbaddressTMP
+	}
+
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
+
+	err = db.CreateTables(dbconstring, "gauge", "counter")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	storage, err := memstorage.NewMemStorage()
 	if err != nil {
 		panic("couldn't alloc mem")
 	}
+
 	for {
 		select {
 		case <-pollTik.C:
