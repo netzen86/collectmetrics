@@ -66,8 +66,8 @@ func CollectMetrics(storage repositories.Repo) {
 	var memStats runtime.MemStats
 
 	runtime.GC()
-
 	runtime.ReadMemStats(&memStats)
+
 	storage.UpdateParam(ctx, gag, Alloc, float64(memStats.Alloc))
 	storage.UpdateParam(ctx, gag, BuckHashSys, float64(memStats.BuckHashSys))
 	storage.UpdateParam(ctx, gag, Frees, float64(memStats.Frees))
@@ -220,7 +220,7 @@ func main() {
 	var pInterv int
 	var rInterv int
 	var err error
-
+	ctx := context.TODO()
 	// устанвливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
 
@@ -278,7 +278,7 @@ func main() {
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 
-	err = db.CreateTables(dbconstring, "gauge", "counter")
+	err = db.CreateTables(ctx, dbconstring)
 	if err != nil {
 		log.Fatal(err)
 	}

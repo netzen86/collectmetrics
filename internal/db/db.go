@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -22,7 +21,7 @@ type ConParam struct {
 	SSLmode  string `default:"sslmode=disable"`
 }
 
-func NewDB(dbconstring string) (*sql.DB, error) {
+func ConDB(dbconstring string) (*sql.DB, error) {
 	db, err := sql.Open("pgx", fmt.Sprint(dbconstring))
 	if err != nil {
 		return nil, err
@@ -31,12 +30,12 @@ func NewDB(dbconstring string) (*sql.DB, error) {
 	return db, nil
 }
 
-func TableExist(tablename, dbconstr string) (bool, error) {
-	db, err := NewDB(dbconstr)
+func TableExist(ctx context.Context, tablename, dbconstr string) (bool, error) {
+	db, err := ConDB(dbconstr)
 	if err != nil {
 		return false, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 
 	row := db.QueryRowContext(ctx,
 		"SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = ?)",
@@ -52,19 +51,28 @@ func TableExist(tablename, dbconstr string) (bool, error) {
 	return value, nil
 }
 
-func CreateTables(dbconstr string, tablename ...string) error {
-	db, err := NewDB(dbconstr)
+func CreateTables(ctx context.Context, dbconstr string) error {
+	db, err := ConDB(dbconstr)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	for _, tn := range tablename {
-		log.Println(tn)
-		_, err = db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS ?()", tn)
-		if err != nil {
-			return err
-		}
+	stmtGauge := `CREATE TABLE IF NOT EXISTS gauge 
+	("id" SERIAL PRIMARY KEY, "name" TEXT, "value" FLOAT8)`
+	stmtCounter := `CREATE TABLE IF NOT EXISTS counter 
+	("id" SERIAL PRIMARY KEY, "name" TEXT, "delta" BIGINT)`
+	_, err = db.ExecContext(ctx, stmtGauge)
+	if err != nil {
+		return fmt.Errorf("create table error - %w", err)
+	}
+	_, err = db.ExecContext(ctx, stmtCounter)
+	if err != nil {
+		return fmt.Errorf("create table error - %w", err)
 	}
 	return nil
 }
+
+// func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string, metricValue interface{}) error {
+// 	return nil
+// }

@@ -268,13 +268,13 @@ func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("in handler ", dbconstring)
 
-		dataBase, err := db.NewDB(dbconstring)
+		dataBase, err := db.ConDB(dbconstring)
 		if err != nil {
 			panic(err)
 		}
 		defer dataBase.Close()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 300*time.Second)
 		defer cancel()
 		if err := dataBase.PingContext(ctx); err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
