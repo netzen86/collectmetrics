@@ -349,7 +349,10 @@ func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
 		}
 		CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
 	}
-
+	err = rows.Err()
+	if err != nil {
+		log.Println(err)
+	}
 	smtpCnt := `SELECT name, delta FROM counter`
 	rows, err = db.QueryContext(context.TODO(), smtpCnt)
 	if err != nil {
@@ -363,6 +366,10 @@ func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
 			log.Println(err)
 		}
 		CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Println(err)
 	}
 }
 
