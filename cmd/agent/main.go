@@ -61,42 +61,72 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo) {
+func CollectMetrics(storage repositories.Repo, dbconstr string) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
 	runtime.GC()
 	runtime.ReadMemStats(&memStats)
 
-	storage.UpdateParam(ctx, gag, Alloc, float64(memStats.Alloc))
-	storage.UpdateParam(ctx, gag, BuckHashSys, float64(memStats.BuckHashSys))
-	storage.UpdateParam(ctx, gag, Frees, float64(memStats.Frees))
-	storage.UpdateParam(ctx, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-	storage.UpdateParam(ctx, gag, GCSys, float64(memStats.GCSys))
-	storage.UpdateParam(ctx, gag, HeapAlloc, float64(memStats.HeapAlloc))
-	storage.UpdateParam(ctx, gag, HeapIdle, float64(memStats.HeapIdle))
-	storage.UpdateParam(ctx, gag, HeapInuse, float64(memStats.HeapInuse))
-	storage.UpdateParam(ctx, gag, HeapObjects, float64(memStats.HeapObjects))
-	storage.UpdateParam(ctx, gag, HeapReleased, float64(memStats.HeapReleased))
-	storage.UpdateParam(ctx, gag, HeapSys, float64(memStats.HeapSys))
-	storage.UpdateParam(ctx, gag, LastGC, float64(memStats.LastGC))
-	storage.UpdateParam(ctx, gag, Lookups, float64(memStats.Lookups))
-	storage.UpdateParam(ctx, gag, MCacheInuse, float64(memStats.MCacheInuse))
-	storage.UpdateParam(ctx, gag, MCacheSys, float64(memStats.MCacheSys))
-	storage.UpdateParam(ctx, gag, MSpanInuse, float64(memStats.MSpanInuse))
-	storage.UpdateParam(ctx, gag, Mallocs, float64(memStats.Mallocs))
-	storage.UpdateParam(ctx, gag, MSpanSys, float64(memStats.MSpanSys))
-	storage.UpdateParam(ctx, gag, NextGC, float64(memStats.NextGC))
-	storage.UpdateParam(ctx, gag, NumForcedGC, float64(memStats.NumForcedGC))
-	storage.UpdateParam(ctx, gag, NumGC, float64(memStats.NumGC))
-	storage.UpdateParam(ctx, gag, OtherSys, float64(memStats.OtherSys))
-	storage.UpdateParam(ctx, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-	storage.UpdateParam(ctx, gag, StackInuse, float64(memStats.StackInuse))
-	storage.UpdateParam(ctx, gag, StackSys, float64(memStats.StackSys))
-	storage.UpdateParam(ctx, gag, Sys, float64(memStats.Sys))
-	storage.UpdateParam(ctx, gag, TotalAlloc, float64(memStats.TotalAlloc))
-	storage.UpdateParam(ctx, gag, RandomValue, rand.Float64())
-	storage.UpdateParam(ctx, cnt, PollCount, int64(1))
+	storage.UpdateParam(ctx, false, gag, Alloc, float64(memStats.Alloc))
+	storage.UpdateParam(ctx, false, gag, BuckHashSys, float64(memStats.BuckHashSys))
+	storage.UpdateParam(ctx, false, gag, Frees, float64(memStats.Frees))
+	storage.UpdateParam(ctx, false, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+	storage.UpdateParam(ctx, false, gag, GCSys, float64(memStats.GCSys))
+	storage.UpdateParam(ctx, false, gag, HeapAlloc, float64(memStats.HeapAlloc))
+	storage.UpdateParam(ctx, false, gag, HeapIdle, float64(memStats.HeapIdle))
+	storage.UpdateParam(ctx, false, gag, HeapInuse, float64(memStats.HeapInuse))
+	storage.UpdateParam(ctx, false, gag, HeapObjects, float64(memStats.HeapObjects))
+	storage.UpdateParam(ctx, false, gag, HeapReleased, float64(memStats.HeapReleased))
+	storage.UpdateParam(ctx, false, gag, HeapSys, float64(memStats.HeapSys))
+	storage.UpdateParam(ctx, false, gag, LastGC, float64(memStats.LastGC))
+	storage.UpdateParam(ctx, false, gag, Lookups, float64(memStats.Lookups))
+	storage.UpdateParam(ctx, false, gag, MCacheInuse, float64(memStats.MCacheInuse))
+	storage.UpdateParam(ctx, false, gag, MCacheSys, float64(memStats.MCacheSys))
+	storage.UpdateParam(ctx, false, gag, MSpanInuse, float64(memStats.MSpanInuse))
+	storage.UpdateParam(ctx, false, gag, Mallocs, float64(memStats.Mallocs))
+	storage.UpdateParam(ctx, false, gag, MSpanSys, float64(memStats.MSpanSys))
+	storage.UpdateParam(ctx, false, gag, NextGC, float64(memStats.NextGC))
+	storage.UpdateParam(ctx, false, gag, NumForcedGC, float64(memStats.NumForcedGC))
+	storage.UpdateParam(ctx, false, gag, NumGC, float64(memStats.NumGC))
+	storage.UpdateParam(ctx, false, gag, OtherSys, float64(memStats.OtherSys))
+	storage.UpdateParam(ctx, false, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+	storage.UpdateParam(ctx, false, gag, StackInuse, float64(memStats.StackInuse))
+	storage.UpdateParam(ctx, false, gag, StackSys, float64(memStats.StackSys))
+	storage.UpdateParam(ctx, false, gag, Sys, float64(memStats.Sys))
+	storage.UpdateParam(ctx, false, gag, TotalAlloc, float64(memStats.TotalAlloc))
+	storage.UpdateParam(ctx, false, gag, RandomValue, rand.Float64())
+	storage.UpdateParam(ctx, false, cnt, PollCount, int64(1))
+
+	db.UpdateParamDB(ctx, dbconstr, gag, Alloc, float64(memStats.Alloc))
+	db.UpdateParamDB(ctx, dbconstr, gag, BuckHashSys, float64(memStats.BuckHashSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, Frees, float64(memStats.Frees))
+	db.UpdateParamDB(ctx, dbconstr, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+	db.UpdateParamDB(ctx, dbconstr, gag, GCSys, float64(memStats.GCSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapAlloc, float64(memStats.HeapAlloc))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapIdle, float64(memStats.HeapIdle))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapInuse, float64(memStats.HeapInuse))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapObjects, float64(memStats.HeapObjects))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapReleased, float64(memStats.HeapReleased))
+	db.UpdateParamDB(ctx, dbconstr, gag, HeapSys, float64(memStats.HeapSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, LastGC, float64(memStats.LastGC))
+	db.UpdateParamDB(ctx, dbconstr, gag, Lookups, float64(memStats.Lookups))
+	db.UpdateParamDB(ctx, dbconstr, gag, MCacheInuse, float64(memStats.MCacheInuse))
+	db.UpdateParamDB(ctx, dbconstr, gag, MCacheSys, float64(memStats.MCacheSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, MSpanInuse, float64(memStats.MSpanInuse))
+	db.UpdateParamDB(ctx, dbconstr, gag, Mallocs, float64(memStats.Mallocs))
+	db.UpdateParamDB(ctx, dbconstr, gag, MSpanSys, float64(memStats.MSpanSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, NextGC, float64(memStats.NextGC))
+	db.UpdateParamDB(ctx, dbconstr, gag, NumForcedGC, float64(memStats.NumForcedGC))
+	db.UpdateParamDB(ctx, dbconstr, gag, NumGC, float64(memStats.NumGC))
+	db.UpdateParamDB(ctx, dbconstr, gag, OtherSys, float64(memStats.OtherSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+	db.UpdateParamDB(ctx, dbconstr, gag, StackInuse, float64(memStats.StackInuse))
+	db.UpdateParamDB(ctx, dbconstr, gag, StackSys, float64(memStats.StackSys))
+	db.UpdateParamDB(ctx, dbconstr, gag, Sys, float64(memStats.Sys))
+	db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
+	db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
+	db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
 }
 
 func SendMetrics(url, metricData string) error {
@@ -168,7 +198,9 @@ func JSONdecode(resp *http.Response) {
 }
 
 func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, error) {
-
+	// if metricsData.MType == "counter" {
+	// 	log.Println("JSON SEND ", metricsData.MType, *metricsData.Delta)
+	// }
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
 	encoding, err := GetAccEnc(url, ce)
 	if err != nil {
@@ -180,6 +212,7 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, e
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
+	metricsData.Clean()
 	// если сервер поддерживает сжатие сжимаем данные
 	if encoding == "gzip" {
 		data, err = utils.GzipCompress(data)
@@ -291,7 +324,7 @@ func main() {
 	for {
 		select {
 		case <-pollTik.C:
-			CollectMetrics(storage)
+			CollectMetrics(storage, db.DataBaseConString)
 		case <-reportTik.C:
 			for k, v := range storage.Gauge {
 				if nojson {
@@ -317,6 +350,7 @@ func main() {
 						log.Println(err)
 					}
 				} else if !nojson {
+					log.Println("counter value !!!", v)
 					resp, err := JSONSendMetrics(
 						fmt.Sprintf(templateAddressSrv, endpoint),
 						contentEnc,

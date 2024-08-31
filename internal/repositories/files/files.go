@@ -1,4 +1,4 @@
-package utils
+package files
 
 import (
 	"bufio"
@@ -83,13 +83,13 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 			log.Printf("can't unmarshal string %v", err)
 		}
 		if metric.MType == "gauge" {
-			err := storage.UpdateParam(ctx, metric.MType, metric.ID, *metric.Value)
+			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Value)
 			if err != nil {
 				return fmt.Errorf("gauge error %v", err)
 			}
 		}
 		if metric.MType == "counter" {
-			err := storage.UpdateParam(ctx, metric.MType, metric.ID, *metric.Delta)
+			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Delta)
 			if err != nil {
 				return fmt.Errorf("counter error %v", err)
 			}

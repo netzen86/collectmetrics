@@ -53,7 +53,7 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 				Gauge:   tt.fields.Gauge,
 				Counter: tt.fields.Counter,
 			}
-			if err := storage.UpdateParam(tt.args.ctx, tt.args.metricType, tt.args.metricName, tt.args.metricValue); (err != nil) != tt.wantErr {
+			if err := storage.UpdateParam(tt.args.ctx, false, tt.args.metricType, tt.args.metricName, tt.args.metricValue); (err != nil) != tt.wantErr {
 				t.Errorf("MemStorage.UpdateParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

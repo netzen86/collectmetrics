@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
@@ -60,9 +61,9 @@ func TestCollectMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected err to be nil got %v", err)
 	}
-	CollectMetrics(storage)
-	CollectMetrics(storage)
-	CollectMetrics(storage)
+	CollectMetrics(storage, db.DataBaseConString)
+	CollectMetrics(storage, db.DataBaseConString)
+	CollectMetrics(storage, db.DataBaseConString)
 	for key, val := range storage.Gauge {
 		if val == 0 && key != "Lookups" {
 			t.Errorf("%s not get value", key)

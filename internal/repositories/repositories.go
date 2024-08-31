@@ -7,6 +7,6 @@ import (
 )
 
 type Repo interface {
-	UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error
+	UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error
 	GetMemStorage(ctx context.Context) (*memstorage.MemStorage, error)
 }

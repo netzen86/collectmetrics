@@ -16,6 +16,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/loger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
+	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -30,7 +31,7 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 		mName := chi.URLParam(r, "mName")
 		mValue := chi.URLParam(r, "mValue")
-		err := storage.UpdateParam(ctx, mType, mName, mValue)
+		err := storage.UpdateParam(ctx, true, mType, mName, mValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			w.WriteHeader(http.StatusBadRequest)
@@ -160,7 +161,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) htt
 				return
 
 			}
-			err := storage.UpdateParam(ctx, metrics.MType, metrics.ID, *metrics.Delta)
+			err := storage.UpdateParam(ctx, true, metrics.MType, metrics.ID, *metrics.Delta)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 				return
@@ -172,7 +173,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) htt
 				return
 
 			}
-			err := storage.UpdateParam(ctx, metrics.MType, metrics.ID, *metrics.Value)
+			err := storage.UpdateParam(ctx, true, metrics.MType, metrics.ID, *metrics.Value)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 				return
@@ -187,7 +188,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) htt
 		}
 
 		if time == 0 {
-			utils.SyncSaveMetrics(newStorage, filename)
+			files.SyncSaveMetrics(newStorage, filename)
 		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {

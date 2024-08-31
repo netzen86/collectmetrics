@@ -3,10 +3,12 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
@@ -35,6 +37,7 @@ func TableExist(ctx context.Context, tablename, dbconstr string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer db.Close()
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 
 	row := db.QueryRowContext(ctx,
@@ -56,12 +59,13 @@ func CreateTables(ctx context.Context, dbconstr string) error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	stmtGauge := `CREATE TABLE IF NOT EXISTS gauge 
-	("id" SERIAL PRIMARY KEY, "name" TEXT, "value" FLOAT8)`
+	("id" SERIAL PRIMARY KEY, "name" TEXT UNIQUE, "value" FLOAT8)`
 	stmtCounter := `CREATE TABLE IF NOT EXISTS counter 
-	("id" SERIAL PRIMARY KEY, "name" TEXT, "delta" BIGINT)`
+	("id" SERIAL PRIMARY KEY, "name" TEXT UNIQUE, "delta" BIGINT)`
 	_, err = db.ExecContext(ctx, stmtGauge)
 	if err != nil {
 		return fmt.Errorf("create table error - %w", err)
@@ -73,6 +77,50 @@ func CreateTables(ctx context.Context, dbconstr string) error {
 	return nil
 }
 
-// func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string, metricValue interface{}) error {
-// 	return nil
-// }
+func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string, metricValue interface{}) error {
+	stmtGauge := `
+	INSERT INTO gauge (name, value) 
+	VALUES ($1, $2)
+	ON CONFLICT (name) DO UPDATE 
+	  SET value = $2`
+
+	stmtCounter := `
+	INSERT INTO counter (name, delta) 
+	VALUES ($1, $2)
+	ON CONFLICT (name) DO UPDATE 
+	  SET delta = (SELECT delta FROM counter WHERE name=$1) + $2`
+
+	db, err := ConDB(dbconstr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	switch {
+	case metricType == "gauge":
+
+		val, err := utils.ParseValGag(metricValue)
+		if err != nil {
+			return err
+		}
+		_, err = db.ExecContext(ctx, stmtGauge, metricName, val)
+		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", resval)
+		if err != nil {
+			return fmt.Errorf("insert table error - %w", err)
+		}
+
+	case metricType == "counter":
+		del, err := utils.ParseValCnt(metricValue)
+		if err != nil {
+			return err
+		}
+		_, err = db.ExecContext(ctx, stmtCounter, metricName, del)
+		// log.Println("Inserting counter table value: ", del, "ResVAl: ")
+		if err != nil {
+			return fmt.Errorf("insert table error - %w", err)
+		}
+	default:
+		return errors.New("wrong metric type")
+	}
+	return nil
+}

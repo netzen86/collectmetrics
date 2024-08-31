@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/handlers"
+	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
-	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
@@ -85,7 +85,7 @@ func main() {
 	}
 
 	if restore {
-		utils.LoadMetric(memSto, metricFileName)
+		files.LoadMetric(memSto, metricFileName)
 	}
 
 	ctx := context.Background()
@@ -112,7 +112,7 @@ func main() {
 	)
 
 	if storeInterval != 0 {
-		go utils.SaveMetrics(memSto, metricFileName, storeInterval)
+		go files.SaveMetrics(memSto, metricFileName, storeInterval)
 	}
 
 	errs := http.ListenAndServe(endpoint, gw)

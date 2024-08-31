@@ -14,3 +14,13 @@ type Metrics struct {
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
+
+func (metrics *Metrics) Clean() {
+
+	if metrics.Delta != nil {
+		*metrics.Delta = 0
+	}
+	if metrics.Value != nil {
+		*metrics.Value = 0
+	}
+}

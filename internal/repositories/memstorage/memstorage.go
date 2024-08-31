@@ -3,7 +3,8 @@ package memstorage
 import (
 	"context"
 	"errors"
-	"strconv"
+
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 type MemStorage struct {
@@ -15,38 +16,25 @@ func NewMemStorage() (*MemStorage, error) {
 	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}, nil
 }
 
-func (storage *MemStorage) UpdateParam(ctx context.Context, metricType, metricName string, metricValue interface{}) error {
+func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
 	switch {
 	case metricType == "gauge":
-		var mv float64
-		var convOk error
-		switch metricValue := metricValue.(type) {
-		case string:
-			mv, convOk = strconv.ParseFloat(metricValue, 64)
-			if convOk != nil {
-				return errors.New("value wrong type")
-			}
-		case float64:
-			mv = metricValue
-		default:
-			return errors.New("value wrong type")
+		val, err := utils.ParseValGag(metricValue)
+		if err != nil {
+			return err
 		}
-		storage.Gauge[metricName] = mv
+		storage.Gauge[metricName] = val
 
 	case metricType == "counter":
-		var mv int64
-		var convOk error
-		switch metricValue := metricValue.(type) {
-		case string:
-			mv, convOk = strconv.ParseInt(metricValue, 10, 64)
-			if convOk != nil {
-				return errors.New("value wrong type")
-			}
-		case int64:
-			mv = metricValue
-
+		del, err := utils.ParseValCnt(metricValue)
+		if err != nil {
+			return err
 		}
-		storage.Counter[metricName] += mv
+		if !cntSummed {
+			storage.Counter[metricName] += del
+		} else {
+			storage.Counter[metricName] = del
+		}
 	default:
 		return errors.New("wrong metric type")
 	}
