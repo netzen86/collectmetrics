@@ -61,9 +61,9 @@ func TestCollectMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected err to be nil got %v", err)
 	}
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY")
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY")
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY")
+	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
 	for key, val := range storage.Gauge {
 		if val == 0 && key != "Lookups" {
 			t.Errorf("%s not get value", key)

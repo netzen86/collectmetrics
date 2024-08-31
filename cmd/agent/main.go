@@ -62,7 +62,7 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storageSelecter string) {
+func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storageSelecter string, pollcnt int) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
@@ -165,7 +165,7 @@ func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storag
 		files.UpdateParamFile(ctx, producer, gag, Sys, float64(memStats.Sys))
 		files.UpdateParamFile(ctx, producer, gag, TotalAlloc, float64(memStats.TotalAlloc))
 		files.UpdateParamFile(ctx, producer, gag, RandomValue, rand.Float64())
-		files.UpdateParamFile(ctx, producer, cnt, PollCount, int64(1))
+		files.UpdateParamFile(ctx, producer, cnt, PollCount, int64(pollcnt))
 	}
 }
 
@@ -238,9 +238,6 @@ func JSONdecode(resp *http.Response) {
 }
 
 func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, error) {
-	// if metricsData.MType == "counter" {
-	// 	log.Println("JSON SEND ", metricsData.MType, *metricsData.Delta)
-	// }
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
 	encoding, err := GetAccEnc(url, ce)
 	if err != nil {
@@ -482,11 +479,12 @@ func main() {
 
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
-
+	counter := 0
 	for {
 		select {
 		case <-pollTik.C:
-			CollectMetrics(storage, db.DataBaseConString, fileStoragePath, storageSelecter)
+			counter += 1
+			CollectMetrics(storage, db.DataBaseConString, fileStoragePath, storageSelecter, counter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, endpoint, contentEnc)
