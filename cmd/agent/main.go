@@ -61,72 +61,76 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, dbconstr string) {
+func CollectMetrics(storage repositories.Repo, dbconstr, storageSelecter string) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
 	runtime.GC()
 	runtime.ReadMemStats(&memStats)
 
-	storage.UpdateParam(ctx, false, gag, Alloc, float64(memStats.Alloc))
-	storage.UpdateParam(ctx, false, gag, BuckHashSys, float64(memStats.BuckHashSys))
-	storage.UpdateParam(ctx, false, gag, Frees, float64(memStats.Frees))
-	storage.UpdateParam(ctx, false, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-	storage.UpdateParam(ctx, false, gag, GCSys, float64(memStats.GCSys))
-	storage.UpdateParam(ctx, false, gag, HeapAlloc, float64(memStats.HeapAlloc))
-	storage.UpdateParam(ctx, false, gag, HeapIdle, float64(memStats.HeapIdle))
-	storage.UpdateParam(ctx, false, gag, HeapInuse, float64(memStats.HeapInuse))
-	storage.UpdateParam(ctx, false, gag, HeapObjects, float64(memStats.HeapObjects))
-	storage.UpdateParam(ctx, false, gag, HeapReleased, float64(memStats.HeapReleased))
-	storage.UpdateParam(ctx, false, gag, HeapSys, float64(memStats.HeapSys))
-	storage.UpdateParam(ctx, false, gag, LastGC, float64(memStats.LastGC))
-	storage.UpdateParam(ctx, false, gag, Lookups, float64(memStats.Lookups))
-	storage.UpdateParam(ctx, false, gag, MCacheInuse, float64(memStats.MCacheInuse))
-	storage.UpdateParam(ctx, false, gag, MCacheSys, float64(memStats.MCacheSys))
-	storage.UpdateParam(ctx, false, gag, MSpanInuse, float64(memStats.MSpanInuse))
-	storage.UpdateParam(ctx, false, gag, Mallocs, float64(memStats.Mallocs))
-	storage.UpdateParam(ctx, false, gag, MSpanSys, float64(memStats.MSpanSys))
-	storage.UpdateParam(ctx, false, gag, NextGC, float64(memStats.NextGC))
-	storage.UpdateParam(ctx, false, gag, NumForcedGC, float64(memStats.NumForcedGC))
-	storage.UpdateParam(ctx, false, gag, NumGC, float64(memStats.NumGC))
-	storage.UpdateParam(ctx, false, gag, OtherSys, float64(memStats.OtherSys))
-	storage.UpdateParam(ctx, false, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-	storage.UpdateParam(ctx, false, gag, StackInuse, float64(memStats.StackInuse))
-	storage.UpdateParam(ctx, false, gag, StackSys, float64(memStats.StackSys))
-	storage.UpdateParam(ctx, false, gag, Sys, float64(memStats.Sys))
-	storage.UpdateParam(ctx, false, gag, TotalAlloc, float64(memStats.TotalAlloc))
-	storage.UpdateParam(ctx, false, gag, RandomValue, rand.Float64())
-	storage.UpdateParam(ctx, false, cnt, PollCount, int64(1))
+	if storageSelecter == "MEMORY" {
+		storage.UpdateParam(ctx, false, gag, Alloc, float64(memStats.Alloc))
+		storage.UpdateParam(ctx, false, gag, BuckHashSys, float64(memStats.BuckHashSys))
+		storage.UpdateParam(ctx, false, gag, Frees, float64(memStats.Frees))
+		storage.UpdateParam(ctx, false, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+		storage.UpdateParam(ctx, false, gag, GCSys, float64(memStats.GCSys))
+		storage.UpdateParam(ctx, false, gag, HeapAlloc, float64(memStats.HeapAlloc))
+		storage.UpdateParam(ctx, false, gag, HeapIdle, float64(memStats.HeapIdle))
+		storage.UpdateParam(ctx, false, gag, HeapInuse, float64(memStats.HeapInuse))
+		storage.UpdateParam(ctx, false, gag, HeapObjects, float64(memStats.HeapObjects))
+		storage.UpdateParam(ctx, false, gag, HeapReleased, float64(memStats.HeapReleased))
+		storage.UpdateParam(ctx, false, gag, HeapSys, float64(memStats.HeapSys))
+		storage.UpdateParam(ctx, false, gag, LastGC, float64(memStats.LastGC))
+		storage.UpdateParam(ctx, false, gag, Lookups, float64(memStats.Lookups))
+		storage.UpdateParam(ctx, false, gag, MCacheInuse, float64(memStats.MCacheInuse))
+		storage.UpdateParam(ctx, false, gag, MCacheSys, float64(memStats.MCacheSys))
+		storage.UpdateParam(ctx, false, gag, MSpanInuse, float64(memStats.MSpanInuse))
+		storage.UpdateParam(ctx, false, gag, Mallocs, float64(memStats.Mallocs))
+		storage.UpdateParam(ctx, false, gag, MSpanSys, float64(memStats.MSpanSys))
+		storage.UpdateParam(ctx, false, gag, NextGC, float64(memStats.NextGC))
+		storage.UpdateParam(ctx, false, gag, NumForcedGC, float64(memStats.NumForcedGC))
+		storage.UpdateParam(ctx, false, gag, NumGC, float64(memStats.NumGC))
+		storage.UpdateParam(ctx, false, gag, OtherSys, float64(memStats.OtherSys))
+		storage.UpdateParam(ctx, false, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+		storage.UpdateParam(ctx, false, gag, StackInuse, float64(memStats.StackInuse))
+		storage.UpdateParam(ctx, false, gag, StackSys, float64(memStats.StackSys))
+		storage.UpdateParam(ctx, false, gag, Sys, float64(memStats.Sys))
+		storage.UpdateParam(ctx, false, gag, TotalAlloc, float64(memStats.TotalAlloc))
+		storage.UpdateParam(ctx, false, gag, RandomValue, rand.Float64())
+		storage.UpdateParam(ctx, false, cnt, PollCount, int64(1))
+	}
 
-	db.UpdateParamDB(ctx, dbconstr, gag, Alloc, float64(memStats.Alloc))
-	db.UpdateParamDB(ctx, dbconstr, gag, BuckHashSys, float64(memStats.BuckHashSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, Frees, float64(memStats.Frees))
-	db.UpdateParamDB(ctx, dbconstr, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-	db.UpdateParamDB(ctx, dbconstr, gag, GCSys, float64(memStats.GCSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapAlloc, float64(memStats.HeapAlloc))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapIdle, float64(memStats.HeapIdle))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapInuse, float64(memStats.HeapInuse))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapObjects, float64(memStats.HeapObjects))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapReleased, float64(memStats.HeapReleased))
-	db.UpdateParamDB(ctx, dbconstr, gag, HeapSys, float64(memStats.HeapSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, LastGC, float64(memStats.LastGC))
-	db.UpdateParamDB(ctx, dbconstr, gag, Lookups, float64(memStats.Lookups))
-	db.UpdateParamDB(ctx, dbconstr, gag, MCacheInuse, float64(memStats.MCacheInuse))
-	db.UpdateParamDB(ctx, dbconstr, gag, MCacheSys, float64(memStats.MCacheSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, MSpanInuse, float64(memStats.MSpanInuse))
-	db.UpdateParamDB(ctx, dbconstr, gag, Mallocs, float64(memStats.Mallocs))
-	db.UpdateParamDB(ctx, dbconstr, gag, MSpanSys, float64(memStats.MSpanSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, NextGC, float64(memStats.NextGC))
-	db.UpdateParamDB(ctx, dbconstr, gag, NumForcedGC, float64(memStats.NumForcedGC))
-	db.UpdateParamDB(ctx, dbconstr, gag, NumGC, float64(memStats.NumGC))
-	db.UpdateParamDB(ctx, dbconstr, gag, OtherSys, float64(memStats.OtherSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-	db.UpdateParamDB(ctx, dbconstr, gag, StackInuse, float64(memStats.StackInuse))
-	db.UpdateParamDB(ctx, dbconstr, gag, StackSys, float64(memStats.StackSys))
-	db.UpdateParamDB(ctx, dbconstr, gag, Sys, float64(memStats.Sys))
-	db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
-	db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
-	db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
+	if storageSelecter == "DATABASE" {
+		db.UpdateParamDB(ctx, dbconstr, gag, Alloc, float64(memStats.Alloc))
+		db.UpdateParamDB(ctx, dbconstr, gag, BuckHashSys, float64(memStats.BuckHashSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, Frees, float64(memStats.Frees))
+		db.UpdateParamDB(ctx, dbconstr, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+		db.UpdateParamDB(ctx, dbconstr, gag, GCSys, float64(memStats.GCSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapAlloc, float64(memStats.HeapAlloc))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapIdle, float64(memStats.HeapIdle))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapInuse, float64(memStats.HeapInuse))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapObjects, float64(memStats.HeapObjects))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapReleased, float64(memStats.HeapReleased))
+		db.UpdateParamDB(ctx, dbconstr, gag, HeapSys, float64(memStats.HeapSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, LastGC, float64(memStats.LastGC))
+		db.UpdateParamDB(ctx, dbconstr, gag, Lookups, float64(memStats.Lookups))
+		db.UpdateParamDB(ctx, dbconstr, gag, MCacheInuse, float64(memStats.MCacheInuse))
+		db.UpdateParamDB(ctx, dbconstr, gag, MCacheSys, float64(memStats.MCacheSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, MSpanInuse, float64(memStats.MSpanInuse))
+		db.UpdateParamDB(ctx, dbconstr, gag, Mallocs, float64(memStats.Mallocs))
+		db.UpdateParamDB(ctx, dbconstr, gag, MSpanSys, float64(memStats.MSpanSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, NextGC, float64(memStats.NextGC))
+		db.UpdateParamDB(ctx, dbconstr, gag, NumForcedGC, float64(memStats.NumForcedGC))
+		db.UpdateParamDB(ctx, dbconstr, gag, NumGC, float64(memStats.NumGC))
+		db.UpdateParamDB(ctx, dbconstr, gag, OtherSys, float64(memStats.OtherSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+		db.UpdateParamDB(ctx, dbconstr, gag, StackInuse, float64(memStats.StackInuse))
+		db.UpdateParamDB(ctx, dbconstr, gag, StackSys, float64(memStats.StackSys))
+		db.UpdateParamDB(ctx, dbconstr, gag, Sys, float64(memStats.Sys))
+		db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
+		db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
+		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
+	}
 }
 
 func SendMetrics(url, metricData string) error {
@@ -244,6 +248,91 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, e
 	return response, nil
 }
 
+func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) {
+	if nojson {
+		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
+		if err != nil {
+			log.Println(err)
+		}
+	} else if !nojson {
+		resp, err := JSONSendMetrics(
+			fmt.Sprintf(templateAddressSrv, endpoint),
+			contentEnc,
+			api.Metrics{MType: "gauge", ID: key, Value: &value})
+		if err != nil {
+			log.Println("Gauge error ", err)
+		}
+		JSONdecode(resp)
+	}
+}
+
+func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
+	if nojson {
+		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
+		if err != nil {
+			log.Println(err)
+		}
+	} else if !nojson {
+		resp, err := JSONSendMetrics(
+			fmt.Sprintf(templateAddressSrv, endpoint),
+			contentEnc,
+			api.Metrics{MType: "counter", ID: key, Delta: &value})
+		if err != nil {
+			log.Println(err)
+		}
+		JSONdecode(resp)
+	}
+}
+
+func iterMemStorage(storage *memstorage.MemStorage, nojson bool, endpoint, contentEnc string) {
+	for k, v := range storage.Gauge {
+		CommonSendGag(nojson, endpoint, contentEnc, k, v)
+	}
+	for k, v := range storage.Counter {
+		CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+	}
+}
+
+func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
+	var metric api.Metrics
+
+	db, err := db.ConDB(dbconstr)
+	if err != nil {
+		log.Println(err)
+	}
+	defer db.Close()
+
+	smtpGag := `SELECT name, value FROM gauge`
+	rows, err := db.QueryContext(context.TODO(), smtpGag)
+	if err != nil {
+		log.Println(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&metric.ID, &metric.Value)
+		if err != nil {
+			log.Println(err)
+		}
+		CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+	}
+
+	smtpCnt := `SELECT name, delta FROM counter`
+	rows, err = db.QueryContext(context.TODO(), smtpCnt)
+	if err != nil {
+		log.Println(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&metric.ID, &metric.Delta)
+		if err != nil {
+			log.Println(err)
+		}
+		CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+	}
+}
+
 func main() {
 	var endpoint string
 	var contentEnc string
@@ -253,6 +342,7 @@ func main() {
 	var pInterv int
 	var rInterv int
 	var err error
+	storageSelecter := "MEMORY"
 	ctx := context.TODO()
 	// устанвливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
@@ -261,7 +351,7 @@ func main() {
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&fileStoragePath, "filepath", "f", fileSP, "Used to set file path to save metrics.")
-	pflag.StringVarP(&dbconstring, "dbconstring", "d", db.DataBaseConString, "Used to set file path to save metrics.")
+	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
@@ -301,19 +391,24 @@ func main() {
 	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(fileStoragePathTMP) != 0 {
 		fileStoragePath = fileStoragePathTMP
+		storageSelecter = "FILE"
+	}
+
+	if len(dbconstring) != 0 {
+		storageSelecter = "DATABASE"
 	}
 
 	dbaddressTMP := os.Getenv("DATABASE_DSN")
 	if len(dbaddressTMP) != 0 {
 		dbconstring = dbaddressTMP
+		storageSelecter = "DATABASE"
 	}
-
-	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
-	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
-
-	err = db.CreateTables(ctx, dbconstring)
-	if err != nil {
-		log.Fatal(err)
+	log.Println("CON DB STRING ", dbconstring)
+	if storageSelecter == "DATABASE" {
+		err = db.CreateTables(ctx, dbconstring)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	storage, err := memstorage.NewMemStorage()
@@ -321,45 +416,19 @@ func main() {
 		panic("couldn't alloc mem")
 	}
 
+	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
+	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
+
 	for {
 		select {
 		case <-pollTik.C:
-			CollectMetrics(storage, db.DataBaseConString)
+			CollectMetrics(storage, db.DataBaseConString, storageSelecter)
 		case <-reportTik.C:
-			for k, v := range storage.Gauge {
-				if nojson {
-					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", k, v))
-					if err != nil {
-						log.Println(err)
-					}
-				} else if !nojson {
-					resp, err := JSONSendMetrics(
-						fmt.Sprintf(templateAddressSrv, endpoint),
-						contentEnc,
-						api.Metrics{MType: "gauge", ID: k, Value: &v})
-					if err != nil {
-						log.Println("Gauge error ", err)
-					}
-					JSONdecode(resp)
-				}
+			if storageSelecter == "MEMORY" {
+				iterMemStorage(storage, nojson, endpoint, contentEnc)
 			}
-			for k, v := range storage.Counter {
-				if nojson {
-					err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", k, v))
-					if err != nil {
-						log.Println(err)
-					}
-				} else if !nojson {
-					log.Println("counter value !!!", v)
-					resp, err := JSONSendMetrics(
-						fmt.Sprintf(templateAddressSrv, endpoint),
-						contentEnc,
-						api.Metrics{MType: "counter", ID: k, Delta: &v})
-					if err != nil {
-						log.Println(err)
-					}
-					JSONdecode(resp)
-				}
+			if storageSelecter == "DATABASE" {
+				iterDB(nojson, dbconstring, endpoint, contentEnc)
 			}
 		}
 	}
