@@ -11,6 +11,7 @@ import (
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 type Producer struct {
@@ -23,7 +24,7 @@ type Consumer struct {
 	file *os.File
 	// добавляем Reader в Consumer
 	// reader  *bufio.Reader
-	scanner *bufio.Scanner
+	Scanner *bufio.Scanner
 }
 
 func NewProducer(filename string) (*Producer, error) {
@@ -44,7 +45,6 @@ func (p *Producer) WriteMetric(metric api.Metrics) error {
 	if err != nil {
 		return err
 	}
-
 	// записываем событие в буфер
 	if _, err := p.writer.Write(data); err != nil {
 		return err
@@ -68,14 +68,14 @@ func NewConsumer(filename string) (*Consumer, error) {
 	return &Consumer{
 		file: file,
 		// создаём новый Reader
-		scanner: bufio.NewScanner(file),
+		Scanner: bufio.NewScanner(file),
 	}, nil
 }
 
 func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 	metric := api.Metrics{}
 	ctx := context.Background()
-	scanner := c.scanner
+	scanner := c.Scanner
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &metric)
@@ -135,6 +135,13 @@ func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
 			log.Fatal("can't write metric")
 		}
 	}
+	for k, v := range storage.Counter {
+		log.Println("METRICS COUNTER WRITE")
+		err := producer.WriteMetric(api.Metrics{MType: "counter", ID: k, Delta: &v})
+		if err != nil {
+			log.Fatal("can't write metric")
+		}
+	}
 }
 
 func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
@@ -146,4 +153,34 @@ func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
 	if err != nil {
 		log.Fatal(err, "can't read metric")
 	}
+}
+
+func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metricName string, metricValue interface{}) error {
+	// producer, err := NewProducer(metricFileName)
+	// if err != nil {
+	// 	log.Fatal("can't create producer")
+	// }
+	if metricType == "gauge" {
+		// log.Println("METRICS GAUGE WRITE TO FILE")
+		val, err := utils.ParseValGag(metricValue)
+		if err != nil {
+			log.Println(err)
+		}
+		err = producer.WriteMetric(api.Metrics{MType: "gauge", ID: metricName, Value: &val})
+		if err != nil {
+			log.Fatalf("can't write gauge metric %v", err)
+		}
+	}
+	if metricType == "counter" {
+		// log.Println("METRICS COUNTER WRITE TO FILE")
+		del, err := utils.ParseValCnt(metricValue)
+		if err != nil {
+			log.Println(err)
+		}
+		err = producer.WriteMetric(api.Metrics{MType: "counter", ID: metricName, Delta: &del})
+		if err != nil {
+			log.Fatalf("can't write counter metric %v", err)
+		}
+	}
+	return fmt.Errorf("%s", "wrong metric type")
 }

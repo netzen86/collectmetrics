@@ -17,6 +17,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories"
+	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 	"github.com/spf13/pflag"
@@ -61,7 +62,7 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, dbconstr, storageSelecter string) {
+func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storageSelecter string) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
@@ -130,6 +131,41 @@ func CollectMetrics(storage repositories.Repo, dbconstr, storageSelecter string)
 		db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
 		db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
 		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
+	}
+	if storageSelecter == "FILE" {
+		producer, err := files.NewProducer(fileStoragePath)
+		if err != nil {
+			log.Fatal("can't create producer")
+		}
+		files.UpdateParamFile(ctx, producer, gag, Alloc, float64(memStats.Alloc))
+		files.UpdateParamFile(ctx, producer, gag, BuckHashSys, float64(memStats.BuckHashSys))
+		files.UpdateParamFile(ctx, producer, gag, Frees, float64(memStats.Frees))
+		files.UpdateParamFile(ctx, producer, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+		files.UpdateParamFile(ctx, producer, gag, GCSys, float64(memStats.GCSys))
+		files.UpdateParamFile(ctx, producer, gag, HeapAlloc, float64(memStats.HeapAlloc))
+		files.UpdateParamFile(ctx, producer, gag, HeapIdle, float64(memStats.HeapIdle))
+		files.UpdateParamFile(ctx, producer, gag, HeapInuse, float64(memStats.HeapInuse))
+		files.UpdateParamFile(ctx, producer, gag, HeapObjects, float64(memStats.HeapObjects))
+		files.UpdateParamFile(ctx, producer, gag, HeapReleased, float64(memStats.HeapReleased))
+		files.UpdateParamFile(ctx, producer, gag, HeapSys, float64(memStats.HeapSys))
+		files.UpdateParamFile(ctx, producer, gag, LastGC, float64(memStats.LastGC))
+		files.UpdateParamFile(ctx, producer, gag, Lookups, float64(memStats.Lookups))
+		files.UpdateParamFile(ctx, producer, gag, MCacheInuse, float64(memStats.MCacheInuse))
+		files.UpdateParamFile(ctx, producer, gag, MCacheSys, float64(memStats.MCacheSys))
+		files.UpdateParamFile(ctx, producer, gag, MSpanInuse, float64(memStats.MSpanInuse))
+		files.UpdateParamFile(ctx, producer, gag, Mallocs, float64(memStats.Mallocs))
+		files.UpdateParamFile(ctx, producer, gag, MSpanSys, float64(memStats.MSpanSys))
+		files.UpdateParamFile(ctx, producer, gag, NextGC, float64(memStats.NextGC))
+		files.UpdateParamFile(ctx, producer, gag, NumForcedGC, float64(memStats.NumForcedGC))
+		files.UpdateParamFile(ctx, producer, gag, NumGC, float64(memStats.NumGC))
+		files.UpdateParamFile(ctx, producer, gag, OtherSys, float64(memStats.OtherSys))
+		files.UpdateParamFile(ctx, producer, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+		files.UpdateParamFile(ctx, producer, gag, StackInuse, float64(memStats.StackInuse))
+		files.UpdateParamFile(ctx, producer, gag, StackSys, float64(memStats.StackSys))
+		files.UpdateParamFile(ctx, producer, gag, Sys, float64(memStats.Sys))
+		files.UpdateParamFile(ctx, producer, gag, TotalAlloc, float64(memStats.TotalAlloc))
+		files.UpdateParamFile(ctx, producer, gag, RandomValue, rand.Float64())
+		files.UpdateParamFile(ctx, producer, cnt, PollCount, int64(1))
 	}
 }
 
@@ -333,6 +369,29 @@ func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
 	}
 }
 
+func iterFile(nojson bool, fileStoragePath, endpoint, contentEnc string) {
+	metric := api.Metrics{}
+	consumer, err := files.NewConsumer(fileStoragePath)
+	if err != nil {
+		log.Println(err, "can't create consumer")
+	}
+
+	scanner := consumer.Scanner
+	for scanner.Scan() {
+		// преобразуем данные из JSON-представления в структуру
+		err := json.Unmarshal(scanner.Bytes(), &metric)
+		if err != nil {
+			log.Printf("can't unmarshal string %v", err)
+		}
+		if metric.MType == "gauge" {
+			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+		}
+		if metric.MType == "counter" {
+			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+		}
+	}
+}
+
 func main() {
 	var endpoint string
 	var contentEnc string
@@ -350,7 +409,7 @@ func main() {
 	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
-	pflag.StringVarP(&fileStoragePath, "filepath", "f", fileSP, "Used to set file path to save metrics.")
+	pflag.StringVarP(&fileStoragePath, "filepath", "f", "", "Used to set file path to save metrics.")
 	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
@@ -388,6 +447,10 @@ func main() {
 		}
 	}
 
+	if len(fileStoragePath) != 0 {
+		storageSelecter = "FILE"
+	}
+
 	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(fileStoragePathTMP) != 0 {
 		fileStoragePath = fileStoragePathTMP
@@ -403,6 +466,7 @@ func main() {
 		dbconstring = dbaddressTMP
 		storageSelecter = "DATABASE"
 	}
+
 	log.Println("CON DB STRING ", dbconstring)
 	if storageSelecter == "DATABASE" {
 		err = db.CreateTables(ctx, dbconstring)
@@ -422,13 +486,16 @@ func main() {
 	for {
 		select {
 		case <-pollTik.C:
-			CollectMetrics(storage, db.DataBaseConString, storageSelecter)
+			CollectMetrics(storage, db.DataBaseConString, fileStoragePath, storageSelecter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, endpoint, contentEnc)
 			}
 			if storageSelecter == "DATABASE" {
 				iterDB(nojson, dbconstring, endpoint, contentEnc)
+			}
+			if storageSelecter == "FILE" {
+				iterFile(nojson, fileStoragePath, endpoint, contentEnc)
 			}
 		}
 	}

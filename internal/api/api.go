@@ -18,9 +18,9 @@ type Metrics struct {
 func (metrics *Metrics) Clean() {
 
 	if metrics.Delta != nil {
-		*metrics.Delta = 0
+		metrics.Delta = nil
 	}
 	if metrics.Value != nil {
-		*metrics.Value = 0
+		metrics.Value = nil
 	}
 }
