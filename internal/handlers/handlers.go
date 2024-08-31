@@ -161,7 +161,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) htt
 				return
 
 			}
-			err := storage.UpdateParam(ctx, true, metrics.MType, metrics.ID, *metrics.Delta)
+			err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Delta)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 				return
@@ -173,7 +173,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename string, time int) htt
 				return
 
 			}
-			err := storage.UpdateParam(ctx, true, metrics.MType, metrics.ID, *metrics.Value)
+			err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Value)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 				return
