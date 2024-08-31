@@ -31,7 +31,7 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 		}
 		mName := chi.URLParam(r, "mName")
 		mValue := chi.URLParam(r, "mValue")
-		err := storage.UpdateParam(ctx, true, mType, mName, mValue)
+		err := storage.UpdateParam(ctx, false, mType, mName, mValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			w.WriteHeader(http.StatusBadRequest)
