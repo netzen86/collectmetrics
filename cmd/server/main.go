@@ -109,7 +109,7 @@ func main() {
 	log.Println("!!!SERVER", storageSelecter, restore)
 
 	if restore {
-		log.Panicln("ENTER IN RESTORE")
+		log.Println("ENTER IN RESTORE")
 		files.LoadMetric(memSto, saveMetricsDefaultPath)
 	}
 
