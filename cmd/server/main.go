@@ -44,6 +44,7 @@ func main() {
 	if len(endpointTMP) != 0 {
 		endpoint = endpointTMP
 	}
+	log.Println("ENDPOINT!!!", endpoint)
 
 	storeIntervalTmp := os.Getenv("STORE_INTERVAL")
 	if len(storeIntervalTmp) != 0 {
