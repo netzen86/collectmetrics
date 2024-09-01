@@ -202,7 +202,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
 		if err != nil {
-			return fmt.Errorf(" can't unmarshal string %v", err)
+			log.Printf(" can't unmarshal string %v", err)
 		}
 		if scannedMetric.ID == metric.ID {
 			if metric.MType == "gauge" {
