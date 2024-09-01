@@ -161,21 +161,21 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 		// log.Println("METRICS GAUGE WRITE TO FILE")
 		val, err := utils.ParseValGag(metricValue)
 		if err != nil {
-			log.Println(err)
+			return fmt.Errorf("gauge value error %v", err)
 		}
 		err = producer.WriteMetric(api.Metrics{MType: "gauge", ID: metricName, Value: &val})
 		if err != nil {
-			log.Fatalf("can't write gauge metric %v", err)
+			return fmt.Errorf("can't write gauge metric %v", err)
 		}
 	} else if metricType == "counter" {
 		// log.Println("METRICS COUNTER WRITE TO FILE")
 		del, err := utils.ParseValCnt(metricValue)
 		if err != nil {
-			log.Println(err)
+			return fmt.Errorf("counter value error %v", err)
 		}
 		err = producer.WriteMetric(api.Metrics{MType: "counter", ID: metricName, Delta: &del})
 		if err != nil {
-			log.Fatalf("can't write counter metric %v", err)
+			return fmt.Errorf("can't write counter metric %v", err)
 		}
 	} else {
 		return fmt.Errorf("%s", "wrong metric type")
