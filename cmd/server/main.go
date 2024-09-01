@@ -103,7 +103,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if restore {
+	log.Println("!!!SERVER", storageSelecter, restore)
+
+	if restore && storageSelecter == "FILE" {
+		log.Panicln("ENTER IN RESTORE")
 		files.LoadMetric(memSto, fileStoragePath)
 	}
 
