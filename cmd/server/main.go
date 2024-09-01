@@ -29,10 +29,11 @@ func main() {
 	var storeInterval int
 	var restore bool
 	var err error
+	storageSelecter := "MEMORY"
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
-	flag.StringVar(&fileStoragePath, "f", metricFileName, "Used to set file path to save metrics.")
-	flag.StringVar(&dbconstring, "d", db.DataBaseConString, "Used to set file path to save metrics.")
+	flag.StringVar(&fileStoragePath, "f", "", "Used to set file path to save metrics.")
+	flag.StringVar(&dbconstring, "d", "", "Used to set file path to save metrics.")
 	flag.BoolVar(&restore, "r", false, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
@@ -52,9 +53,14 @@ func main() {
 		}
 	}
 
+	if len(fileStoragePath) != 0 {
+		storageSelecter = "FILE"
+	}
+
 	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(fileStoragePathTMP) != 0 {
 		fileStoragePath = fileStoragePathTMP
+		storageSelecter = "FILE"
 	}
 
 	restoreTMP := os.Getenv("RESTORE")
@@ -65,9 +71,18 @@ func main() {
 		}
 	}
 
+	if len(dbconstring) != 0 {
+		storageSelecter = "DATABASE"
+	}
+
 	dbaddressTMP := os.Getenv("DATABASE_DSN")
 	if len(dbaddressTMP) != 0 {
 		dbconstring = dbaddressTMP
+		storageSelecter = "DATABASE"
+		err = db.CreateTables(context.TODO(), dbconstring)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// dbconstring = fmt.Sprintf("postgres://%s", dbconstring)
@@ -88,6 +103,13 @@ func main() {
 		files.LoadMetric(memSto, metricFileName)
 	}
 
+	if storageSelecter == "DATABASE" {
+		err = db.CreateTables(context.TODO(), dbconstring)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	ctx := context.Background()
 	ms, err := memSto.GetMemStorage(ctx)
 	if err != nil {
@@ -96,15 +118,19 @@ func main() {
 
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
-		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(ms, fileStoragePath, storeInterval)))
-		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(memSto)))
+		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
+			ms, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
+		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
+			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
-		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(memSto)))
+		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
+			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
 		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))
-		gw.Get("/value/{mType}/{mName}", handlers.WithLogging(handlers.RetrieveOneMHandle(memSto)))
+		gw.Get("/value/{mType}/{mName}", handlers.WithLogging(handlers.RetrieveOneMHandle(
+			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Get("/", handlers.WithLogging(handlers.RetrieveMHandle(memSto)))
 		gw.Get("/*", handlers.WithLogging(handlers.NotFound))
 

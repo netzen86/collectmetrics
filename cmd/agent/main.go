@@ -471,9 +471,11 @@ func main() {
 		storageSelecter = "DATABASE"
 	}
 
-	err = db.CreateTables(ctx, dbconstring)
-	if err != nil {
-		log.Println(err)
+	if storageSelecter == "DATABASE" {
+		err = db.CreateTables(ctx, dbconstring)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	storage, err := memstorage.NewMemStorage()

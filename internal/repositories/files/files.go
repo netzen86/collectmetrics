@@ -156,10 +156,7 @@ func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
 }
 
 func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metricName string, metricValue interface{}) error {
-	// producer, err := NewProducer(metricFileName)
-	// if err != nil {
-	// 	log.Fatal("can't create producer")
-	// }
+
 	if metricType == "gauge" {
 		// log.Println("METRICS GAUGE WRITE TO FILE")
 		val, err := utils.ParseValGag(metricValue)
@@ -170,8 +167,7 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 		if err != nil {
 			log.Fatalf("can't write gauge metric %v", err)
 		}
-	}
-	if metricType == "counter" {
+	} else if metricType == "counter" {
 		// log.Println("METRICS COUNTER WRITE TO FILE")
 		del, err := utils.ParseValCnt(metricValue)
 		if err != nil {
@@ -181,6 +177,29 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 		if err != nil {
 			log.Fatalf("can't write counter metric %v", err)
 		}
+	} else {
+		return fmt.Errorf("%s", "wrong metric type")
 	}
-	return fmt.Errorf("%s", "wrong metric type")
+	return nil
+}
+
+func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) error {
+	var scannedMetric api.Metrics
+	scanner := consumer.Scanner
+	for scanner.Scan() {
+		// преобразуем данные из JSON-представления в структуру
+		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
+		if err != nil {
+			log.Printf("can't unmarshal string %v", err)
+		}
+		if scannedMetric.ID == metric.ID {
+			if metric.MType == "gauge" {
+				metric.Value = scannedMetric.Value
+			}
+			if metric.MType == "counter" {
+				metric.Delta = scannedMetric.Delta
+			}
+		}
+	}
+	return nil
 }

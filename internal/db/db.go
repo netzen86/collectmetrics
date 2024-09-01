@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -121,6 +122,58 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 		}
 	default:
 		return errors.New("wrong metric type")
+	}
+	return nil
+}
+
+func SelectRquestOneRow(ctx context.Context, db *sql.DB, smtp, metricName string, metric *api.Metrics) error {
+	row := db.QueryRowContext(ctx, smtp, metricName)
+
+	if metric.MType == "counter" {
+		var delta int64
+		err := row.Scan(&delta)
+		if err != nil {
+			return fmt.Errorf("parse counter delta - %v", err)
+		}
+		metric.Delta = &delta
+	}
+	if metric.MType == "gauge" {
+		var value float64
+		err := row.Scan(&value)
+		if err != nil {
+			return fmt.Errorf("parse gauge value - %v", err)
+		}
+		metric.Value = &value
+	}
+
+	err := row.Err()
+	if err != nil {
+		return fmt.Errorf("got parsing error - %v", err)
+	}
+	return nil
+}
+
+func RetriveOneMetricDB(ctx context.Context, dbconstr string, metric *api.Metrics) error {
+
+	db, err := ConDB(dbconstr)
+	if err != nil {
+		return err
+	}
+	// defer db.Close()
+
+	if metric.MType == "gauge" {
+		smtpGag := `SELECT value FROM gauge WHERE name=$1`
+		err = SelectRquestOneRow(ctx, db, smtpGag, metric.ID, metric)
+		if err != nil {
+			return err
+		}
+	}
+	if metric.MType == "counter" {
+		smtpCnt := `SELECT delta FROM counter WHERE name=$1`
+		err = SelectRquestOneRow(ctx, db, smtpCnt, metric.ID, metric)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
