@@ -26,7 +26,6 @@ import (
 const (
 	addressServer      string = "localhost:8080"
 	templateAddressSrv string = "http://%s/update/"
-	fileSP             string = "metrics.json"
 	gag                string = "gauge"
 	cnt                string = "counter"
 	Alloc              string = "Alloc"
@@ -135,7 +134,7 @@ func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storag
 	if storageSelecter == "FILE" {
 		producer, err := files.NewProducer(fileStoragePath)
 		if err != nil {
-			log.Fatal("can't create producer")
+			log.Fatal(err, " can't create producer in cm")
 		}
 		files.UpdateParamFile(ctx, producer, gag, Alloc, float64(memStats.Alloc))
 		files.UpdateParamFile(ctx, producer, gag, BuckHashSys, float64(memStats.BuckHashSys))
@@ -377,7 +376,7 @@ func iterFile(nojson bool, fileStoragePath, endpoint, contentEnc string) {
 	metric := api.Metrics{}
 	consumer, err := files.NewConsumer(fileStoragePath)
 	if err != nil {
-		log.Println(err, "can't create consumer")
+		log.Println(err, " can't create consumer in if")
 	}
 
 	scanner := consumer.Scanner
