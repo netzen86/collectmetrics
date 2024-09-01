@@ -33,7 +33,7 @@ func main() {
 	storageSelecter := "MEMORY"
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
-	flag.StringVar(&fileStoragePath, "f", metricFileName, "Used to set file path to save metrics.")
+	flag.StringVar(&fileStoragePath, "f", "", "Used to set file path to save metrics.")
 	flag.StringVar(&dbconstring, "d", "", "Used to set file path to save metrics.")
 	flag.BoolVar(&restore, "r", false, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
