@@ -19,7 +19,6 @@ import (
 const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
-	metricFileName   string = "metrics.json"
 )
 
 func main() {
@@ -92,9 +91,6 @@ func main() {
 		}
 	}
 
-	// dbconstring = fmt.Sprintf("postgres://%s", dbconstring)
-	log.Println("in server main ", dbconstring)
-
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -108,7 +104,7 @@ func main() {
 	}
 
 	if restore {
-		files.LoadMetric(memSto, metricFileName)
+		files.LoadMetric(memSto, fileStoragePath)
 	}
 
 	if storageSelecter == "DATABASE" {
@@ -146,7 +142,7 @@ func main() {
 	)
 
 	if storeInterval != 0 {
-		go files.SaveMetrics(memSto, metricFileName, storeInterval)
+		go files.SaveMetrics(memSto, fileStoragePath, storeInterval)
 	}
 
 	errs := http.ListenAndServe(endpoint, gw)
