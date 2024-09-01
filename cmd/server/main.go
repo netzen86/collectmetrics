@@ -30,9 +30,10 @@ func main() {
 	var restore bool
 	var err error
 	storageSelecter := "MEMORY"
+	saveMetricsDefaultPath := "servermetrics.json"
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
-	flag.StringVar(&fileStoragePath, "f", "", "Used to set file path to save metrics.")
+	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
 	flag.StringVar(&dbconstring, "d", "", "Used to set file path to save metrics.")
 	flag.BoolVar(&restore, "r", false, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
@@ -53,13 +54,14 @@ func main() {
 		}
 	}
 
-	if len(fileStoragePath) != 0 {
+	if fileStoragePath != saveMetricsDefaultPath {
 		storageSelecter = "FILE"
 	}
 
 	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(fileStoragePathTMP) != 0 {
 		fileStoragePath = fileStoragePathTMP
+		saveMetricsDefaultPath = fileStoragePath
 		storageSelecter = "FILE"
 	}
 
@@ -69,6 +71,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
 	restoreTMP := os.Getenv("RESTORE")
 	if len(restoreTMP) != 0 {
 		restore, err = strconv.ParseBool(restoreTMP)
@@ -105,9 +108,9 @@ func main() {
 
 	log.Println("!!!SERVER", storageSelecter, restore)
 
-	if restore && storageSelecter == "FILE" {
+	if restore {
 		log.Panicln("ENTER IN RESTORE")
-		files.LoadMetric(memSto, fileStoragePath)
+		files.LoadMetric(memSto, saveMetricsDefaultPath)
 	}
 
 	if storageSelecter == "DATABASE" {
@@ -120,7 +123,7 @@ func main() {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			memSto, producer, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
+			memSto, producer, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
 			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
@@ -138,8 +141,8 @@ func main() {
 	},
 	)
 
-	if storeInterval != 0 && storageSelecter == "FILE" {
-		go files.SaveMetrics(memSto, fileStoragePath, storeInterval)
+	if storeInterval != 0 {
+		go files.SaveMetrics(memSto, saveMetricsDefaultPath, storeInterval)
 	}
 
 	errs := http.ListenAndServe(endpoint, gw)
