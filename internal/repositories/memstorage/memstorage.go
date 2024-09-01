@@ -43,7 +43,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metr
 
 func (storage *MemStorage) GetMemStorage(ctx context.Context) (*MemStorage, error) {
 	if storage == nil {
-		return nil, errors.New("storage empty")
+		return nil, errors.New("storage not init")
 	}
 	return storage, nil
 }

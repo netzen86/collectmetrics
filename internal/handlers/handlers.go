@@ -319,13 +319,15 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		ctx := r.Context()
 		var metrics *api.Metrics
 		var buf bytes.Buffer
-		var storage *memstorage.MemStorage
+		var newStorage *memstorage.MemStorage
 		var err error
 
 		if storageSelecter == "MEMORY" {
-			storage, err = storage.GetMemStorage(ctx)
+			newStorage, err = storage.GetMemStorage(ctx)
 			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
+				http.Error(w, fmt.Sprintf(
+					"get memstorage %s - %v",
+					http.StatusText(500), err), 500)
 				return
 			}
 		}
@@ -343,7 +345,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		}
 		if metrics.MType == "counter" {
 			if storageSelecter == "MEMORY" {
-				value, ok := storage.Counter[metrics.ID]
+				value, ok := newStorage.Counter[metrics.ID]
 				if !ok {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
@@ -378,7 +380,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		}
 		if metrics.MType == "gauge" {
 			if storageSelecter == "MEMORY" {
-				delta, ok := storage.Counter[metrics.ID]
+				delta, ok := newStorage.Counter[metrics.ID]
 				if !ok {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
@@ -421,7 +423,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
 	}

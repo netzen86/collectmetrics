@@ -101,9 +101,10 @@ func main() {
 	}
 
 	gw := chi.NewRouter()
-	memSto, errm := memstorage.NewMemStorage()
-	if errm != nil {
-		panic(errm)
+
+	memSto, err := memstorage.NewMemStorage()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if restore {
@@ -117,16 +118,16 @@ func main() {
 		}
 	}
 
-	ctx := context.Background()
-	ms, err := memSto.GetMemStorage(ctx)
-	if err != nil {
-		panic(err)
-	}
+	// ctx := context.Background()
+	// ms, err := memSto.GetMemStorage(ctx)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			ms, producer, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
+			memSto, producer, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
 			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
