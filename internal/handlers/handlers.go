@@ -380,7 +380,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		}
 		if metrics.MType == "gauge" {
 			if storageSelecter == "MEMORY" {
-				delta, ok := newStorage.Counter[metrics.ID]
+				value, ok := newStorage.Gauge[metrics.ID]
 				if !ok {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
@@ -388,7 +388,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 						metrics.ID, metrics.MType), 404)
 					return
 				}
-				metrics.Delta = &delta
+				metrics.Value = &value
 			}
 			if storageSelecter == "DATABASE" {
 				err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
