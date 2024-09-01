@@ -299,7 +299,7 @@ func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, file
 			return
 		}
 
-		if time == 0 {
+		if time == 0 && storageSelecter == "FILE" {
 			files.SyncSaveMetrics(newStorage, filename)
 		}
 		resp, err = utils.CoHTTP(resp, r, w)

@@ -19,7 +19,6 @@ import (
 const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
-	metricFileName   string = "servermetrics.json"
 )
 
 func main() {
@@ -44,7 +43,6 @@ func main() {
 	if len(endpointTMP) != 0 {
 		endpoint = endpointTMP
 	}
-	log.Println("ENDPOINT!!!", endpoint)
 
 	storeIntervalTmp := os.Getenv("STORE_INTERVAL")
 	if len(storeIntervalTmp) != 0 {
@@ -137,7 +135,7 @@ func main() {
 	},
 	)
 
-	if storeInterval != 0 {
+	if storeInterval != 0 && storageSelecter == "FILE" {
 		go files.SaveMetrics(memSto, fileStoragePath, storeInterval)
 	}
 
