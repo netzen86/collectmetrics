@@ -114,12 +114,6 @@ func main() {
 		}
 	}
 
-	// ctx := context.Background()
-	// ms, err := memSto.GetMemStorage(ctx)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
