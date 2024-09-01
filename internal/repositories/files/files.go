@@ -83,12 +83,20 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 			log.Printf("can't unmarshal string %v", err)
 		}
 		if metric.MType == "gauge" {
+			if metric.Value == nil {
+				return fmt.Errorf(" gauge value is nil %v", err)
+
+			}
 			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Value)
 			if err != nil {
 				return fmt.Errorf("gauge error %v", err)
 			}
 		}
 		if metric.MType == "counter" {
+			if metric.Value == nil {
+				return fmt.Errorf(" counter delta is nil %v", err)
+
+			}
 			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Delta)
 			if err != nil {
 				return fmt.Errorf("counter error %v", err)
@@ -186,19 +194,34 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) error {
 	var scannedMetric api.Metrics
 	scanner := consumer.Scanner
+	log.Println("!!!! enter one metric read")
+	if len(scanner.Bytes()) == 0 {
+		return fmt.Errorf(" scanner equal %s", "nil")
+	}
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
 		if err != nil {
-			log.Printf("can't unmarshal string %v", err)
+			return fmt.Errorf(" can't unmarshal string %v", err)
 		}
 		if scannedMetric.ID == metric.ID {
 			if metric.MType == "gauge" {
-				metric.Value = scannedMetric.Value
+				if scannedMetric.Value != nil {
+					metric.Value = scannedMetric.Value
+				} else {
+					return fmt.Errorf(" gauge vlaue is nil %v", err)
+				}
 			}
 			if metric.MType == "counter" {
-				metric.Delta = scannedMetric.Delta
+
+				if scannedMetric.Delta != nil {
+					metric.Delta = scannedMetric.Delta
+				} else {
+					return fmt.Errorf(" counter delta is nil %v", err)
+				}
 			}
+		} else {
+			return fmt.Errorf(" metric %s %s not exist ", metric.ID, metric.MType)
 		}
 	}
 	return nil
