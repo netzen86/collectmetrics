@@ -27,6 +27,7 @@ func main() {
 	var fileStoragePath string
 	var dbconstring string
 	var storeInterval int
+	var producer *files.Producer
 	var restore bool
 	var err error
 	storageSelecter := "MEMORY"
@@ -63,6 +64,12 @@ func main() {
 		storageSelecter = "FILE"
 	}
 
+	if storageSelecter == "FILE" {
+		producer, err = files.NewProducer(fileStoragePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	restoreTMP := os.Getenv("RESTORE")
 	if len(restoreTMP) != 0 {
 		restore, err = strconv.ParseBool(restoreTMP)
@@ -119,13 +126,13 @@ func main() {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			ms, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
+			ms, producer, fileStoragePath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
 			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
-			memSto, fileStoragePath, dbconstring, storageSelecter)))
+			memSto, producer, dbconstring, storageSelecter)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
 		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))

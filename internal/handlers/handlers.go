@@ -21,7 +21,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-func UpdateMHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo, producer *files.Producer, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		if mType != "counter" && mType != "gauge" {
@@ -48,12 +48,7 @@ func UpdateMHandle(storage repositories.Repo, filename, dbconstr, storageSelecte
 			}
 		}
 		if storageSelecter == "FILE" {
-			producer, err := files.NewProducer(filename)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
-				return
-			}
-			err = files.UpdateParamFile(r.Context(), producer, mType, mName, mValue)
+			err := files.UpdateParamFile(r.Context(), producer, mType, mName, mValue)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 				return
@@ -198,7 +193,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 	}
 }
 
-func JSONUpdateMHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
+func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var newStorage *memstorage.MemStorage
@@ -262,12 +257,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename, dbconstr, storageSel
 				}
 			}
 			if storageSelecter == "FILE" {
-				producer, err := files.NewProducer(filename)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
-					return
-				}
-				err = files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Delta)
+				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("update data in file %s %v\n", http.StatusText(500), err), 500)
 					return
@@ -296,12 +286,7 @@ func JSONUpdateMHandle(storage repositories.Repo, filename, dbconstr, storageSel
 				}
 			}
 			if storageSelecter == "FILE" {
-				producer, err := files.NewProducer(filename)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
-					return
-				}
-				err = files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Value)
+				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Value)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
 					return
