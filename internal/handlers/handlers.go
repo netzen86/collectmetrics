@@ -35,22 +35,21 @@ func UpdateMHandle(storage repositories.Repo, producer *files.Producer, dbconstr
 		if storageSelecter == "MEMORY" {
 			err := storage.UpdateParam(r.Context(), false, mType, mName, mValue)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				w.WriteHeader(http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 				return
 			}
 		}
 		if storageSelecter == "DATABASE" {
 			err := db.UpdateParamDB(r.Context(), dbconstr, mType, mName, mValue)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 				return
 			}
 		}
 		if storageSelecter == "FILE" {
 			err := files.UpdateParamFile(r.Context(), producer, mType, mName, mValue)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 				return
 			}
 		}
@@ -106,7 +105,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			if storageSelecter == "MEMORY" {
 				storage, err := storage.GetMemStorage(r.Context())
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				delta, ok = storage.Counter[metric.ID]
@@ -124,20 +123,20 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(500),
-						metric.ID, metric.MType, err), 500)
+						http.StatusText(404),
+						metric.ID, metric.MType, err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, http.StatusText(404), 404)
 					return
 				}
 				err = files.ReadOneMetric(r.Context(), consumer, &metric)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, http.StatusText(404), 404)
 					return
 				}
 			}
@@ -151,7 +150,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			if storageSelecter == "MEMORY" {
 				storage, err := storage.GetMemStorage(r.Context())
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				value, ok = storage.Gauge[metric.ID]
@@ -168,19 +167,19 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
 
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				err = files.ReadOneMetric(r.Context(), consumer, &metric)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 
@@ -244,7 +243,7 @@ func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, file
 			if storageSelecter == "MEMORY" {
 				err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				*metrics.Delta = newStorage.Counter[metrics.ID]
@@ -252,14 +251,14 @@ func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, file
 			if storageSelecter == "DATABASE" {
 				err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("update data in file %s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
@@ -273,7 +272,7 @@ func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, file
 			if storageSelecter == "MEMORY" {
 				err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Value)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				*metrics.Value = newStorage.Gauge[metrics.ID]
@@ -281,14 +280,14 @@ func JSONUpdateMHandle(storage repositories.Repo, producer *files.Producer, file
 			if storageSelecter == "DATABASE" {
 				err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Value)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Value)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), err), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
@@ -367,12 +366,12 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				err = files.ReadOneMetric(r.Context(), consumer, metrics)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
@@ -392,19 +391,19 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			if storageSelecter == "DATABASE" {
 				err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 				err = files.ReadOneMetric(r.Context(), consumer, metrics)
 				if err != nil {
-					http.Error(w, http.StatusText(500), 500)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
