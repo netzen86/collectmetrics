@@ -22,22 +22,22 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-func sum_pc(ctx context.Context, filename string, delta int64, pc_metric *api.Metrics) error {
+func sum_pc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
 	consumer, err := files.NewConsumer(filename)
 	if err != nil {
 		return err
 	}
-	err = files.ReadOneMetric(ctx, consumer, pc_metric)
+	err = files.ReadOneMetric(ctx, consumer, pcMetric)
 	if err != nil {
 		return err
 	}
 
-	*pc_metric.Delta = *pc_metric.Delta + delta
+	*pcMetric.Delta = *pcMetric.Delta + delta
 
 	return nil
 }
 
-func UpdateMHandle(storage repositories.Repo, pc_metric *api.Metrics, producer *files.Producer, dbconstr, storageSelecter string) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *files.Producer, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		if mType != "counter" && mType != "gauge" {
@@ -69,12 +69,12 @@ func UpdateMHandle(storage repositories.Repo, pc_metric *api.Metrics, producer *
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-				err = sum_pc(r.Context(), producer.Filename, tmpValue, pc_metric)
+				err = sum_pc(r.Context(), producer.Filename, tmpValue, pcMetric)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-				mValue = strconv.FormatInt(*pc_metric.Delta, 10)
+				mValue = strconv.FormatInt(*pcMetric.Delta, 10)
 			}
 			err := files.UpdateParamFile(r.Context(), producer, mType, mName, mValue)
 			if err != nil {
@@ -221,7 +221,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 	}
 }
 
-func JSONUpdateMHandle(storage repositories.Repo, pc_metric *api.Metrics, producer *files.Producer,
+func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *files.Producer,
 	filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -287,12 +287,12 @@ func JSONUpdateMHandle(storage repositories.Repo, pc_metric *api.Metrics, produc
 			}
 			if storageSelecter == "FILE" {
 				if metrics.ID == "PoolCount" {
-					err := sum_pc(r.Context(), filename, *metrics.Delta, pc_metric)
+					err := sum_pc(r.Context(), filename, *metrics.Delta, pcMetric)
 					if err != nil {
 						http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 						return
 					}
-					*metrics.Delta = *pc_metric.Delta
+					*metrics.Delta = *pcMetric.Delta
 				}
 				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
