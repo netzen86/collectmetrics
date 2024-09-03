@@ -22,7 +22,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-func sum_pc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
+func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
 	consumer, err := files.NewConsumer(filename)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *f
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-				err = sum_pc(r.Context(), producer.Filename, tmpValue, pcMetric)
+				err = sumPc(r.Context(), producer.Filename, tmpValue, pcMetric)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
@@ -287,7 +287,7 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 			}
 			if storageSelecter == "FILE" {
 				if metrics.ID == "PoolCount" {
-					err := sum_pc(r.Context(), filename, *metrics.Delta, pcMetric)
+					err := sumPc(r.Context(), filename, *metrics.Delta, pcMetric)
 					if err != nil {
 						http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 						return
