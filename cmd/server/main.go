@@ -56,9 +56,10 @@ func main() {
 		}
 	}
 
-	// if fileStoragePath != saveMetricsDefaultPath {
-	// 	storageSelecter = "FILE"
-	// }
+	if fileStoragePath != saveMetricsDefaultPath && len(fileStoragePath) != 0 {
+		saveMetricsDefaultPath = fileStoragePath
+		storageSelecter = "FILE"
+	}
 
 	// fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(os.Getenv("FILE_STORAGE_PATH")) != 0 {
@@ -68,6 +69,7 @@ func main() {
 	}
 
 	if storageSelecter == "FILE" {
+		log.Println("ENTER PRODUCER IN MAIN")
 		producer, err = files.NewProducer(fileStoragePath)
 		if err != nil {
 			log.Fatal(err)

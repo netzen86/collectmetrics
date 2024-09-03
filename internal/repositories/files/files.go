@@ -62,7 +62,7 @@ func (p *Producer) WriteMetric(metric api.Metrics) error {
 }
 
 func NewConsumer(filename string) (*Consumer, error) {
-	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInterval int) {
 	for {
 		<-time.After(time.Duration(storeInterval) * time.Second)
-		log.Println("CREATE PRODUCER")
+		log.Println("ENTER PRODUCER IN SM")
 		producer, err := NewProducer(metricFileName)
 		if err != nil {
 			log.Fatal("can't create producer")
@@ -134,6 +134,7 @@ func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInt
 }
 
 func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
+	log.Println("ENTER PRODUCER IN SSM")
 	producer, err := NewProducer(metricFileName)
 	if err != nil {
 		log.Fatal("can't create producer")
@@ -198,7 +199,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 	scanner := consumer.Scanner
 	log.Println("!!!! enter one metric read")
 	if len(scanner.Bytes()) == 0 {
-		return fmt.Errorf(" scanner equal %s", "nil")
+		return fmt.Errorf("scanner equal %s", "nil")
 	}
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
@@ -206,6 +207,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 		if err != nil {
 			log.Printf(" can't unmarshal string %v", err)
 		}
+		log.Println(metric.ID, metric.MType, metric.Value, metric.Delta)
 		if scannedMetric.ID == metric.ID {
 			if metric.MType == "gauge" {
 				if scannedMetric.Value != nil {

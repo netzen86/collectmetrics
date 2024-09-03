@@ -37,7 +37,8 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 	return nil
 }
 
-func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *files.Producer, dbconstr, storageSelecter string) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *files.Producer,
+	dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		if mType != "counter" && mType != "gauge" {
@@ -173,8 +174,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
 			w.Write([]byte(deltaStr))
 			return
-		}
-		if metric.MType == "gauge" {
+		} else if metric.MType == "gauge" {
 			log.Println("DB metric", metric.ID, metric.MType)
 			if storageSelecter == "MEMORY" {
 				storage, err := storage.GetMemStorage(r.Context())
@@ -216,6 +216,9 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			w.WriteHeader(http.StatusOK)
 			valueStr := fmt.Sprintf("%g", *metric.Value)
 			w.Write([]byte(valueStr))
+			return
+		} else {
+			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
 			return
 		}
 	}
@@ -299,6 +302,7 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
+
 			}
 		}
 		if metrics.MType == "gauge" {
@@ -415,8 +419,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					return
 				}
 			}
-		}
-		if metrics.MType == "gauge" {
+		} else if metrics.MType == "gauge" {
 			if storageSelecter == "MEMORY" {
 				value, ok := newStorage.Gauge[metrics.ID]
 				if !ok {
@@ -448,6 +451,9 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 				}
 			}
 
+		} else {
+			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
+			return
 		}
 		resp, err := json.Marshal(metrics)
 		if err != nil {
