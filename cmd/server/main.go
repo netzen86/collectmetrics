@@ -42,27 +42,27 @@ func main() {
 
 	flag.Parse()
 
-	endpointTMP := os.Getenv("ADDRESS")
-	if len(endpointTMP) != 0 {
-		endpoint = endpointTMP
+	// endpointTMP := os.Getenv("ADDRESS")
+	if len(os.Getenv("ADDRESS")) != 0 {
+		endpoint = os.Getenv("ADDRESS")
 	}
 
-	storeIntervalTmp := os.Getenv("STORE_INTERVAL")
-	if len(storeIntervalTmp) != 0 {
-		storeInterval, err = strconv.Atoi(storeIntervalTmp)
+	// storeIntervalTmp := os.Getenv("STORE_INTERVAL")
+	if len(os.Getenv("STORE_INTERVAL")) != 0 {
+		storeInterval, err = strconv.Atoi(os.Getenv("STORE_INTERVAL"))
 		if err != nil {
 			fmt.Printf("%e\n", err)
 			os.Exit(1)
 		}
 	}
 
-	if fileStoragePath != saveMetricsDefaultPath {
-		storageSelecter = "FILE"
-	}
+	// if fileStoragePath != saveMetricsDefaultPath {
+	// 	storageSelecter = "FILE"
+	// }
 
-	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
-	if len(fileStoragePathTMP) != 0 {
-		fileStoragePath = fileStoragePathTMP
+	// fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
+	if len(os.Getenv("FILE_STORAGE_PATH")) != 0 {
+		fileStoragePath = os.Getenv("FILE_STORAGE_PATH")
 		saveMetricsDefaultPath = fileStoragePath
 		storageSelecter = "FILE"
 	}
@@ -74,9 +74,9 @@ func main() {
 		}
 	}
 
-	restoreTMP := os.Getenv("RESTORE")
-	if len(restoreTMP) != 0 {
-		restore, err = strconv.ParseBool(restoreTMP)
+	// restoreTMP := os.Getenv("RESTORE")
+	if len(os.Getenv("RESTORE")) != 0 {
+		restore, err = strconv.ParseBool(os.Getenv("RESTORE"))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,9 +86,9 @@ func main() {
 		storageSelecter = "DATABASE"
 	}
 
-	dbaddressTMP := os.Getenv("DATABASE_DSN")
-	if len(dbaddressTMP) != 0 {
-		dbconstring = dbaddressTMP
+	// dbaddressTMP := os.Getenv("DATABASE_DSN")
+	if len(os.Getenv("DATABASE_DSN")) != 0 {
+		dbconstring = os.Getenv("DATABASE_DSN")
 		storageSelecter = "DATABASE"
 		err = db.CreateTables(context.TODO(), dbconstring)
 		if err != nil {
