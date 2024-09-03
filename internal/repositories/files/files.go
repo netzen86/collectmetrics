@@ -15,7 +15,8 @@ import (
 )
 
 type Producer struct {
-	file *os.File
+	file     *os.File
+	Filename string
 	// добавляем Writer в Producer
 	writer *bufio.Writer
 }
@@ -34,7 +35,8 @@ func NewProducer(filename string) (*Producer, error) {
 	}
 
 	return &Producer{
-		file: file,
+		file:     file,
+		Filename: filename,
 		// создаём новый Writer
 		writer: bufio.NewWriter(file),
 	}, nil
