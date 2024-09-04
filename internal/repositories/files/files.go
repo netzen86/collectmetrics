@@ -153,13 +153,15 @@ func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
 }
 
 func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
-	consumer, err := NewConsumer(metricFileName)
-	if err != nil {
-		log.Fatal(err, " can't create consumer in lm")
-	}
-	err = consumer.ReadMetric(storage)
-	if err != nil {
-		log.Fatal(err, " can't read metric in lm")
+	if _, err := os.Stat(metricFileName); err == nil {
+		consumer, err := NewConsumer(metricFileName)
+		if err != nil {
+			log.Fatal(err, " can't create consumer in lm")
+		}
+		err = consumer.ReadMetric(storage)
+		if err != nil {
+			log.Fatal(err, " can't read metric in lm")
+		}
 	}
 }
 

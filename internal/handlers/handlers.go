@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -56,9 +55,8 @@ func fileStorage(ctx context.Context, pcMetric *api.Metrics, tmpmetric api.Metri
 			return err
 		}
 	}
-	if _, err := os.Stat(filename); err == nil {
-		files.LoadMetric(tmpStorage, filename)
-	}
+
+	files.LoadMetric(tmpStorage, filename)
 
 	if tmpmetric.MType == "counter" {
 		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
