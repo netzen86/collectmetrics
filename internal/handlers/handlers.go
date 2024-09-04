@@ -334,20 +334,12 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 				}
 			}
 			if storageSelecter == "FILE" {
-				if metrics.ID == "PoolCount" {
-					err := sumPc(r.Context(), filename, *metrics.Delta, pcMetric)
-					if err != nil {
-						http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
-						return
-					}
-					*metrics.Delta = *pcMetric.Delta
-				}
-				err := files.UpdateParamFile(r.Context(), producer, metrics.MType, metrics.ID, *metrics.Delta)
+				var tmpmetric api.Metrics
+				err := fileStorage(r.Context(), pcMetric, tmpmetric, producer.Filename)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+					http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-
 			}
 		}
 		if metrics.MType == "gauge" {
