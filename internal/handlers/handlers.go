@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -27,13 +28,48 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 	if err != nil {
 		return err
 	}
-	err = files.ReadOneMetric(ctx, consumer, pcMetric)
+	_, err = files.ReadOneMetric(ctx, consumer, pcMetric)
 	if err != nil {
 		return err
 	}
 
 	*pcMetric.Delta = *pcMetric.Delta + delta
 
+	return nil
+}
+
+func fileStorage(ctx context.Context, pcMetric *api.Metrics, tmpmetric api.Metrics, filename string) error {
+	var err error
+
+	tmpStorage, err := memstorage.NewMemStorage()
+	if err != nil {
+		return err
+	}
+
+	if tmpmetric.MType == "counter" {
+		pcMetric.ID = tmpmetric.ID
+		pcMetric.MType = tmpmetric.MType
+		pcMetric.Delta = tmpmetric.Delta
+
+		err = sumPc(ctx, filename, *tmpmetric.Delta, pcMetric)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(filename); err == nil {
+		files.LoadMetric(tmpStorage, filename)
+	}
+
+	if tmpmetric.MType == "counter" {
+		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
+	} else if tmpmetric.MType == "gauge" {
+		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
+	}
+
+	files.SyncSaveMetrics(tmpStorage, filename)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -65,9 +101,8 @@ func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *f
 		}
 		if storageSelecter == "FILE" {
 			var tmpmetric api.Metrics
-			var err error
-			tmpmetric.ID = mName
 			tmpmetric.MType = mType
+			tmpmetric.ID = mName
 
 			if tmpmetric.MType == "counter" {
 				tmpDel, err := strconv.ParseInt(mValue, 10, 64)
@@ -87,33 +122,9 @@ func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *f
 				http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
 				return
 			}
-
-			tmpStorage, err := memstorage.NewMemStorage()
+			err := fileStorage(r.Context(), pcMetric, tmpmetric, producer.Filename)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
-				return
-			}
-			if tmpmetric.MType == "counter" {
-				pcMetric.ID = tmpmetric.ID
-				pcMetric.MType = tmpmetric.MType
-				pcMetric.Delta = tmpmetric.Delta
-				err = sumPc(r.Context(), producer.Filename, *tmpmetric.Delta, pcMetric)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
-					return
-				}
-			}
-			files.LoadMetric(tmpStorage, producer.Filename)
-
-			if tmpmetric.MType == "counter" {
-				tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
-			} else if tmpmetric.MType == "gauge" {
-				tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
-			}
-
-			files.SyncSaveMetrics(tmpStorage, producer.Filename)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+				http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
 				return
 			}
 		}
@@ -198,7 +209,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 					http.Error(w, http.StatusText(404), 404)
 					return
 				}
-				err = files.ReadOneMetric(r.Context(), consumer, &metric)
+				_, err = files.ReadOneMetric(r.Context(), consumer, &metric)
 				if err != nil {
 					http.Error(w, http.StatusText(404), 404)
 					return
@@ -240,7 +251,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
-				err = files.ReadOneMetric(r.Context(), consumer, &metric)
+				_, err = files.ReadOneMetric(r.Context(), consumer, &metric)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
@@ -447,7 +458,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
-				err = files.ReadOneMetric(r.Context(), consumer, metrics)
+				_, err = files.ReadOneMetric(r.Context(), consumer, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
@@ -478,7 +489,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
 				}
-				err = files.ReadOneMetric(r.Context(), consumer, metrics)
+				_, err = files.ReadOneMetric(r.Context(), consumer, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return

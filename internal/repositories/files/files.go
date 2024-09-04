@@ -95,7 +95,7 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 			}
 		}
 		if metric.MType == "counter" {
-			if metric.Value == nil {
+			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
@@ -191,7 +191,7 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 	return nil
 }
 
-func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) error {
+func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) (string, error) {
 	var scannedMetric api.Metrics
 	scanner := consumer.Scanner
 	for scanner.Scan() {
@@ -204,21 +204,21 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 			if metric.MType == "gauge" {
 				if scannedMetric.Value != nil {
 					metric.Value = scannedMetric.Value
-					return nil
+					return "", nil
 				} else {
-					return fmt.Errorf(" gauge vlaue is nil %v", err)
+					return "", fmt.Errorf(" gauge vlaue is nil %v", err)
 				}
 			}
 			if metric.MType == "counter" {
 
 				if scannedMetric.Delta != nil {
 					metric.Delta = scannedMetric.Delta
-					return nil
+					return "", nil
 				} else {
-					return fmt.Errorf(" counter delta is nil %v", err)
+					return "", fmt.Errorf(" counter delta is nil %v", err)
 				}
 			}
 		}
 	}
-	return fmt.Errorf(" metric %s %s not exist ", metric.ID, metric.MType)
+	return fmt.Sprintf(" metric %s %s not exist ", metric.ID, metric.MType), nil
 }
