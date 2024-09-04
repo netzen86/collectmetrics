@@ -28,9 +28,10 @@ func main() {
 	var dbconstring string
 	var storeInterval int
 	var producer *files.Producer
-	var pcMetric *api.Metrics
+	var pcMetric api.Metrics
 	var restore bool
 	var err error
+
 	storageSelecter := "MEMORY"
 	saveMetricsDefaultPath := "servermetrics.json"
 
@@ -127,13 +128,13 @@ func main() {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			memSto, pcMetric, producer, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
+			memSto, &pcMetric, producer, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
 			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
-			memSto, pcMetric, producer, dbconstring, storageSelecter)))
+			memSto, &pcMetric, producer, dbconstring, storageSelecter)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
 		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))
@@ -145,7 +146,7 @@ func main() {
 	},
 	)
 
-	if storeInterval != 0 {
+	if storeInterval != 0 && storageSelecter != "FILE" {
 		go files.SaveMetrics(memSto, saveMetricsDefaultPath, storeInterval)
 	}
 

@@ -64,20 +64,54 @@ func UpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, producer *f
 			}
 		}
 		if storageSelecter == "FILE" {
-			if mType == "PollCount" {
-				tmpValue, err := strconv.ParseInt(mValue, 10, 64)
+			var tmpmetric api.Metrics
+			var err error
+			tmpmetric.ID = mName
+			tmpmetric.MType = mType
+
+			if tmpmetric.MType == "counter" {
+				tmpDel, err := strconv.ParseInt(mValue, 10, 64)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-				err = sumPc(r.Context(), producer.Filename, tmpValue, pcMetric)
+				tmpmetric.Delta = &tmpDel
+			} else if tmpmetric.MType == "gauge" {
+				tmpVal, err := strconv.ParseFloat(mValue, 64)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
 				}
-				mValue = strconv.FormatInt(*pcMetric.Delta, 10)
+				tmpmetric.Value = &tmpVal
+			} else {
+				http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
+				return
 			}
-			err := files.UpdateParamFile(r.Context(), producer, mType, mName, mValue)
+
+			tmpStorage, err := memstorage.NewMemStorage()
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+				return
+			}
+			if tmpmetric.MType == "counter" {
+				pcMetric.ID = tmpmetric.ID
+				pcMetric.MType = tmpmetric.MType
+				pcMetric.Delta = tmpmetric.Delta
+				err = sumPc(r.Context(), producer.Filename, *tmpmetric.Delta, pcMetric)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+					return
+				}
+			}
+			files.LoadMetric(tmpStorage, producer.Filename)
+
+			if tmpmetric.MType == "counter" {
+				tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
+			} else if tmpmetric.MType == "gauge" {
+				tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
+			}
+
+			files.SyncSaveMetrics(tmpStorage, producer.Filename)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 				return

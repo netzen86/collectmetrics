@@ -134,20 +134,17 @@ func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInt
 }
 
 func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
-	log.Println("ENTER PRODUCER IN SSM")
 	producer, err := NewProducer(metricFileName)
 	if err != nil {
 		log.Fatal("can't create producer")
 	}
 	for k, v := range storage.Gauge {
-		log.Println("METRICS WRITE")
 		err := producer.WriteMetric(api.Metrics{MType: "gauge", ID: k, Value: &v})
 		if err != nil {
 			log.Fatal("can't write metric")
 		}
 	}
 	for k, v := range storage.Counter {
-		log.Println("METRICS COUNTER WRITE")
 		err := producer.WriteMetric(api.Metrics{MType: "counter", ID: k, Delta: &v})
 		if err != nil {
 			log.Fatal("can't write metric")
@@ -197,21 +194,17 @@ func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metric
 func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) error {
 	var scannedMetric api.Metrics
 	scanner := consumer.Scanner
-	log.Println("!!!! enter one metric read")
-	if len(scanner.Bytes()) == 0 {
-		return fmt.Errorf("scanner equal %s", "nil")
-	}
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
 		if err != nil {
 			log.Printf(" can't unmarshal string %v", err)
 		}
-		log.Println(metric.ID, metric.MType, metric.Value, metric.Delta)
 		if scannedMetric.ID == metric.ID {
 			if metric.MType == "gauge" {
 				if scannedMetric.Value != nil {
 					metric.Value = scannedMetric.Value
+					return nil
 				} else {
 					return fmt.Errorf(" gauge vlaue is nil %v", err)
 				}
@@ -220,13 +213,12 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 
 				if scannedMetric.Delta != nil {
 					metric.Delta = scannedMetric.Delta
+					return nil
 				} else {
 					return fmt.Errorf(" counter delta is nil %v", err)
 				}
 			}
-		} else {
-			return fmt.Errorf(" metric %s %s not exist ", metric.ID, metric.MType)
 		}
 	}
-	return nil
+	return fmt.Errorf(" metric %s %s not exist ", metric.ID, metric.MType)
 }
