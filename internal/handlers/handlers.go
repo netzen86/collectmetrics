@@ -28,7 +28,9 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 		return err
 	}
 	_, err = files.ReadOneMetric(ctx, consumer, pcMetric)
-	if err != nil {
+	if strings.Contains(err.Error(), "not exist") {
+		*pcMetric.Delta = 0
+	} else {
 		return err
 	}
 
@@ -55,6 +57,7 @@ func fileStorage(ctx context.Context, pcMetric *api.Metrics, tmpmetric api.Metri
 			return err
 		}
 	}
+	log.Println("!!!! file storage", pcMetric.ID, tmpmetric.ID)
 
 	files.LoadMetric(tmpStorage, filename)
 
@@ -63,7 +66,6 @@ func fileStorage(ctx context.Context, pcMetric *api.Metrics, tmpmetric api.Metri
 	} else if tmpmetric.MType == "gauge" {
 		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
 	}
-
 	files.SyncSaveMetrics(tmpStorage, filename)
 	if err != nil {
 		return err
@@ -336,8 +338,7 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 				}
 			}
 			if storageSelecter == "FILE" {
-				var tmpmetric api.Metrics
-				err := fileStorage(r.Context(), pcMetric, tmpmetric, producer.Filename)
+				err := fileStorage(r.Context(), pcMetric, metrics, producer.Filename)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
 					return
