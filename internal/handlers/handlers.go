@@ -339,8 +339,7 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 					return
 				}
 			}
-		}
-		if metrics.MType == "gauge" {
+		} else if metrics.MType == "gauge" {
 			if metrics.Value == nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "wrong value"), 500)
 				return
@@ -368,6 +367,9 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 					return
 				}
 			}
+		} else {
+			http.Error(w, fmt.Sprintf("empty metic %s\n", http.StatusText(400)), 400)
+			return
 		}
 
 		resp, err := json.Marshal(metrics)
