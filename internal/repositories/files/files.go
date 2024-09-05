@@ -139,6 +139,7 @@ func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
 	if err != nil {
 		log.Fatal("can't create producer")
 	}
+	defer producer.file.Close()
 	for k, v := range storage.Gauge {
 		err := producer.WriteMetric(api.Metrics{MType: "gauge", ID: k, Value: &v})
 		if err != nil {
@@ -151,6 +152,7 @@ func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
 			log.Fatal("can't write metric")
 		}
 	}
+
 }
 
 func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
@@ -159,6 +161,7 @@ func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
 		if err != nil {
 			log.Fatal(err, " can't create consumer in lm")
 		}
+		defer consumer.file.Close()
 		err = consumer.ReadMetric(storage)
 		if err != nil {
 			log.Fatal(err, " can't read metric in lm")
