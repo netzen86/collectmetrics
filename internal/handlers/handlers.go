@@ -28,10 +28,12 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 		return err
 	}
 	_, err = files.ReadOneMetric(ctx, consumer, pcMetric)
-	if strings.Contains(err.Error(), "not exist") {
-		*pcMetric.Delta = 0
-	} else {
-		return err
+	if err != nil {
+		if strings.Contains(err.Error(), "not exist") {
+			*pcMetric.Delta = 0
+		} else {
+			return err
+		}
 	}
 
 	*pcMetric.Delta = *pcMetric.Delta + delta
