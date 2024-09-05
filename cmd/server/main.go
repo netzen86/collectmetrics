@@ -37,7 +37,7 @@ func main() {
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
-	flag.StringVar(&dbconstring, "d", "", "Used to set file path to save metrics.")
+	flag.StringVar(&dbconstring, "d", "", "Used to set db connet string.")
 	flag.BoolVar(&restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
@@ -146,7 +146,7 @@ func main() {
 	},
 	)
 
-	if storeInterval != 0 && storageSelecter != "FILE" {
+	if storeInterval != 0 {
 		go files.SaveMetrics(memSto, saveMetricsDefaultPath, storeInterval)
 	}
 

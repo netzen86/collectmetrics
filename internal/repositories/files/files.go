@@ -130,6 +130,7 @@ func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInt
 				log.Fatal("can't write metric")
 			}
 		}
+		producer.file.Close()
 	}
 }
 
