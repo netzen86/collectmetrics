@@ -309,6 +309,10 @@ func JSONUpdateMHandle(storage repositories.Repo, pcMetric *api.Metrics, produce
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode to json error"), 400)
 			return
 		}
+		if metrics.ID == "" {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "not valid metric name"), 400)
+			return
+		}
 
 		if metrics.MType == "counter" {
 			if metrics.Delta == nil {

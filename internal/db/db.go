@@ -129,21 +129,23 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 func SelectRquestOneRow(ctx context.Context, db *sql.DB, smtp, metricName string, metric *api.Metrics) error {
 	row := db.QueryRowContext(ctx, smtp, metricName)
 
-	if metric.MType == "counter" {
+	switch {
+	case metric.MType == "counter":
 		var delta int64
 		err := row.Scan(&delta)
 		if err != nil {
 			return fmt.Errorf("parse counter delta - %v", err)
 		}
 		metric.Delta = &delta
-	}
-	if metric.MType == "gauge" {
+	case metric.MType == "gauge":
 		var value float64
 		err := row.Scan(&value)
 		if err != nil {
 			return fmt.Errorf("parse gauge value - %v", err)
 		}
 		metric.Value = &value
+	default:
+		return errors.New("wrong metric type")
 	}
 
 	err := row.Err()
@@ -160,20 +162,22 @@ func RetriveOneMetricDB(ctx context.Context, dbconstr string, metric *api.Metric
 		return err
 	}
 	// defer db.Close()
-
-	if metric.MType == "gauge" {
+	switch {
+	case metric.MType == "gauge":
 		smtpGag := `SELECT value FROM gauge WHERE name=$1`
 		err = SelectRquestOneRow(ctx, db, smtpGag, metric.ID, metric)
 		if err != nil {
 			return err
 		}
-	}
-	if metric.MType == "counter" {
+
+	case metric.MType == "counter":
 		smtpCnt := `SELECT delta FROM counter WHERE name=$1`
 		err = SelectRquestOneRow(ctx, db, smtpCnt, metric.ID, metric)
 		if err != nil {
 			return err
 		}
+	default:
+		return errors.New("wrong metric type")
 	}
 	return nil
 }
