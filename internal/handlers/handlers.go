@@ -222,7 +222,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			if storageSelecter == "MEMORY" {
 				storage, err := storage.GetMemStorage(r.Context())
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
 					return
 				}
 				value, ok = storage.Gauge[metric.ID]
@@ -239,19 +239,19 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
 
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
 					return
 				}
 				_, err = files.ReadOneMetric(r.Context(), consumer, &metric)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
 					return
 				}
 

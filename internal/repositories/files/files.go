@@ -204,15 +204,15 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 			log.Printf(" can't unmarshal string %v", err)
 		}
 		if scannedMetric.ID == metric.ID {
-			if metric.MType == "gauge" {
+			switch {
+			case scannedMetric.MType == "gauge":
 				if scannedMetric.Value != nil {
 					metric.Value = scannedMetric.Value
 					return "", nil
 				} else {
 					return "", fmt.Errorf(" gauge vlaue is nil %v", err)
 				}
-			}
-			if metric.MType == "counter" {
+			case metric.MType == "counter":
 
 				if scannedMetric.Delta != nil {
 					metric.Delta = scannedMetric.Delta
@@ -220,8 +220,10 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 				} else {
 					return "", fmt.Errorf(" counter delta is nil %v", err)
 				}
+			default:
+				return fmt.Sprintf(" metric %s %s wrong type ", metric.ID, metric.MType), nil
 			}
 		}
 	}
-	return fmt.Sprintf(" metric %s %s not exist ", metric.ID, metric.MType), nil
+	return "", fmt.Errorf("metric %s %s not exist ", metric.ID, metric.MType)
 }
