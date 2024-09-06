@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/handlers"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
@@ -27,8 +26,7 @@ func main() {
 	var fileStoragePath string
 	var dbconstring string
 	var storeInterval int
-	var producer *files.Producer
-	var pcMetric api.Metrics
+	var tempfile *os.File
 	var restore bool
 	var err error
 
@@ -71,7 +69,11 @@ func main() {
 
 	if storageSelecter == "FILE" {
 		log.Println("ENTER PRODUCER IN MAIN")
-		producer, err = files.NewProducer(fileStoragePath)
+		_, err = os.MkdirTemp("", "tmp")
+		if err != nil {
+			log.Fatal(err)
+		}
+		tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -128,13 +130,13 @@ func main() {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			memSto, &pcMetric, producer, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
+			memSto, tempfile, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
 			memSto, fileStoragePath, dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
-			memSto, &pcMetric, producer, dbconstring, storageSelecter)))
+			memSto, tempfile, saveMetricsDefaultPath, dbconstring, storageSelecter)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
 		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))
@@ -147,7 +149,8 @@ func main() {
 	)
 
 	if storeInterval != 0 {
-		go files.SaveMetrics(memSto, saveMetricsDefaultPath, storeInterval)
+		go files.SaveMetrics(memSto, saveMetricsDefaultPath,
+			tempfile.Name(), storageSelecter, storeInterval)
 	}
 
 	errs := http.ListenAndServe(endpoint, gw)

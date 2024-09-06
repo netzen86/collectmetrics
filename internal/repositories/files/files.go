@@ -108,9 +108,16 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 	return nil
 }
 
-func SaveMetrics(storage *memstorage.MemStorage, metricFileName string, storeInterval int) {
+func SaveMetrics(storage *memstorage.MemStorage, metricFileName, tempfile, storageSelecter string, storeInterval int) {
+
 	for {
 		<-time.After(time.Duration(storeInterval) * time.Second)
+		if storageSelecter == "FILE" {
+			log.Println("LOAD METRIC FORM TEMP FILE")
+			LoadMetric(storage, tempfile)
+		}
+		log.Println(storage.Counter, storage.Gauge, tempfile)
+
 		log.Println("ENTER PRODUCER IN SM")
 		producer, err := NewProducer(metricFileName)
 		if err != nil {
@@ -169,8 +176,12 @@ func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
 	}
 }
 
-func UpdateParamFile(ctx context.Context, producer *Producer, metricType, metricName string, metricValue interface{}) error {
-
+func UpdateParamFile(ctx context.Context, saveMetricsDefaultPath, metricType, metricName string, metricValue interface{}) error {
+	producer, err := NewProducer(saveMetricsDefaultPath)
+	if err != nil {
+		log.Fatal("can't create producer")
+	}
+	defer producer.file.Close()
 	if metricType == "gauge" {
 		// log.Println("METRICS GAUGE WRITE TO FILE")
 		val, err := utils.ParseValGag(metricValue)

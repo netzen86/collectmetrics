@@ -2,19 +2,18 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
 
-	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
-	"github.com/netzen86/collectmetrics/internal/repositories/files"
 )
 
 func TestUpdateMHandle(t *testing.T) {
 	type args struct {
 		storage  repositories.Repo
-		producer *files.Producer
-		metric   *api.Metrics
+		tempfile *os.File
+		filename string
 	}
 	tests := []struct {
 		name string
@@ -25,7 +24,7 @@ func TestUpdateMHandle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := UpdateMHandle(tt.args.storage, tt.args.metric, tt.args.producer, "test", "test"); !reflect.DeepEqual(got, tt.want) {
+			if got := UpdateMHandle(tt.args.storage, tt.args.tempfile, tt.args.filename, "test", "test"); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("UpdateMHandle() = %v, want %v", got, tt.want)
 			}
 		})
