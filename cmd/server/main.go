@@ -73,10 +73,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	// restoreTMP := os.Getenv("RESTORE")
@@ -112,8 +108,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	log.Println("!!!SERVER", storageSelecter, restore)
+	tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if restore {
 		log.Println("ENTER IN RESTORE")
