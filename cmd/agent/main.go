@@ -28,6 +28,7 @@ const (
 	templateAddressSrv string = "http://%s/update/"
 	gag                string = "gauge"
 	cnt                string = "counter"
+	storefiledfl       string = "testagent.json"
 	Alloc              string = "Alloc"
 	BuckHashSys        string = "BuckHashSys"
 	Frees              string = "Frees"
@@ -441,7 +442,7 @@ func main() {
 	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
-	pflag.StringVarP(&fileStoragePath, "filepath", "f", "", "Used to set file path to save metrics.")
+	pflag.StringVarP(&fileStoragePath, "filepath", "f", storefiledfl, "Used to set file path to save metrics.")
 	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
