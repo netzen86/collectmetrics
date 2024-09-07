@@ -42,13 +42,15 @@ func main() {
 
 	flag.Parse()
 
-	// endpointTMP := os.Getenv("ADDRESS")
-	if len(os.Getenv("ADDRESS")) != 0 {
+	log.Println("!!! SERVER START !!!", endpoint, fileStoragePath, dbconstring, restore, storeInterval)
+
+	endpointTMP := os.Getenv("ADDRESS")
+	if len(endpointTMP) != 0 {
 		endpoint = os.Getenv("ADDRESS")
 	}
 
-	// storeIntervalTmp := os.Getenv("STORE_INTERVAL")
-	if len(os.Getenv("STORE_INTERVAL")) != 0 {
+	storeIntervalTmp := os.Getenv("STORE_INTERVAL")
+	if len(storeIntervalTmp) != 0 {
 		storeInterval, err = strconv.Atoi(os.Getenv("STORE_INTERVAL"))
 		if err != nil {
 			fmt.Printf("%e\n", err)
@@ -61,8 +63,8 @@ func main() {
 		storageSelecter = "FILE"
 	}
 
-	// fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
-	if len(os.Getenv("FILE_STORAGE_PATH")) != 0 {
+	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
+	if len(fileStoragePathTMP) != 0 {
 		fileStoragePath = os.Getenv("FILE_STORAGE_PATH")
 		saveMetricsDefaultPath = fileStoragePath
 		storageSelecter = "FILE"
@@ -76,8 +78,8 @@ func main() {
 		}
 	}
 
-	// restoreTMP := os.Getenv("RESTORE")
-	if len(os.Getenv("RESTORE")) != 0 {
+	restoreTMP := os.Getenv("RESTORE")
+	if len(restoreTMP) != 0 {
 		restore, err = strconv.ParseBool(os.Getenv("RESTORE"))
 		if err != nil {
 			log.Fatal(err)
@@ -88,8 +90,8 @@ func main() {
 		storageSelecter = "DATABASE"
 	}
 
-	// dbaddressTMP := os.Getenv("DATABASE_DSN")
-	if len(os.Getenv("DATABASE_DSN")) != 0 {
+	dbaddressTMP := os.Getenv("DATABASE_DSN")
+	if len(dbaddressTMP) != 0 {
 		dbconstring = os.Getenv("DATABASE_DSN")
 		storageSelecter = "DATABASE"
 		err = db.CreateTables(context.TODO(), dbconstring)
@@ -124,7 +126,7 @@ func main() {
 			fmt.Println("Error reading file:", err)
 			return
 		}
-		err = os.WriteFile(fmt.Sprintf("tmp%s", fileStoragePath), data, 0644) //write the content to destination file
+		err = os.WriteFile(fmt.Sprintf("tmp%s", fileStoragePath), data, 0666) //write the content to destination file
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			return

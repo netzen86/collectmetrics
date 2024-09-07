@@ -454,7 +454,6 @@ func main() {
 		pflag.PrintDefaults()
 		os.Exit(1)
 	}
-
 	// получаем данные для работы програмы из переменных окружения
 	// переменные окружения имеют наивысший приоритет
 	endpointTMP := os.Getenv("ADDRESS")
