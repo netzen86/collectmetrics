@@ -61,7 +61,7 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storageSelecter string, pollcnt int) {
+func CollectMetrics(storage repositories.Repo, tempfile *os.File, dbconstr, storageSelecter string, pollcnt int) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
@@ -132,38 +132,68 @@ func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storag
 		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
 	}
 	if storageSelecter == "FILE" {
-		// if err := os.Truncate(fileStoragePath, 0); err != nil {
-		// 	log.Printf("Failed to truncate: %v", err)
-		// }
-		files.UpdateParamFile(ctx, fileStoragePath, gag, Alloc, float64(memStats.Alloc))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, BuckHashSys, float64(memStats.BuckHashSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, Frees, float64(memStats.Frees))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, GCSys, float64(memStats.GCSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapAlloc, float64(memStats.HeapAlloc))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapIdle, float64(memStats.HeapIdle))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapInuse, float64(memStats.HeapInuse))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapObjects, float64(memStats.HeapObjects))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapReleased, float64(memStats.HeapReleased))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, HeapSys, float64(memStats.HeapSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, LastGC, float64(memStats.LastGC))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, Lookups, float64(memStats.Lookups))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, MCacheInuse, float64(memStats.MCacheInuse))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, MCacheSys, float64(memStats.MCacheSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, MSpanInuse, float64(memStats.MSpanInuse))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, Mallocs, float64(memStats.Mallocs))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, MSpanSys, float64(memStats.MSpanSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, NextGC, float64(memStats.NextGC))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, NumForcedGC, float64(memStats.NumForcedGC))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, NumGC, float64(memStats.NumGC))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, OtherSys, float64(memStats.OtherSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, StackInuse, float64(memStats.StackInuse))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, StackSys, float64(memStats.StackSys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, Sys, float64(memStats.Sys))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, TotalAlloc, float64(memStats.TotalAlloc))
-		files.UpdateParamFile(ctx, fileStoragePath, gag, RandomValue, rand.Float64())
-		files.UpdateParamFile(ctx, fileStoragePath, cnt, PollCount, int64(pollcnt))
+		if err := os.Truncate(tempfile.Name(), 0); err != nil {
+			log.Printf("Failed to truncate: %v", err)
+		}
+		alloc := float64(memStats.Alloc)
+		buckHashSys := float64(memStats.BuckHashSys)
+		frees := float64(memStats.Frees)
+		gccpuFraction := float64(memStats.GCCPUFraction)
+		gcSys := float64(memStats.GCSys)
+		heapAlloc := float64(memStats.HeapAlloc)
+		heapIdle := float64(memStats.HeapIdle)
+		heapInuse := float64(memStats.HeapInuse)
+		heapObjects := float64(memStats.HeapObjects)
+		heapReleased := float64(memStats.HeapReleased)
+		heapSys := float64(memStats.HeapSys)
+		lastGC := float64(memStats.LastGC)
+		lookups := float64(memStats.Lookups)
+		mCacheInuse := float64(memStats.MCacheInuse)
+		mCacheSys := float64(memStats.MCacheSys)
+		mSpanInuse := float64(memStats.MSpanInuse)
+		mallocs := float64(memStats.Mallocs)
+		mSpanSys := float64(memStats.MSpanSys)
+		nextGC := float64(memStats.NextGC)
+		numForcedGC := float64(memStats.NumForcedGC)
+		numGC := float64(memStats.NumGC)
+		otherSys := float64(memStats.OtherSys)
+		pauseTotalNs := float64(memStats.PauseTotalNs)
+		stackInuse := float64(memStats.StackInuse)
+		stackSys := float64(memStats.StackSys)
+		sys := float64(memStats.Sys)
+		totalAlloc := float64(memStats.TotalAlloc)
+		randomValue := rand.Float64()
+		pollCount := int64(pollcnt)
+
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Alloc, Value: &alloc})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: BuckHashSys, Value: &buckHashSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Frees, Value: &frees})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: GCCPUFraction, Value: &gccpuFraction})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: GCSys, Value: &gcSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapAlloc, Value: &heapAlloc})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapIdle, Value: &heapIdle})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapInuse, Value: &heapInuse})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapObjects, Value: &heapObjects})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapReleased, Value: &heapReleased})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapSys, Value: &heapSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: LastGC, Value: &lastGC})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Lookups, Value: &lookups})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MCacheInuse, Value: &mCacheInuse})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MCacheSys, Value: &mCacheSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MSpanInuse, Value: &mSpanInuse})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Mallocs, Value: &mallocs})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MSpanSys, Value: &mSpanSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NextGC, Value: &nextGC})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NumForcedGC, Value: &numForcedGC})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NumGC, Value: &numGC})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: OtherSys, Value: &otherSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: PauseTotalNs, Value: &pauseTotalNs})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: StackInuse, Value: &stackInuse})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: StackSys, Value: &stackSys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Sys, Value: &sys})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: TotalAlloc, Value: &totalAlloc})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
+		files.FileStorage(ctx, tempfile, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
 	}
 }
 
@@ -481,6 +511,11 @@ func main() {
 		panic("couldn't alloc mem")
 	}
 
+	storefile, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 	counter := 0
@@ -488,7 +523,7 @@ func main() {
 		select {
 		case <-pollTik.C:
 			counter += 1
-			CollectMetrics(storage, db.DataBaseConString, fileStoragePath, storageSelecter, counter)
+			CollectMetrics(storage, storefile, fileStoragePath, storageSelecter, counter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, endpoint, contentEnc)

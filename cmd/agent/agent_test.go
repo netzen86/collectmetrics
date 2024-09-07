@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
-	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
@@ -58,12 +60,16 @@ func TestSendMetrics(t *testing.T) {
 
 func TestCollectMetrics(t *testing.T) {
 	storage, err := memstorage.NewMemStorage()
+	tempfile, err := os.OpenFile(fmt.Sprintf("tmp%s", "tmpagent.json"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err != nil {
 		t.Errorf("expected err to be nil got %v", err)
 	}
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
-	CollectMetrics(storage, db.DataBaseConString, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
 	for key, val := range storage.Gauge {
 		if val == 0 && key != "Lookups" {
 			t.Errorf("%s not get value", key)

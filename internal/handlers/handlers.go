@@ -23,61 +23,6 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
-	consumer, err := files.NewConsumer(filename)
-	if err != nil {
-		return err
-	}
-	_, err = files.ReadOneMetric(ctx, consumer, pcMetric)
-	if err != nil {
-		if strings.Contains(err.Error(), "not exist") {
-			*pcMetric.Delta = 0
-		} else {
-			return err
-		}
-	}
-
-	*pcMetric.Delta = *pcMetric.Delta + delta
-
-	return nil
-}
-
-func fileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) error {
-	var pcMetric api.Metrics
-	var err error
-
-	tmpStorage, err := memstorage.NewMemStorage()
-	if err != nil {
-		return err
-	}
-	pcMetric.ID = tmpmetric.ID
-	pcMetric.MType = tmpmetric.MType
-
-	if tmpmetric.MType == "counter" {
-		pcMetric.Delta = tmpmetric.Delta
-		err = sumPc(ctx, tempfile.Name(), *tmpmetric.Delta, &pcMetric)
-		if err != nil {
-			return err
-		}
-	} else if tmpmetric.MType == "gauge" {
-		pcMetric.Value = tmpmetric.Value
-	}
-
-	files.LoadMetric(tmpStorage, tempfile.Name())
-
-	if tmpmetric.MType == "counter" {
-		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
-	} else if tmpmetric.MType == "gauge" {
-		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
-	}
-
-	files.SyncSaveMetrics(tmpStorage, tempfile.Name())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func UpdateMHandle(storage repositories.Repo, tempfile *os.File,
 	saveMetricsDefaultPath, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +72,7 @@ func UpdateMHandle(storage repositories.Repo, tempfile *os.File,
 				http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
 				return
 			}
-			err := fileStorage(r.Context(), tempfile, tmpmetric)
+			err := files.FileStorage(r.Context(), tempfile, tmpmetric)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
 				return
@@ -342,7 +287,7 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfile *os.File, filename, d
 				}
 			}
 			if storageSelecter == "FILE" {
-				err := fileStorage(r.Context(), tempfile, metrics)
+				err := files.FileStorage(r.Context(), tempfile, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error in store metric counter in file %s %v\n", http.StatusText(400), err), 400)
 					return
@@ -370,7 +315,7 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfile *os.File, filename, d
 				}
 			}
 			if storageSelecter == "FILE" {
-				err := fileStorage(r.Context(), tempfile, metrics)
+				err := files.FileStorage(r.Context(), tempfile, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error in store metric gauge in file %s %v\n", http.StatusText(400), err), 400)
 					return

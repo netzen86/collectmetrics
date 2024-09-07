@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -240,4 +241,59 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 		}
 	}
 	return "", fmt.Errorf("metric %s %s not exist ", metric.ID, metric.MType)
+}
+
+func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
+	consumer, err := NewConsumer(filename)
+	if err != nil {
+		return err
+	}
+	_, err = ReadOneMetric(ctx, consumer, pcMetric)
+	if err != nil {
+		if strings.Contains(err.Error(), "not exist") {
+			*pcMetric.Delta = 0
+		} else {
+			return err
+		}
+	}
+
+	*pcMetric.Delta = *pcMetric.Delta + delta
+
+	return nil
+}
+
+func FileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) error {
+	var pcMetric api.Metrics
+	var err error
+
+	tmpStorage, err := memstorage.NewMemStorage()
+	if err != nil {
+		return err
+	}
+	pcMetric.ID = tmpmetric.ID
+	pcMetric.MType = tmpmetric.MType
+
+	if tmpmetric.MType == "counter" {
+		pcMetric.Delta = tmpmetric.Delta
+		err = sumPc(ctx, tempfile.Name(), *tmpmetric.Delta, &pcMetric)
+		if err != nil {
+			return err
+		}
+	} else if tmpmetric.MType == "gauge" {
+		pcMetric.Value = tmpmetric.Value
+	}
+
+	LoadMetric(tmpStorage, tempfile.Name())
+
+	if tmpmetric.MType == "counter" {
+		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
+	} else if tmpmetric.MType == "gauge" {
+		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
+	}
+
+	SyncSaveMetrics(tmpStorage, tempfile.Name())
+	if err != nil {
+		return err
+	}
+	return nil
 }

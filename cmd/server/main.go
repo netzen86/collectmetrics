@@ -28,7 +28,7 @@ func main() {
 	var dbconstring string
 	var storeInterval int
 	var tempfile *os.File
-	var restorestr string
+	var restore bool
 	var err error
 
 	storageSelecter := "MEMORY"
@@ -37,9 +37,7 @@ func main() {
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
 	flag.StringVar(&dbconstring, "d", "", "Used to set db connet string.")
-	flag.StringVar(&restorestr, "r", "true", "Used to set restore metrics.")
-
-	// flag.BoolVar(&restore, "r", true, "Used to set restore metrics.")
+	flag.BoolVar(&restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
 	flag.Parse()
@@ -78,10 +76,6 @@ func main() {
 		}
 	}
 
-	restore, err := strconv.ParseBool(restorestr)
-	if err != nil {
-		log.Fatal(err)
-	}
 	// restoreTMP := os.Getenv("RESTORE")
 	if len(os.Getenv("RESTORE")) != 0 {
 		restore, err = strconv.ParseBool(os.Getenv("RESTORE"))
