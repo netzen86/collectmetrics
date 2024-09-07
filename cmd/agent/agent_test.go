@@ -60,6 +60,9 @@ func TestSendMetrics(t *testing.T) {
 
 func TestCollectMetrics(t *testing.T) {
 	storage, err := memstorage.NewMemStorage()
+	if err != nil {
+		log.Fatal(err)
+	}
 	tempfile, err := os.OpenFile(fmt.Sprintf("tmp%s", "tmpagent.json"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
