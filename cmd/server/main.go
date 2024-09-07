@@ -14,6 +14,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/handlers"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
@@ -108,9 +109,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
+	// tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	tempfile, err = os.OpenFile(fmt.Sprintf("tmp%s", fileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if utils.ChkFileExist(fileStoragePath) {
+		data, err := os.ReadFile(fileStoragePath) //read the contents of source file
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			return
+		}
+		err = os.WriteFile(fmt.Sprintf("tmp%s", fileStoragePath), data, 0644) //write the content to destination file
+		if err != nil {
+			fmt.Println("Error writing file:", err)
+			return
+		}
 	}
 
 	if restore {
@@ -130,7 +148,7 @@ func main() {
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
 			memSto, tempfile, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
-			memSto, fileStoragePath, dbconstring, storageSelecter)))
+			memSto, tempfile.Name(), dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(

@@ -132,9 +132,9 @@ func CollectMetrics(storage repositories.Repo, dbconstr, fileStoragePath, storag
 		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
 	}
 	if storageSelecter == "FILE" {
-		if err := os.Truncate(fileStoragePath, 0); err != nil {
-			log.Printf("Failed to truncate: %v", err)
-		}
+		// if err := os.Truncate(fileStoragePath, 0); err != nil {
+		// 	log.Printf("Failed to truncate: %v", err)
+		// }
 		files.UpdateParamFile(ctx, fileStoragePath, gag, Alloc, float64(memStats.Alloc))
 		files.UpdateParamFile(ctx, fileStoragePath, gag, BuckHashSys, float64(memStats.BuckHashSys))
 		files.UpdateParamFile(ctx, fileStoragePath, gag, Frees, float64(memStats.Frees))
