@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"text/template"
@@ -23,8 +22,8 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-func UpdateMHandle(storage repositories.Repo, tempfile *os.File,
-	saveMetricsDefaultPath, dbconstr, storageSelecter string) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo,
+	tempfilename, saveMetricsDefaultPath, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mType := chi.URLParam(r, "mType")
 		if mType != "counter" && mType != "gauge" {
@@ -72,7 +71,7 @@ func UpdateMHandle(storage repositories.Repo, tempfile *os.File,
 				http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
 				return
 			}
-			err := files.FileStorage(r.Context(), tempfile, tmpmetric)
+			err := files.FileStorage(r.Context(), tempfilename, tmpmetric)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
 				return
@@ -219,7 +218,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 	}
 }
 
-func JSONUpdateMHandle(storage repositories.Repo, tempfile *os.File, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
+func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var newStorage *memstorage.MemStorage
@@ -287,7 +286,7 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfile *os.File, filename, d
 				}
 			}
 			if storageSelecter == "FILE" {
-				err := files.FileStorage(r.Context(), tempfile, metrics)
+				err := files.FileStorage(r.Context(), tempfilename, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error in store metric counter in file %s %v\n", http.StatusText(400), err), 400)
 					return
@@ -315,7 +314,7 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfile *os.File, filename, d
 				}
 			}
 			if storageSelecter == "FILE" {
-				err := files.FileStorage(r.Context(), tempfile, metrics)
+				err := files.FileStorage(r.Context(), tempfilename, metrics)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("error in store metric gauge in file %s %v\n", http.StatusText(400), err), 400)
 					return

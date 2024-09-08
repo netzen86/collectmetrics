@@ -63,16 +63,16 @@ func TestCollectMetrics(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tempfile, err := os.OpenFile(fmt.Sprintf("tmp%s", "tmpagent.json"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	_, err = os.OpenFile(fmt.Sprintf("tmp%s", "tmpagent.json"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err != nil {
 		t.Errorf("expected err to be nil got %v", err)
 	}
-	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
-	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
-	CollectMetrics(storage, tempfile, "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, fmt.Sprintf("tmp%s", "tmpagent.json"), "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, fmt.Sprintf("tmp%s", "tmpagent.json"), "metrics.json", "MEMORY", 13)
+	CollectMetrics(storage, fmt.Sprintf("tmp%s", "tmpagent.json"), "metrics.json", "MEMORY", 13)
 	for key, val := range storage.Gauge {
 		if val == 0 && key != "Lookups" {
 			t.Errorf("%s not get value", key)

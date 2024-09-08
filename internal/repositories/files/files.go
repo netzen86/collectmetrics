@@ -262,7 +262,7 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 	return nil
 }
 
-func FileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) error {
+func FileStorage(ctx context.Context, tempfile string, tmpmetric api.Metrics) error {
 	var pcMetric api.Metrics
 	var err error
 
@@ -275,7 +275,7 @@ func FileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) 
 
 	if tmpmetric.MType == "counter" {
 		pcMetric.Delta = tmpmetric.Delta
-		err = sumPc(ctx, tempfile.Name(), *tmpmetric.Delta, &pcMetric)
+		err = sumPc(ctx, tempfile, *tmpmetric.Delta, &pcMetric)
 		if err != nil {
 			return err
 		}
@@ -283,7 +283,7 @@ func FileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) 
 		pcMetric.Value = tmpmetric.Value
 	}
 
-	LoadMetric(tmpStorage, tempfile.Name())
+	LoadMetric(tmpStorage, tempfile)
 
 	if tmpmetric.MType == "counter" {
 		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
@@ -291,7 +291,7 @@ func FileStorage(ctx context.Context, tempfile *os.File, tmpmetric api.Metrics) 
 		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
 	}
 
-	SyncSaveMetrics(tmpStorage, tempfile.Name())
+	SyncSaveMetrics(tmpStorage, tempfile)
 	if err != nil {
 		return err
 	}

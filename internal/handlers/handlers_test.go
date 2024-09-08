@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"os"
 	"reflect"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 func TestUpdateMHandle(t *testing.T) {
 	type args struct {
 		storage  repositories.Repo
-		tempfile *os.File
+		tempfile string
 		filename string
 	}
 	tests := []struct {

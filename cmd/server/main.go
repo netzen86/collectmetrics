@@ -151,13 +151,14 @@ func main() {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
-			memSto, tempfile, saveMetricsDefaultPath, dbconstring, storageSelecter, storeInterval)))
+			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath,
+			dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
-			memSto, tempfile.Name(), dbconstring, storageSelecter)))
+			memSto, fmt.Sprintf("%stmp", fileStoragePath), dbconstring, storageSelecter)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
-			memSto, tempfile, saveMetricsDefaultPath, dbconstring, storageSelecter)))
+			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath, dbconstring, storageSelecter)))
 		gw.Post("/*", handlers.WithLogging(handlers.NotFound))
 
 		gw.Get("/ping", handlers.WithLogging(handlers.PingDB(dbconstring)))

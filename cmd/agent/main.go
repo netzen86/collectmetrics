@@ -28,41 +28,41 @@ const (
 	templateAddressSrv string = "http://%s/update/"
 	gag                string = "gauge"
 	cnt                string = "counter"
-	storefiledfl       string = "testagent.json"
-	Alloc              string = "Alloc"
-	BuckHashSys        string = "BuckHashSys"
-	Frees              string = "Frees"
-	GCCPUFraction      string = "GCCPUFraction"
-	GCSys              string = "GCSys"
-	HeapAlloc          string = "HeapAlloc"
-	HeapIdle           string = "HeapIdle"
-	HeapInuse          string = "HeapInuse"
-	HeapObjects        string = "HeapObjects"
-	HeapReleased       string = "HeapReleased"
-	HeapSys            string = "HeapSys"
-	LastGC             string = "LastGC"
-	Lookups            string = "Lookups"
-	MCacheInuse        string = "MCacheInuse"
-	MCacheSys          string = "MCacheSys"
-	MSpanInuse         string = "MSpanInuse"
-	MSpanSys           string = "MSpanSys"
-	Mallocs            string = "Mallocs"
-	NextGC             string = "NextGC"
-	NumForcedGC        string = "NumForcedGC"
-	NumGC              string = "NumGC"
-	OtherSys           string = "OtherSys"
-	PauseTotalNs       string = "PauseTotalNs"
-	StackInuse         string = "StackInuse"
-	StackSys           string = "StackSys"
-	Sys                string = "Sys"
-	TotalAlloc         string = "TotalAlloc"
-	PollCount          string = "PollCount"
-	RandomValue        string = "RandomValue"
-	pollInterval       int    = 2
-	reportInterval     int    = 10
+
+	Alloc          string = "Alloc"
+	BuckHashSys    string = "BuckHashSys"
+	Frees          string = "Frees"
+	GCCPUFraction  string = "GCCPUFraction"
+	GCSys          string = "GCSys"
+	HeapAlloc      string = "HeapAlloc"
+	HeapIdle       string = "HeapIdle"
+	HeapInuse      string = "HeapInuse"
+	HeapObjects    string = "HeapObjects"
+	HeapReleased   string = "HeapReleased"
+	HeapSys        string = "HeapSys"
+	LastGC         string = "LastGC"
+	Lookups        string = "Lookups"
+	MCacheInuse    string = "MCacheInuse"
+	MCacheSys      string = "MCacheSys"
+	MSpanInuse     string = "MSpanInuse"
+	MSpanSys       string = "MSpanSys"
+	Mallocs        string = "Mallocs"
+	NextGC         string = "NextGC"
+	NumForcedGC    string = "NumForcedGC"
+	NumGC          string = "NumGC"
+	OtherSys       string = "OtherSys"
+	PauseTotalNs   string = "PauseTotalNs"
+	StackInuse     string = "StackInuse"
+	StackSys       string = "StackSys"
+	Sys            string = "Sys"
+	TotalAlloc     string = "TotalAlloc"
+	PollCount      string = "PollCount"
+	RandomValue    string = "RandomValue"
+	pollInterval   int    = 2
+	reportInterval int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, tempfile *os.File, dbconstr, storageSelecter string, pollcnt int) {
+func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSelecter string, pollcnt int) {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
@@ -133,7 +133,7 @@ func CollectMetrics(storage repositories.Repo, tempfile *os.File, dbconstr, stor
 		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
 	}
 	if storageSelecter == "FILE" {
-		if err := os.Truncate(tempfile.Name(), 0); err != nil {
+		if err := os.Truncate(tempfilename, 0); err != nil {
 			log.Printf("Failed to truncate: %v", err)
 		}
 		alloc := float64(memStats.Alloc)
@@ -166,35 +166,35 @@ func CollectMetrics(storage repositories.Repo, tempfile *os.File, dbconstr, stor
 		randomValue := rand.Float64()
 		pollCount := int64(pollcnt)
 
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Alloc, Value: &alloc})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: BuckHashSys, Value: &buckHashSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Frees, Value: &frees})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: GCCPUFraction, Value: &gccpuFraction})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: GCSys, Value: &gcSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapAlloc, Value: &heapAlloc})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapIdle, Value: &heapIdle})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapInuse, Value: &heapInuse})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapObjects, Value: &heapObjects})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapReleased, Value: &heapReleased})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: HeapSys, Value: &heapSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: LastGC, Value: &lastGC})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Lookups, Value: &lookups})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MCacheInuse, Value: &mCacheInuse})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MCacheSys, Value: &mCacheSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MSpanInuse, Value: &mSpanInuse})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Mallocs, Value: &mallocs})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: MSpanSys, Value: &mSpanSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NextGC, Value: &nextGC})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NumForcedGC, Value: &numForcedGC})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: NumGC, Value: &numGC})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: OtherSys, Value: &otherSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: PauseTotalNs, Value: &pauseTotalNs})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: StackInuse, Value: &stackInuse})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: StackSys, Value: &stackSys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: Sys, Value: &sys})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: TotalAlloc, Value: &totalAlloc})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
-		files.FileStorage(ctx, tempfile, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Alloc, Value: &alloc})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: BuckHashSys, Value: &buckHashSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Frees, Value: &frees})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCCPUFraction, Value: &gccpuFraction})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCSys, Value: &gcSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapAlloc, Value: &heapAlloc})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapIdle, Value: &heapIdle})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapInuse, Value: &heapInuse})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapObjects, Value: &heapObjects})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapReleased, Value: &heapReleased})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapSys, Value: &heapSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: LastGC, Value: &lastGC})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Lookups, Value: &lookups})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheInuse, Value: &mCacheInuse})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheSys, Value: &mCacheSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanInuse, Value: &mSpanInuse})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Mallocs, Value: &mallocs})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanSys, Value: &mSpanSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NextGC, Value: &nextGC})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumForcedGC, Value: &numForcedGC})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumGC, Value: &numGC})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: OtherSys, Value: &otherSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: PauseTotalNs, Value: &pauseTotalNs})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackInuse, Value: &stackInuse})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackSys, Value: &stackSys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Sys, Value: &sys})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: TotalAlloc, Value: &totalAlloc})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
+		files.FileStorage(ctx, tempfilename, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
 	}
 }
 
@@ -406,7 +406,7 @@ func iterFile(nojson bool, fileStoragePath, endpoint, contentEnc string) {
 	metric := api.Metrics{}
 	consumer, err := files.NewConsumer(fileStoragePath)
 	if err != nil {
-		log.Println(err, " can't create consumer in if")
+		log.Fatal(err, " can't create consumer in if")
 	}
 
 	scanner := consumer.Scanner
@@ -438,6 +438,13 @@ func main() {
 	ctx := context.TODO()
 	// устанвливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
+
+	storefiledfl := "agentmetrics.json"
+
+	workDir := utils.WorkingDir()
+	// if !utils.ChkFileExist(workDir + saveMetricsDefaultPath) {
+	// 	log.Fatal(err)
+	// }
 
 	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
@@ -479,13 +486,15 @@ func main() {
 		}
 	}
 
-	if len(fileStoragePath) != 0 {
+	if fileStoragePath != storefiledfl && len(fileStoragePath) != 0 {
+		// storefiledfl = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
+		fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
 		storageSelecter = "FILE"
 	}
 
 	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
 	if len(fileStoragePathTMP) != 0 {
-		fileStoragePath = fileStoragePathTMP
+		fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePathTMP)
 		storageSelecter = "FILE"
 	}
 
@@ -511,10 +520,10 @@ func main() {
 		panic("couldn't alloc mem")
 	}
 
-	storefile, err := os.OpenFile(fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// _, err = os.OpenFile(fmt.Sprintf(fileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
@@ -523,7 +532,7 @@ func main() {
 		select {
 		case <-pollTik.C:
 			counter += 1
-			CollectMetrics(storage, storefile, fileStoragePath, storageSelecter, counter)
+			CollectMetrics(storage, fileStoragePath, fileStoragePath, storageSelecter, counter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, endpoint, contentEnc)
