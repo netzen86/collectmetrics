@@ -35,11 +35,11 @@ func main() {
 	storageSelecter := "MEMORY"
 	saveMetricsDefaultPath := "servermetrics.json"
 
-	workDir := utils.WorkingDir()
+	// workDir := utils.WorkingDir()
 	// if !utils.ChkFileExist(workDir + saveMetricsDefaultPath) {
 	// 	log.Fatal(err)
 	// }
-	saveMetricsDefaultPath = fmt.Sprintf("%s/%s", workDir, saveMetricsDefaultPath)
+	// saveMetricsDefaultPath = fmt.Sprintf("%s/%s", workDir, saveMetricsDefaultPath)
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
@@ -50,7 +50,7 @@ func main() {
 	flag.Parse()
 
 	// endpointTMP := os.Getenv("ADDRESS")
-	log.Println(endpoint, workDir)
+	// log.Println(endpoint, workDir)
 	if len(os.Getenv("ADDRESS")) > 0 {
 		endpoint = os.Getenv("ADDRESS")
 	}
@@ -110,7 +110,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Println("!!! SERVER START !!!", endpoint, fileStoragePath, dbconstring, restore, storeInterval)
+	log.Println("!!! SERVER START !!!", endpoint, saveMetricsDefaultPath, fileStoragePath, dbconstring, restore, storeInterval)
 
 	gw := chi.NewRouter()
 
