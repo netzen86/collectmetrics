@@ -439,9 +439,9 @@ func main() {
 	// устанвливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
 
-	storefiledfl := "agentmetrics.json"
+	// storefiledfl := "agentmetrics.json"
 
-	workDir := utils.WorkingDir()
+	// workDir := utils.WorkingDir()
 	// if !utils.ChkFileExist(workDir + saveMetricsDefaultPath) {
 	// 	log.Fatal(err)
 	// }
@@ -449,7 +449,7 @@ func main() {
 	// опредаляем флаги
 	pflag.StringVarP(&endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
-	pflag.StringVarP(&fileStoragePath, "filepath", "f", storefiledfl, "Used to set file path to save metrics.")
+	// pflag.StringVarP(&fileStoragePath, "filepath", "f", storefiledfl, "Used to set file path to save metrics.")
 	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
@@ -486,17 +486,18 @@ func main() {
 		}
 	}
 
-	if fileStoragePath != storefiledfl && len(fileStoragePath) != 0 {
-		// storefiledfl = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
-		fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
-		storageSelecter = "FILE"
-	}
+	// if fileStoragePath != storefiledfl && len(fileStoragePath) != 0 {
+	// 	// storefiledfl = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
+	// 	fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePath)
+	// 	storageSelecter = "FILE"
+	// }
 
-	fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
-	if len(fileStoragePathTMP) != 0 {
-		fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePathTMP)
-		storageSelecter = "FILE"
-	}
+	// fileStoragePathTMP := os.Getenv("FILE_STORAGE_PATH")
+	// if len(fileStoragePathTMP) != 0 {
+	// 	// fileStoragePath = fmt.Sprintf("%s/%s", workDir, fileStoragePathTMP)
+	// 	fileStoragePath = fileStoragePathTMP
+	// 	storageSelecter = "FILE"
+	// }
 
 	if len(dbconstring) != 0 {
 		storageSelecter = "DATABASE"
