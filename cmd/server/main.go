@@ -39,7 +39,7 @@ func main() {
 	// if !utils.ChkFileExist(workDir + saveMetricsDefaultPath) {
 	// 	log.Fatal(err)
 	// }
-	saveMetricsDefaultPath = workDir + saveMetricsDefaultPath
+	saveMetricsDefaultPath = fmt.Sprintf("%s/%s", workDir, saveMetricsDefaultPath)
 
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
@@ -129,7 +129,7 @@ func main() {
 			fmt.Println("Error reading file:", err)
 			return
 		}
-		err = os.WriteFile(fmt.Sprintf("tmp%s", fileStoragePath), data, 0666) //write the content to destination file
+		err = os.WriteFile(fmt.Sprintf("%stmp", fileStoragePath), data, 0666) //write the content to destination file
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			return
