@@ -49,8 +49,9 @@ func main() {
 
 	flag.Parse()
 
-	endpointTMP := os.Getenv("ADDRESS")
-	if len(endpointTMP) != 0 {
+	// endpointTMP := os.Getenv("ADDRESS")
+	log.Println(endpoint)
+	if len(os.Getenv("ADDRESS")) > 0 {
 		endpoint = os.Getenv("ADDRESS")
 	}
 
