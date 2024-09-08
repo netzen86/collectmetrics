@@ -23,6 +23,7 @@ const (
 )
 
 func main() {
+	log.Println("!!! SERVER START !!!")
 	var endpoint string
 	var fileStoragePath string
 	var dbconstring string
@@ -34,6 +35,12 @@ func main() {
 	storageSelecter := "MEMORY"
 	saveMetricsDefaultPath := "servermetrics.json"
 
+	workDir := utils.WorkingDir()
+	// if !utils.ChkFileExist(workDir + saveMetricsDefaultPath) {
+	// 	log.Fatal(err)
+	// }
+	saveMetricsDefaultPath = workDir + saveMetricsDefaultPath
+
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
 	flag.StringVar(&dbconstring, "d", "", "Used to set db connet string.")
@@ -41,8 +48,6 @@ func main() {
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
 	flag.Parse()
-
-	log.Println("!!! SERVER START !!!", endpoint, fileStoragePath, dbconstring, restore, storeInterval)
 
 	endpointTMP := os.Getenv("ADDRESS")
 	if len(endpointTMP) != 0 {
@@ -53,8 +58,7 @@ func main() {
 	if len(storeIntervalTmp) != 0 {
 		storeInterval, err = strconv.Atoi(os.Getenv("STORE_INTERVAL"))
 		if err != nil {
-			fmt.Printf("%e\n", err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 	}
 
@@ -105,17 +109,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Println("!!! SERVER START !!!", endpoint, fileStoragePath, dbconstring, restore, storeInterval)
+
 	gw := chi.NewRouter()
 
 	memSto, err := memstorage.NewMemStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// tempfile, err = os.CreateTemp("", fmt.Sprintf("*%s", fileStoragePath))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	tempfile, err = os.OpenFile(fmt.Sprintf("tmp%s", fileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+
+	tempfile, err = os.OpenFile(fmt.Sprintf("%stmp", fileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatal(err)
 	}
