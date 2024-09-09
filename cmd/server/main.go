@@ -151,7 +151,10 @@ func main() {
 
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
-		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMHandle(
+		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMMHandle(
+			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath,
+			dbconstring, storageSelecter, storeInterval)))
+		gw.Post("/updates/", handlers.WithLogging(handlers.JSONUpdateMMHandle(
 			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath,
 			dbconstring, storageSelecter, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(

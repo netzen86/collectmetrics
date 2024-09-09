@@ -346,6 +346,164 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 	}
 }
 
+// Multiple value update handle
+func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		var newStorage *memstorage.MemStorage
+		var metrics api.MetricsSlice
+		var metric api.Metrics
+		var buf bytes.Buffer
+		var resp []byte
+		var err error
+
+		// читаем тело запроса
+		readedbytes, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
+			return
+		}
+
+		// отвечаем агенту что поддерживаем компрессию
+		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
+			w.Header().Add("Accept-Encoding", api.Gz)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// распаковываем если контент упакован
+		err = utils.SelectDeCoHTTP(&buf, r)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+			return
+		}
+
+		if strings.Contains(r.RequestURI, "/updates/") {
+			// десериализуем JSON в metrics
+			if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode slice metric to json error"), 400)
+				return
+			}
+		} else if strings.Contains(r.RequestURI, "/update/") {
+			// десериализуем JSON в metric
+			if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode one metric to json error"), 400)
+				return
+			}
+			metrics.Metrics = append(metrics.Metrics, metric)
+		}
+
+		for _, metr := range metrics.Metrics {
+			err = MetricParseSelecStor(ctx, storage, &metr, storageSelecter, dbconstr, tempfilename)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(400), "can't select sorage ", err), 400)
+				return
+			}
+		}
+		if len(metrics.Metrics) == 0 {
+			http.Error(w, "Metrics slice empty try update endpoint", 400)
+			return
+		}
+
+		switch {
+		case r.RequestURI == "/updates/":
+			resp, err = json.Marshal(metrics)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+		case r.RequestURI == "/update/":
+			resp, err = json.Marshal(metrics.Metrics[0])
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
+		}
+
+		if time == 0 {
+			files.SyncSaveMetrics(newStorage, filename)
+		}
+		// packing content
+		resp, err = utils.CoHTTP(resp, r, w)
+		if err != nil {
+			http.Error(w, http.StatusText(500), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", api.Js)
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+	}
+}
+
+func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric *api.Metrics, storageSelecter, dbconstr, tempfilename string) error {
+	var newStorage *memstorage.MemStorage
+	var err error
+
+	if storageSelecter == "MEMORY" {
+		newStorage, err = storage.GetMemStorage(ctx)
+		if err != nil {
+			return fmt.Errorf("can't create memstorage %v", err)
+		}
+	}
+
+	if metric.ID == "" {
+		return fmt.Errorf("%s", "not valid metric name")
+	}
+
+	if metric.MType == "counter" {
+		if metric.Delta == nil {
+			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
+
+		}
+		if storageSelecter == "MEMORY" {
+			err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Delta)
+			if err != nil {
+				return fmt.Errorf("can't update memstorage counter value %v", err)
+			}
+			*metric.Delta = newStorage.Counter[metric.ID]
+		}
+		if storageSelecter == "DATABASE" {
+			err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Delta)
+			if err != nil {
+				return fmt.Errorf("can't update database counter value %v", err)
+			}
+		}
+		if storageSelecter == "FILE" {
+			err := files.FileStorage(ctx, tempfilename, *metric)
+			if err != nil {
+				return fmt.Errorf("error in store metric counter in file %v", err)
+			}
+		}
+	} else if metric.MType == "gauge" {
+		if metric.Value == nil {
+			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
+		}
+		if storageSelecter == "MEMORY" {
+			err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Value)
+			if err != nil {
+				return fmt.Errorf("can't update memstorage gauge value %v", err)
+			}
+			*metric.Value = newStorage.Gauge[metric.ID]
+		}
+		if storageSelecter == "DATABASE" {
+			err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Value)
+			if err != nil {
+				return fmt.Errorf("can't update database gauge value %v", err)
+			}
+		}
+		if storageSelecter == "FILE" {
+			err := files.FileStorage(ctx, tempfilename, *metric)
+			if err != nil {
+				return fmt.Errorf("error in store metric gauge in file %v", err)
+			}
+		}
+	} else {
+		return fmt.Errorf("%s", "empty metic")
+	}
+	return nil
+}
+
 func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

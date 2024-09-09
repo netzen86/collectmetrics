@@ -262,7 +262,7 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 	return nil
 }
 
-func FileStorage(ctx context.Context, tempfile string, tmpmetric api.Metrics) error {
+func FileStorage(ctx context.Context, tempfile string, metric api.Metrics) error {
 	var pcMetric api.Metrics
 	var err error
 
@@ -270,25 +270,25 @@ func FileStorage(ctx context.Context, tempfile string, tmpmetric api.Metrics) er
 	if err != nil {
 		return err
 	}
-	pcMetric.ID = tmpmetric.ID
-	pcMetric.MType = tmpmetric.MType
+	pcMetric.ID = metric.ID
+	pcMetric.MType = metric.MType
 
-	if tmpmetric.MType == "counter" {
-		pcMetric.Delta = tmpmetric.Delta
-		err = sumPc(ctx, tempfile, *tmpmetric.Delta, &pcMetric)
+	if metric.MType == "counter" {
+		pcMetric.Delta = metric.Delta
+		err = sumPc(ctx, tempfile, *metric.Delta, &pcMetric)
 		if err != nil {
 			return err
 		}
-	} else if tmpmetric.MType == "gauge" {
-		pcMetric.Value = tmpmetric.Value
+	} else if metric.MType == "gauge" {
+		pcMetric.Value = metric.Value
 	}
 
 	LoadMetric(tmpStorage, tempfile)
 
-	if tmpmetric.MType == "counter" {
-		tmpStorage.Counter[tmpmetric.ID] = *pcMetric.Delta
-	} else if tmpmetric.MType == "gauge" {
-		tmpStorage.Gauge[tmpmetric.ID] = *tmpmetric.Value
+	if metric.MType == "counter" {
+		tmpStorage.Counter[metric.ID] = *pcMetric.Delta
+	} else if metric.MType == "gauge" {
+		tmpStorage.Gauge[metric.ID] = *metric.Value
 	}
 
 	SyncSaveMetrics(tmpStorage, tempfile)

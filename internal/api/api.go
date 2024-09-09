@@ -15,6 +15,10 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
+type MetricsSlice struct {
+	Metrics []Metrics
+}
+
 func (metrics *Metrics) Clean() {
 
 	if metrics.Delta != nil {
