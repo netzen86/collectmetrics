@@ -16,7 +16,6 @@ import (
 
 func GzipCompress(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
-
 	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
 	if err != nil {
 		return nil, err

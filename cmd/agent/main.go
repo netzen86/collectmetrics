@@ -17,7 +17,6 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories"
-	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 	"github.com/spf13/pflag"
@@ -26,40 +25,40 @@ import (
 const (
 	addressServer      string = "localhost:8080"
 	templateAddressSrv string = "http://%s/update/"
+	updatesAddress     string = "http://%s/updates/"
 	gag                string = "gauge"
 	cnt                string = "counter"
-
-	Alloc          string = "Alloc"
-	BuckHashSys    string = "BuckHashSys"
-	Frees          string = "Frees"
-	GCCPUFraction  string = "GCCPUFraction"
-	GCSys          string = "GCSys"
-	HeapAlloc      string = "HeapAlloc"
-	HeapIdle       string = "HeapIdle"
-	HeapInuse      string = "HeapInuse"
-	HeapObjects    string = "HeapObjects"
-	HeapReleased   string = "HeapReleased"
-	HeapSys        string = "HeapSys"
-	LastGC         string = "LastGC"
-	Lookups        string = "Lookups"
-	MCacheInuse    string = "MCacheInuse"
-	MCacheSys      string = "MCacheSys"
-	MSpanInuse     string = "MSpanInuse"
-	MSpanSys       string = "MSpanSys"
-	Mallocs        string = "Mallocs"
-	NextGC         string = "NextGC"
-	NumForcedGC    string = "NumForcedGC"
-	NumGC          string = "NumGC"
-	OtherSys       string = "OtherSys"
-	PauseTotalNs   string = "PauseTotalNs"
-	StackInuse     string = "StackInuse"
-	StackSys       string = "StackSys"
-	Sys            string = "Sys"
-	TotalAlloc     string = "TotalAlloc"
-	PollCount      string = "PollCount"
-	RandomValue    string = "RandomValue"
-	pollInterval   int    = 2
-	reportInterval int    = 10
+	Alloc              string = "Alloc"
+	BuckHashSys        string = "BuckHashSys"
+	Frees              string = "Frees"
+	GCCPUFraction      string = "GCCPUFraction"
+	GCSys              string = "GCSys"
+	HeapAlloc          string = "HeapAlloc"
+	HeapIdle           string = "HeapIdle"
+	HeapInuse          string = "HeapInuse"
+	HeapObjects        string = "HeapObjects"
+	HeapReleased       string = "HeapReleased"
+	HeapSys            string = "HeapSys"
+	LastGC             string = "LastGC"
+	Lookups            string = "Lookups"
+	MCacheInuse        string = "MCacheInuse"
+	MCacheSys          string = "MCacheSys"
+	MSpanInuse         string = "MSpanInuse"
+	MSpanSys           string = "MSpanSys"
+	Mallocs            string = "Mallocs"
+	NextGC             string = "NextGC"
+	NumForcedGC        string = "NumForcedGC"
+	NumGC              string = "NumGC"
+	OtherSys           string = "OtherSys"
+	PauseTotalNs       string = "PauseTotalNs"
+	StackInuse         string = "StackInuse"
+	StackSys           string = "StackSys"
+	Sys                string = "Sys"
+	TotalAlloc         string = "TotalAlloc"
+	PollCount          string = "PollCount"
+	RandomValue        string = "RandomValue"
+	pollInterval       int    = 2
+	reportInterval     int    = 10
 )
 
 func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSelecter string, pollcnt int) {
@@ -132,70 +131,70 @@ func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSe
 		db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
 		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
 	}
-	if storageSelecter == "FILE" {
-		if err := os.Truncate(tempfilename, 0); err != nil {
-			log.Printf("Failed to truncate: %v", err)
-		}
-		alloc := float64(memStats.Alloc)
-		buckHashSys := float64(memStats.BuckHashSys)
-		frees := float64(memStats.Frees)
-		gccpuFraction := float64(memStats.GCCPUFraction)
-		gcSys := float64(memStats.GCSys)
-		heapAlloc := float64(memStats.HeapAlloc)
-		heapIdle := float64(memStats.HeapIdle)
-		heapInuse := float64(memStats.HeapInuse)
-		heapObjects := float64(memStats.HeapObjects)
-		heapReleased := float64(memStats.HeapReleased)
-		heapSys := float64(memStats.HeapSys)
-		lastGC := float64(memStats.LastGC)
-		lookups := float64(memStats.Lookups)
-		mCacheInuse := float64(memStats.MCacheInuse)
-		mCacheSys := float64(memStats.MCacheSys)
-		mSpanInuse := float64(memStats.MSpanInuse)
-		mallocs := float64(memStats.Mallocs)
-		mSpanSys := float64(memStats.MSpanSys)
-		nextGC := float64(memStats.NextGC)
-		numForcedGC := float64(memStats.NumForcedGC)
-		numGC := float64(memStats.NumGC)
-		otherSys := float64(memStats.OtherSys)
-		pauseTotalNs := float64(memStats.PauseTotalNs)
-		stackInuse := float64(memStats.StackInuse)
-		stackSys := float64(memStats.StackSys)
-		sys := float64(memStats.Sys)
-		totalAlloc := float64(memStats.TotalAlloc)
-		randomValue := rand.Float64()
-		pollCount := int64(pollcnt)
+	// if storageSelecter == "FILE" {
+	// 	if err := os.Truncate(tempfilename, 0); err != nil {
+	// 		log.Printf("Failed to truncate: %v", err)
+	// 	}
+	// 	alloc := float64(memStats.Alloc)
+	// 	buckHashSys := float64(memStats.BuckHashSys)
+	// 	frees := float64(memStats.Frees)
+	// 	gccpuFraction := float64(memStats.GCCPUFraction)
+	// 	gcSys := float64(memStats.GCSys)
+	// 	heapAlloc := float64(memStats.HeapAlloc)
+	// 	heapIdle := float64(memStats.HeapIdle)
+	// 	heapInuse := float64(memStats.HeapInuse)
+	// 	heapObjects := float64(memStats.HeapObjects)
+	// 	heapReleased := float64(memStats.HeapReleased)
+	// 	heapSys := float64(memStats.HeapSys)
+	// 	lastGC := float64(memStats.LastGC)
+	// 	lookups := float64(memStats.Lookups)
+	// 	mCacheInuse := float64(memStats.MCacheInuse)
+	// 	mCacheSys := float64(memStats.MCacheSys)
+	// 	mSpanInuse := float64(memStats.MSpanInuse)
+	// 	mallocs := float64(memStats.Mallocs)
+	// 	mSpanSys := float64(memStats.MSpanSys)
+	// 	nextGC := float64(memStats.NextGC)
+	// 	numForcedGC := float64(memStats.NumForcedGC)
+	// 	numGC := float64(memStats.NumGC)
+	// 	otherSys := float64(memStats.OtherSys)
+	// 	pauseTotalNs := float64(memStats.PauseTotalNs)
+	// 	stackInuse := float64(memStats.StackInuse)
+	// 	stackSys := float64(memStats.StackSys)
+	// 	sys := float64(memStats.Sys)
+	// 	totalAlloc := float64(memStats.TotalAlloc)
+	// 	randomValue := rand.Float64()
+	// 	pollCount := int64(pollcnt)
 
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Alloc, Value: &alloc})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: BuckHashSys, Value: &buckHashSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Frees, Value: &frees})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCCPUFraction, Value: &gccpuFraction})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCSys, Value: &gcSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapAlloc, Value: &heapAlloc})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapIdle, Value: &heapIdle})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapInuse, Value: &heapInuse})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapObjects, Value: &heapObjects})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapReleased, Value: &heapReleased})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapSys, Value: &heapSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: LastGC, Value: &lastGC})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Lookups, Value: &lookups})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheInuse, Value: &mCacheInuse})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheSys, Value: &mCacheSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanInuse, Value: &mSpanInuse})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Mallocs, Value: &mallocs})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanSys, Value: &mSpanSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NextGC, Value: &nextGC})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumForcedGC, Value: &numForcedGC})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumGC, Value: &numGC})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: OtherSys, Value: &otherSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: PauseTotalNs, Value: &pauseTotalNs})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackInuse, Value: &stackInuse})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackSys, Value: &stackSys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Sys, Value: &sys})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: TotalAlloc, Value: &totalAlloc})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
-		files.FileStorage(ctx, tempfilename, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
-	}
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Alloc, Value: &alloc})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: BuckHashSys, Value: &buckHashSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Frees, Value: &frees})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCCPUFraction, Value: &gccpuFraction})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: GCSys, Value: &gcSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapAlloc, Value: &heapAlloc})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapIdle, Value: &heapIdle})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapInuse, Value: &heapInuse})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapObjects, Value: &heapObjects})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapReleased, Value: &heapReleased})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: HeapSys, Value: &heapSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: LastGC, Value: &lastGC})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Lookups, Value: &lookups})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheInuse, Value: &mCacheInuse})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MCacheSys, Value: &mCacheSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanInuse, Value: &mSpanInuse})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Mallocs, Value: &mallocs})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: MSpanSys, Value: &mSpanSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NextGC, Value: &nextGC})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumForcedGC, Value: &numForcedGC})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: NumGC, Value: &numGC})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: OtherSys, Value: &otherSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: PauseTotalNs, Value: &pauseTotalNs})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackInuse, Value: &stackInuse})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: StackSys, Value: &stackSys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: Sys, Value: &sys})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: TotalAlloc, Value: &totalAlloc})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
+	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
+	// }
 }
 
 func SendMetrics(url, metricData string) error {
@@ -214,6 +213,30 @@ func SendMetrics(url, metricData string) error {
 		return errors.New(response.Status)
 	}
 	return nil
+}
+
+func ChkUpdates(endpoint string) bool {
+	batchSend := false
+
+	request, err := http.NewRequest(http.MethodPost, fmt.Sprintf(updatesAddress, endpoint), nil)
+	if err != nil {
+		log.Printf("chk updates create req err %v", err)
+		return batchSend
+	}
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		log.Printf("chk updates do req err %v", err)
+		return batchSend
+	}
+	defer response.Body.Close()
+
+	log.Printf("%s %s\n", "ChkUpdates", response.Status)
+
+	if response.StatusCode == 200 {
+		batchSend = true
+	}
+	return batchSend
 }
 
 func GetAccEnc(url, contEnc string) (string, error) {
@@ -235,9 +258,10 @@ func GetAccEnc(url, contEnc string) (string, error) {
 	return encoding, nil
 }
 
-func JSONdecode(resp *http.Response) {
+func JSONdecode(resp *http.Response, batchSend bool) {
 	var buf bytes.Buffer
-	var metrics api.Metrics
+	var metric api.Metrics
+	var metrics api.MetricsSlice
 	if resp == nil {
 		log.Print("error nil response")
 		return
@@ -254,31 +278,56 @@ func JSONdecode(resp *http.Response) {
 		log.Print("unpack data error", err)
 		return
 	}
-	if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-		log.Print("parse json error", err)
-		return
-	}
-	if metrics.MType == "counter" {
-		log.Printf("%s %v\n", metrics.ID, *metrics.Delta)
-	}
-	if metrics.MType == "gauge" {
-		log.Printf("%s %v\n", metrics.ID, *metrics.Value)
+	switch {
+	case batchSend:
+		if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
+			log.Print("parse json error", err)
+			return
+		}
+		for _, m := range metrics.Metrics {
+			if m.MType == "counter" {
+				log.Printf("%s %v\n", metric.ID, *metric.Delta)
+			}
+			if metric.MType == "gauge" {
+				log.Printf("%s %v\n", metric.ID, *metric.Value)
+			}
+		}
+	default:
+		if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
+			log.Print("parse json error", err)
+			return
+		}
+		if metric.MType == "counter" {
+			log.Printf("%s %v\n", metric.ID, *metric.Delta)
+		}
+		if metric.MType == "gauge" {
+			log.Printf("%s %v\n", metric.ID, *metric.Value)
+		}
 	}
 }
 
-func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, error) {
+func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics api.MetricsSlice) (*http.Response, error) {
+	var data []byte
+
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
 	encoding, err := GetAccEnc(url, ce)
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
-
 	// сериализуем данные в JSON
-	data, err := json.Marshal(metricsData)
-	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+	switch {
+	case len(metrics.Metrics) > 0:
+		data, err = json.Marshal(metrics)
+		if err != nil {
+			return nil, fmt.Errorf("%v", err)
+		}
+	default:
+		data, err = json.Marshal(metricsData)
+		if err != nil {
+			return nil, fmt.Errorf("%v", err)
+		}
+		metricsData.Clean()
 	}
-	metricsData.Clean()
 	// если сервер поддерживает сжатие сжимаем данные
 	if encoding == "gzip" {
 		data, err = utils.GzipCompress(data)
@@ -311,6 +360,7 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics) (*http.Response, e
 }
 
 func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) {
+	var metrics api.MetricsSlice
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
 		if err != nil {
@@ -320,15 +370,17 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64)
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(templateAddressSrv, endpoint),
 			contentEnc,
-			api.Metrics{MType: "gauge", ID: key, Value: &value})
+			api.Metrics{MType: "gauge", ID: key, Value: &value},
+			metrics)
 		if err != nil {
 			log.Println("Gauge error ", err)
 		}
-		JSONdecode(resp)
+		JSONdecode(resp, false)
 	}
 }
 
 func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
+	var metrics api.MetricsSlice
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
 		if err != nil {
@@ -338,25 +390,49 @@ func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(templateAddressSrv, endpoint),
 			contentEnc,
-			api.Metrics{MType: "counter", ID: key, Delta: &value})
+			api.Metrics{MType: "counter", ID: key, Delta: &value},
+			metrics)
 		if err != nil {
 			log.Println(err)
 		}
-		JSONdecode(resp)
+		JSONdecode(resp, false)
 	}
 }
 
-func iterMemStorage(storage *memstorage.MemStorage, nojson bool, endpoint, contentEnc string) {
+func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endpoint, contentEnc string) {
+	var metrics api.MetricsSlice
 	for k, v := range storage.Gauge {
-		CommonSendGag(nojson, endpoint, contentEnc, k, v)
+		switch {
+		case batchSend:
+			metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: "gauge", ID: k, Value: &v})
+		default:
+			CommonSendGag(nojson, endpoint, contentEnc, k, v)
+		}
 	}
 	for k, v := range storage.Counter {
-		CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+		switch {
+		case batchSend:
+			metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: "counter", ID: k, Delta: &v})
+		default:
+			CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+		}
+	}
+	// log.Println("MEM STORAGE BATCH", metrics.Metrics)
+	if batchSend {
+		var metric api.Metrics
+		resp, err := JSONSendMetrics(
+			fmt.Sprintf(updatesAddress, endpoint),
+			contentEnc, metric, metrics)
+		if err != nil {
+			log.Println(err)
+		}
+		JSONdecode(resp, batchSend)
 	}
 }
 
-func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
+func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 	var metric api.Metrics
+	var metrics api.MetricsSlice
 
 	db, err := db.ConDB(dbconstr)
 	if err != nil {
@@ -376,7 +452,13 @@ func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
 		if err != nil {
 			log.Println(err)
 		}
-		CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+		switch {
+		case batchSend:
+			metrics.Metrics = append(metrics.Metrics,
+				api.Metrics{MType: "gauge", ID: metric.ID, Value: metric.Value})
+		default:
+			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+		}
 	}
 	err = rows.Err()
 	if err != nil {
@@ -394,36 +476,54 @@ func iterDB(nojson bool, dbconstr, endpoint, contentEnc string) {
 		if err != nil {
 			log.Println(err)
 		}
-		CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+		switch {
+		case batchSend:
+			metrics.Metrics = append(metrics.Metrics,
+				api.Metrics{MType: "counter", ID: metric.ID, Delta: metric.Delta})
+		default:
+			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+		}
 	}
+	// log.Println("DATA BASE BATCH", metrics.Metrics)
+	if batchSend {
+		var metric api.Metrics
+		resp, err := JSONSendMetrics(
+			fmt.Sprintf(updatesAddress, endpoint),
+			contentEnc, metric, metrics)
+		if err != nil {
+			log.Println(err)
+		}
+		JSONdecode(resp, batchSend)
+	}
+
 	err = rows.Err()
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func iterFile(nojson bool, fileStoragePath, endpoint, contentEnc string) {
-	metric := api.Metrics{}
-	consumer, err := files.NewConsumer(fileStoragePath)
-	if err != nil {
-		log.Fatal(err, " can't create consumer in if")
-	}
+// func iterFile(nojson bool, fileStoragePath, endpoint, contentEnc string) {
+// 	metric := api.Metrics{}
+// 	consumer, err := files.NewConsumer(fileStoragePath)
+// 	if err != nil {
+// 		log.Fatal(err, " can't create consumer in if")
+// 	}
 
-	scanner := consumer.Scanner
-	for scanner.Scan() {
-		// преобразуем данные из JSON-представления в структуру
-		err := json.Unmarshal(scanner.Bytes(), &metric)
-		if err != nil {
-			log.Printf("can't unmarshal string %v", err)
-		}
-		if metric.MType == "gauge" {
-			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
-		}
-		if metric.MType == "counter" {
-			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
-		}
-	}
-}
+// 	scanner := consumer.Scanner
+// 	for scanner.Scan() {
+// 		// преобразуем данные из JSON-представления в структуру
+// 		err := json.Unmarshal(scanner.Bytes(), &metric)
+// 		if err != nil {
+// 			log.Printf("can't unmarshal string %v", err)
+// 		}
+// 		if metric.MType == "gauge" {
+// 			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+// 		}
+// 		if metric.MType == "counter" {
+// 			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+// 		}
+// 	}
+// }
 
 func main() {
 	var endpoint string
@@ -526,6 +626,8 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
+	batchSend := ChkUpdates(endpoint)
+
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 	counter := 0
@@ -536,14 +638,14 @@ func main() {
 			CollectMetrics(storage, fileStoragePath, fileStoragePath, storageSelecter, counter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
-				iterMemStorage(storage, nojson, endpoint, contentEnc)
+				iterMemStorage(storage, nojson, batchSend, endpoint, contentEnc)
 			}
 			if storageSelecter == "DATABASE" {
-				iterDB(nojson, dbconstring, endpoint, contentEnc)
+				iterDB(nojson, batchSend, dbconstring, endpoint, contentEnc)
 			}
-			if storageSelecter == "FILE" {
-				iterFile(nojson, fileStoragePath, endpoint, contentEnc)
-			}
+			// if storageSelecter == "FILE" {
+			// 	iterFile(nojson, fileStoragePath, endpoint, contentEnc)
+			// }
 		}
 	}
 }
