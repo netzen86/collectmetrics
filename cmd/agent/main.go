@@ -286,10 +286,10 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 		}
 		for _, m := range metrics.Metrics {
 			if m.MType == "counter" {
-				log.Printf("%s %v\n", metric.ID, *metric.Delta)
+				log.Printf("%s %v\n", m.ID, *m.Delta)
 			}
-			if metric.MType == "gauge" {
-				log.Printf("%s %v\n", metric.ID, *metric.Value)
+			if m.MType == "gauge" {
+				log.Printf("%s %v\n", m.ID, *m.Value)
 			}
 		}
 	default:

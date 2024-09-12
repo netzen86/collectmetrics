@@ -35,16 +35,17 @@ func GzipDecompress(buf *bytes.Buffer) error {
 	// переменная buf будет читать входящие данные и распаковывать их
 	gz, err := gzip.NewReader(bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return fmt.Errorf("%s unpacking data error", err)
+		return fmt.Errorf("!!!%s!!! unpacking data error", err)
 	}
-	defer gz.Close()
+	// defer gz.Close()
 
 	// в отчищенную переменную buf записываются распакованные данные
 	buf.Reset()
-	_, err = buf.ReadFrom(gz)
-	if err != nil {
-		return fmt.Errorf("%s read unpacked data error", err)
-	}
+	// _, err =
+	buf.ReadFrom(gz)
+	// if err != nil {
+	// 	return fmt.Errorf("%s read unpacked data error", err)
+	// }
 	return nil
 }
 
@@ -61,7 +62,7 @@ func SelectDeCoHTTP(buf *bytes.Buffer, r interface{}) error {
 	if strings.Contains(key, "gzip") {
 		err := GzipDecompress(buf)
 		if err != nil {
-			return fmt.Errorf("%s unpack data error", err)
+			return fmt.Errorf("!!%s!! unpack data error", err)
 		}
 	}
 	return nil

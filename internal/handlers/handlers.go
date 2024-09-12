@@ -379,7 +379,6 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 		// распаковываем если контент упакован
 		err = utils.SelectDeCoHTTP(&buf, r)
 		if err != nil {
-			log.Println("ERROR GZIP", err)
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
 			return
 		}
@@ -389,7 +388,6 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode slice metric to json error"), 400)
 				return
 			}
-			log.Println("DESERIALIZED", metrics.Metrics)
 		} else if strings.Contains(r.RequestURI, "/update/") {
 			// десериализуем JSON в metric
 			if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
