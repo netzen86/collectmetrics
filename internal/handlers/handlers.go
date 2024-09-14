@@ -351,7 +351,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var newStorage *memstorage.MemStorage
-		var metrics api.MetricsSlice
+		var metrics []api.Metrics
 		var metric api.Metrics
 		var buf bytes.Buffer
 		var resp []byte
@@ -394,17 +394,20 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode one metric to json error"), 400)
 				return
 			}
-			metrics.Metrics = append(metrics.Metrics, metric)
+			metrics = append(metrics, metric)
 		}
 
-		for _, metr := range metrics.Metrics {
+		for _, metr := range metrics {
 			err = MetricParseSelecStor(ctx, storage, &metr, storageSelecter, dbconstr, tempfilename)
 			if err != nil {
+				log.Println("ERROR", err)
 				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(400), "can't select sorage ", err), 400)
 				return
 			}
+
 		}
-		if len(metrics.Metrics) == 0 {
+
+		if len(metrics) == 0 {
 			http.Error(w, "Metrics slice empty try update endpoint", 400)
 			return
 		}
@@ -417,7 +420,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 				return
 			}
 		case r.RequestURI == "/update/":
-			resp, err = json.Marshal(metrics.Metrics[0])
+			resp, err = json.Marshal(metrics[0])
 			if err != nil {
 				http.Error(w, http.StatusText(500), 500)
 				return

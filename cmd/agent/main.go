@@ -261,7 +261,7 @@ func GetAccEnc(url, contEnc string) (string, error) {
 func JSONdecode(resp *http.Response, batchSend bool) {
 	var buf bytes.Buffer
 	var metric api.Metrics
-	var metrics api.MetricsSlice
+	var metrics []api.Metrics
 	if resp == nil {
 		log.Print("error nil response")
 		return
@@ -281,10 +281,10 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 	switch {
 	case batchSend:
 		if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-			log.Print("parse json error", err)
+			log.Print("parse json error ", err)
 			return
 		}
-		for _, m := range metrics.Metrics {
+		for _, m := range metrics {
 			if m.MType == "counter" {
 				log.Printf("%s %v\n", m.ID, *m.Delta)
 			}
@@ -294,7 +294,7 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 		}
 	default:
 		if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
-			log.Print("parse json error", err)
+			log.Print("parse json error ", err)
 			return
 		}
 		if metric.MType == "counter" {
@@ -306,7 +306,7 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 	}
 }
 
-func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics api.MetricsSlice) (*http.Response, error) {
+func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metrics) (*http.Response, error) {
 	var data []byte
 
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
@@ -316,10 +316,11 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics api.Metric
 	}
 	// сериализуем данные в JSON
 	switch {
-	case len(metrics.Metrics) > 0:
+	case len(metrics) > 0:
 		data, err = json.Marshal(metrics)
 		if err != nil {
-			return nil, fmt.Errorf("%v", err)
+			log.Printf("serilazing error: %v\n", err)
+			return nil, fmt.Errorf("serilazing error: %v", err)
 		}
 	default:
 		data, err = json.Marshal(metricsData)
@@ -360,7 +361,7 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics api.Metric
 }
 
 func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) {
-	var metrics api.MetricsSlice
+	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
 		if err != nil {
@@ -380,7 +381,7 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64)
 }
 
 func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
-	var metrics api.MetricsSlice
+	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
 		if err != nil {
@@ -400,11 +401,11 @@ func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
 }
 
 func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endpoint, contentEnc string) {
-	var metrics api.MetricsSlice
+	var metrics []api.Metrics
 	for k, v := range storage.Gauge {
 		switch {
 		case batchSend:
-			metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: "gauge", ID: k, Value: &v})
+			metrics = append(metrics, api.Metrics{MType: "gauge", ID: k, Value: &v})
 		default:
 			CommonSendGag(nojson, endpoint, contentEnc, k, v)
 		}
@@ -412,7 +413,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 	for k, v := range storage.Counter {
 		switch {
 		case batchSend:
-			metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: "counter", ID: k, Delta: &v})
+			metrics = append(metrics, api.Metrics{MType: "counter", ID: k, Delta: &v})
 		default:
 			CommonSendCnt(nojson, endpoint, contentEnc, k, v)
 		}
@@ -432,7 +433,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 
 func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 	var metric api.Metrics
-	var metrics api.MetricsSlice
+	var metrics []api.Metrics
 
 	db, err := db.ConDB(dbconstr)
 	if err != nil {
@@ -454,7 +455,7 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 		}
 		switch {
 		case batchSend:
-			metrics.Metrics = append(metrics.Metrics,
+			metrics = append(metrics,
 				api.Metrics{MType: "gauge", ID: metric.ID, Value: metric.Value})
 		default:
 			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
@@ -478,7 +479,7 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 		}
 		switch {
 		case batchSend:
-			metrics.Metrics = append(metrics.Metrics,
+			metrics = append(metrics,
 				api.Metrics{MType: "counter", ID: metric.ID, Delta: metric.Delta})
 		default:
 			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
