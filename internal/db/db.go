@@ -105,7 +105,7 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 			return err
 		}
 		_, err = db.ExecContext(ctx, stmtGauge, metricName, val)
-		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", resval)
+		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", err)
 		if err != nil {
 			return fmt.Errorf("insert table error - %w", err)
 		}
@@ -116,7 +116,7 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 			return err
 		}
 		_, err = db.ExecContext(ctx, stmtCounter, metricName, del)
-		// log.Println("Inserting counter table value: ", del, "ResVAl: ")
+		// log.Println("Inserting counter table value: ", del, "ResVAl:", err)
 		if err != nil {
 			return fmt.Errorf("insert table error - %w", err)
 		}

@@ -631,11 +631,12 @@ func main() {
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
 	reportTik := time.NewTicker(time.Duration(rInterv) * time.Second)
 	counter := 0
+
 	for {
 		select {
 		case <-pollTik.C:
 			counter += 1
-			CollectMetrics(storage, fileStoragePath, fileStoragePath, storageSelecter, counter)
+			CollectMetrics(storage, fileStoragePath, dbconstring, storageSelecter, counter)
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, batchSend, endpoint, contentEnc)
