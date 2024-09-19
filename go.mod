@@ -3,6 +3,7 @@ module github.com/netzen86/collectmetrics
 go 1.22.5
 
 require (
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/go-chi/chi/v5 v5.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect

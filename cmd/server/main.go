@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/handlers"
@@ -99,10 +101,10 @@ func main() {
 	if len(dbaddressTMP) != 0 {
 		dbconstring = os.Getenv("DATABASE_DSN")
 		storageSelecter = "DATABASE"
-		err = db.CreateTables(context.TODO(), dbconstring)
-		if err != nil {
-			log.Fatal(err)
-		}
+		// err = db.CreateTables(context.TODO(), dbconstring)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
 	}
 
 	if len(flag.Args()) != 0 {
@@ -143,7 +145,22 @@ func main() {
 	}
 
 	if storageSelecter == "DATABASE" {
-		err = db.CreateTables(context.TODO(), dbconstring)
+
+		ExpBackoff := backoff.NewExponentialBackOff()
+		ExpBackoff.InitialInterval = 1 * time.Second
+		ExpBackoff.RandomizationFactor = 0
+		ExpBackoff.Multiplier = 2
+		ExpBackoff.MaxElapsedTime = 8 * time.Second
+		retrybuilder := func() func() error {
+			return func() error {
+				err := db.CreateTables(context.TODO(), dbconstring)
+				if err != nil {
+					log.Println(err)
+				}
+				return err
+			}
+		}
+		err = backoff.Retry(retrybuilder(), ExpBackoff)
 		if err != nil {
 			log.Fatal(err)
 		}
