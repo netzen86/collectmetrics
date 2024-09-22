@@ -61,7 +61,7 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSelecter string, pollcnt int) {
+func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSelecter string, pollcnt int) error {
 	ctx := context.Background()
 	var memStats runtime.MemStats
 
@@ -69,67 +69,241 @@ func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSe
 	runtime.ReadMemStats(&memStats)
 
 	if storageSelecter == "MEMORY" {
-		storage.UpdateParam(ctx, false, gag, Alloc, float64(memStats.Alloc))
-		storage.UpdateParam(ctx, false, gag, BuckHashSys, float64(memStats.BuckHashSys))
-		storage.UpdateParam(ctx, false, gag, Frees, float64(memStats.Frees))
-		storage.UpdateParam(ctx, false, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-		storage.UpdateParam(ctx, false, gag, GCSys, float64(memStats.GCSys))
-		storage.UpdateParam(ctx, false, gag, HeapAlloc, float64(memStats.HeapAlloc))
-		storage.UpdateParam(ctx, false, gag, HeapIdle, float64(memStats.HeapIdle))
-		storage.UpdateParam(ctx, false, gag, HeapInuse, float64(memStats.HeapInuse))
-		storage.UpdateParam(ctx, false, gag, HeapObjects, float64(memStats.HeapObjects))
-		storage.UpdateParam(ctx, false, gag, HeapReleased, float64(memStats.HeapReleased))
-		storage.UpdateParam(ctx, false, gag, HeapSys, float64(memStats.HeapSys))
-		storage.UpdateParam(ctx, false, gag, LastGC, float64(memStats.LastGC))
-		storage.UpdateParam(ctx, false, gag, Lookups, float64(memStats.Lookups))
-		storage.UpdateParam(ctx, false, gag, MCacheInuse, float64(memStats.MCacheInuse))
-		storage.UpdateParam(ctx, false, gag, MCacheSys, float64(memStats.MCacheSys))
-		storage.UpdateParam(ctx, false, gag, MSpanInuse, float64(memStats.MSpanInuse))
-		storage.UpdateParam(ctx, false, gag, Mallocs, float64(memStats.Mallocs))
-		storage.UpdateParam(ctx, false, gag, MSpanSys, float64(memStats.MSpanSys))
-		storage.UpdateParam(ctx, false, gag, NextGC, float64(memStats.NextGC))
-		storage.UpdateParam(ctx, false, gag, NumForcedGC, float64(memStats.NumForcedGC))
-		storage.UpdateParam(ctx, false, gag, NumGC, float64(memStats.NumGC))
-		storage.UpdateParam(ctx, false, gag, OtherSys, float64(memStats.OtherSys))
-		storage.UpdateParam(ctx, false, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-		storage.UpdateParam(ctx, false, gag, StackInuse, float64(memStats.StackInuse))
-		storage.UpdateParam(ctx, false, gag, StackSys, float64(memStats.StackSys))
-		storage.UpdateParam(ctx, false, gag, Sys, float64(memStats.Sys))
-		storage.UpdateParam(ctx, false, gag, TotalAlloc, float64(memStats.TotalAlloc))
-		storage.UpdateParam(ctx, false, gag, RandomValue, rand.Float64())
-		storage.UpdateParam(ctx, false, cnt, PollCount, int64(1))
+		err := storage.UpdateParam(ctx, false, gag, Alloc, float64(memStats.Alloc))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, BuckHashSys, float64(memStats.BuckHashSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, Frees, float64(memStats.Frees))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, GCSys, float64(memStats.GCSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapAlloc, float64(memStats.HeapAlloc))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapIdle, float64(memStats.HeapIdle))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapInuse, float64(memStats.HeapInuse))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapObjects, float64(memStats.HeapObjects))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapReleased, float64(memStats.HeapReleased))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, HeapSys, float64(memStats.HeapSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, LastGC, float64(memStats.LastGC))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, Lookups, float64(memStats.Lookups))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, MCacheInuse, float64(memStats.MCacheInuse))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, MCacheSys, float64(memStats.MCacheSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, MSpanInuse, float64(memStats.MSpanInuse))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, Mallocs, float64(memStats.Mallocs))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, MSpanSys, float64(memStats.MSpanSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, NextGC, float64(memStats.NextGC))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, NumForcedGC, float64(memStats.NumForcedGC))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, NumGC, float64(memStats.NumGC))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, OtherSys, float64(memStats.OtherSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, StackInuse, float64(memStats.StackInuse))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, StackSys, float64(memStats.StackSys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, Sys, float64(memStats.Sys))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, TotalAlloc, float64(memStats.TotalAlloc))
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, gag, RandomValue, rand.Float64())
+		if err != nil {
+			return err
+		}
+		err = storage.UpdateParam(ctx, false, cnt, PollCount, int64(1))
+		if err != nil {
+			return err
+		}
 	}
 
 	if storageSelecter == "DATABASE" {
-		db.UpdateParamDB(ctx, dbconstr, gag, Alloc, float64(memStats.Alloc))
-		db.UpdateParamDB(ctx, dbconstr, gag, BuckHashSys, float64(memStats.BuckHashSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, Frees, float64(memStats.Frees))
-		db.UpdateParamDB(ctx, dbconstr, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
-		db.UpdateParamDB(ctx, dbconstr, gag, GCSys, float64(memStats.GCSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapAlloc, float64(memStats.HeapAlloc))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapIdle, float64(memStats.HeapIdle))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapInuse, float64(memStats.HeapInuse))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapObjects, float64(memStats.HeapObjects))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapReleased, float64(memStats.HeapReleased))
-		db.UpdateParamDB(ctx, dbconstr, gag, HeapSys, float64(memStats.HeapSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, LastGC, float64(memStats.LastGC))
-		db.UpdateParamDB(ctx, dbconstr, gag, Lookups, float64(memStats.Lookups))
-		db.UpdateParamDB(ctx, dbconstr, gag, MCacheInuse, float64(memStats.MCacheInuse))
-		db.UpdateParamDB(ctx, dbconstr, gag, MCacheSys, float64(memStats.MCacheSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, MSpanInuse, float64(memStats.MSpanInuse))
-		db.UpdateParamDB(ctx, dbconstr, gag, Mallocs, float64(memStats.Mallocs))
-		db.UpdateParamDB(ctx, dbconstr, gag, MSpanSys, float64(memStats.MSpanSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, NextGC, float64(memStats.NextGC))
-		db.UpdateParamDB(ctx, dbconstr, gag, NumForcedGC, float64(memStats.NumForcedGC))
-		db.UpdateParamDB(ctx, dbconstr, gag, NumGC, float64(memStats.NumGC))
-		db.UpdateParamDB(ctx, dbconstr, gag, OtherSys, float64(memStats.OtherSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
-		db.UpdateParamDB(ctx, dbconstr, gag, StackInuse, float64(memStats.StackInuse))
-		db.UpdateParamDB(ctx, dbconstr, gag, StackSys, float64(memStats.StackSys))
-		db.UpdateParamDB(ctx, dbconstr, gag, Sys, float64(memStats.Sys))
-		db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
-		db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
-		db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
+		err := db.UpdateParamDB(ctx, dbconstr, gag, Alloc, float64(memStats.Alloc))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, BuckHashSys, float64(memStats.BuckHashSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, Frees, float64(memStats.Frees))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, GCCPUFraction, float64(memStats.GCCPUFraction))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, GCSys, float64(memStats.GCSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapAlloc, float64(memStats.HeapAlloc))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapIdle, float64(memStats.HeapIdle))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapInuse, float64(memStats.HeapInuse))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapObjects, float64(memStats.HeapObjects))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapReleased, float64(memStats.HeapReleased))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, HeapSys, float64(memStats.HeapSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, LastGC, float64(memStats.LastGC))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, Lookups, float64(memStats.Lookups))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, MCacheInuse, float64(memStats.MCacheInuse))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, MCacheSys, float64(memStats.MCacheSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, MSpanInuse, float64(memStats.MSpanInuse))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, Mallocs, float64(memStats.Mallocs))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, MSpanSys, float64(memStats.MSpanSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, NextGC, float64(memStats.NextGC))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, NumForcedGC, float64(memStats.NumForcedGC))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, NumGC, float64(memStats.NumGC))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, OtherSys, float64(memStats.OtherSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, PauseTotalNs, float64(memStats.PauseTotalNs))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, StackInuse, float64(memStats.StackInuse))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, StackSys, float64(memStats.StackSys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, Sys, float64(memStats.Sys))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, TotalAlloc, float64(memStats.TotalAlloc))
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, gag, RandomValue, rand.Float64())
+		if err != nil {
+			return err
+		}
+		err = db.UpdateParamDB(ctx, dbconstr, cnt, PollCount, int64(1))
+		if err != nil {
+			return err
+		}
 	}
 	// if storageSelecter == "FILE" {
 	// 	if err := os.Truncate(tempfilename, 0); err != nil {
@@ -195,6 +369,7 @@ func CollectMetrics(storage repositories.Repo, tempfilename, dbconstr, storageSe
 	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: gag, ID: RandomValue, Value: &randomValue})
 	// 	files.FileStorage(ctx, tempfilename, api.Metrics{MType: cnt, ID: PollCount, Delta: &pollCount})
 	// }
+	return nil
 }
 
 func SendMetrics(url, metricData string) error {
@@ -360,12 +535,12 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metr
 	return response, nil
 }
 
-func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) {
+func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	} else if !nojson {
 		resp, err := JSONSendMetrics(
@@ -374,18 +549,19 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64)
 			api.Metrics{MType: "gauge", ID: key, Value: &value},
 			metrics)
 		if err != nil {
-			log.Println("Gauge error ", err)
+			return fmt.Errorf("gauge error %v", err)
 		}
 		JSONdecode(resp, false)
 	}
+	return nil
 }
 
-func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
+func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	} else if !nojson {
 		resp, err := JSONSendMetrics(
@@ -394,10 +570,12 @@ func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) {
 			api.Metrics{MType: "counter", ID: key, Delta: &value},
 			metrics)
 		if err != nil {
-			log.Println(err)
+			return fmt.Errorf("count error %v", err)
+
 		}
 		JSONdecode(resp, false)
 	}
+	return nil
 }
 
 func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endpoint, contentEnc string) {
@@ -407,7 +585,19 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 		case batchSend:
 			metrics = append(metrics, api.Metrics{MType: "gauge", ID: k, Value: &v})
 		default:
-			CommonSendGag(nojson, endpoint, contentEnc, k, v)
+			retrybuilder := func() func() error {
+				return func() error {
+					err := CommonSendGag(nojson, endpoint, contentEnc, k, v)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal("send gauge mertic fail ", err)
+			}
 		}
 	}
 	for k, v := range storage.Counter {
@@ -415,7 +605,19 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 		case batchSend:
 			metrics = append(metrics, api.Metrics{MType: "counter", ID: k, Delta: &v})
 		default:
-			CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+			retrybuilder := func() func() error {
+				return func() error {
+					err := CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal("send counter mertic fail ", err)
+			}
 		}
 	}
 	// log.Println("MEM STORAGE BATCH", metrics.Metrics)
@@ -458,7 +660,19 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 			metrics = append(metrics,
 				api.Metrics{MType: "gauge", ID: metric.ID, Value: metric.Value})
 		default:
-			CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+			retrybuilder := func() func() error {
+				return func() error {
+					err := CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal("send gauge mertic fail ", err)
+			}
 		}
 	}
 	err = rows.Err()
@@ -482,7 +696,19 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 			metrics = append(metrics,
 				api.Metrics{MType: "counter", ID: metric.ID, Delta: metric.Delta})
 		default:
-			CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+			retrybuilder := func() func() error {
+				return func() error {
+					err := CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal("send counter mertic fail ", err)
+			}
 		}
 	}
 	// log.Println("DATA BASE BATCH", metrics.Metrics)
@@ -637,7 +863,21 @@ func main() {
 		select {
 		case <-pollTik.C:
 			counter += 1
-			CollectMetrics(storage, fileStoragePath, dbconstring, storageSelecter, counter)
+
+			retrybuilder := func() func() error {
+				return func() error {
+					err := CollectMetrics(storage, fileStoragePath, dbconstring, storageSelecter, counter)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err = utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal("can`t update metrics ", err)
+			}
+
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
 				iterMemStorage(storage, nojson, batchSend, endpoint, contentEnc)

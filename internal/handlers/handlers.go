@@ -42,7 +42,16 @@ func UpdateMHandle(storage repositories.Repo,
 			}
 		}
 		if storageSelecter == "DATABASE" {
-			err := db.UpdateParamDB(r.Context(), dbconstr, mType, mName, mValue)
+			retrybuilder := func() func() error {
+				return func() error {
+					err := db.UpdateParamDB(r.Context(), dbconstr, mType, mName, mValue)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 				return
@@ -143,7 +152,17 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				metric.Delta = &delta
 			}
 			if storageSelecter == "DATABASE" {
-				err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
+
+				retrybuilder := func() func() error {
+					return func() error {
+						err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s with error %v\n",
@@ -187,8 +206,17 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				metric.Value = &value
 			}
 			if storageSelecter == "DATABASE" {
-				err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
 
+				retrybuilder := func() func() error {
+					return func() error {
+						err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
 					return
@@ -279,7 +307,16 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 				*metrics.Delta = newStorage.Counter[metrics.ID]
 			}
 			if storageSelecter == "DATABASE" {
-				err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Delta)
+				retrybuilder := func() func() error {
+					return func() error {
+						err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Delta)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
@@ -307,7 +344,16 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 				*metrics.Value = newStorage.Gauge[metrics.ID]
 			}
 			if storageSelecter == "DATABASE" {
-				err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Value)
+				retrybuilder := func() func() error {
+					return func() error {
+						err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Value)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 					return
@@ -471,7 +517,16 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 			*metric.Delta = newStorage.Counter[metric.ID]
 		}
 		if storageSelecter == "DATABASE" {
-			err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Delta)
+			retrybuilder := func() func() error {
+				return func() error {
+					err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Delta)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
 			if err != nil {
 				return fmt.Errorf("can't update database counter value %v", err)
 			}
@@ -494,7 +549,16 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 			*metric.Value = newStorage.Gauge[metric.ID]
 		}
 		if storageSelecter == "DATABASE" {
-			err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Value)
+			retrybuilder := func() func() error {
+				return func() error {
+					err = db.UpdateParamDB(ctx, dbconstr, metric.MType, metric.ID, *metric.Value)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
 			if err != nil {
 				return fmt.Errorf("can't update database gauge value %v", err)
 			}
@@ -553,7 +617,16 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 				metrics.Delta = &value
 			}
 			if storageSelecter == "DATABASE" {
-				err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
+				retrybuilder := func() func() error {
+					return func() error {
+						err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s error - %v",
@@ -587,7 +660,16 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 				metrics.Value = &value
 			}
 			if storageSelecter == "DATABASE" {
-				err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
+				retrybuilder := func() func() error {
+					return func() error {
+						err = db.RetriveOneMetricDB(r.Context(), dbconstr, metrics)
+						if err != nil {
+							log.Println(err)
+						}
+						return err
+					}
+				}
+				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
 					return
@@ -638,7 +720,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 		}
 		defer dataBase.Close()
 
-		ctx, cancel := context.WithTimeout(r.Context(), 300*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if err := dataBase.PingContext(ctx); err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)

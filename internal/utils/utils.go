@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/netzen86/collectmetrics/internal/api"
 )
 
@@ -108,6 +110,20 @@ func ListDir(path string) error {
 	})
 	if err != nil {
 		log.Println(err)
+	}
+	return nil
+}
+
+func RetrayFunc(retrybuilder func() func() error) error {
+	ExpBackoff := backoff.NewExponentialBackOff()
+	ExpBackoff.InitialInterval = 1 * time.Second
+	ExpBackoff.RandomizationFactor = 0.5
+	ExpBackoff.Multiplier = 2
+	ExpBackoff.MaxElapsedTime = 9 * time.Second
+
+	err := backoff.Retry(retrybuilder(), ExpBackoff)
+	if err != nil {
+		return err
 	}
 	return nil
 }
