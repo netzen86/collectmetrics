@@ -757,6 +757,7 @@ func main() {
 	var contentEnc string
 	var dbconstring string
 	var fileStoragePath string
+	var signkeystr string
 	var nojson bool
 	var pInterv int
 	var rInterv int
@@ -778,6 +779,7 @@ func main() {
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	// pflag.StringVarP(&fileStoragePath, "filepath", "f", storefiledfl, "Used to set file path to save metrics.")
 	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
+	pflag.StringVarP(&signkeystr, "signkeystr", "k", "", "Used to set key for calc hash.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
@@ -811,6 +813,12 @@ func main() {
 			fmt.Printf("%e\n", err)
 			os.Exit(1)
 		}
+	}
+
+	signkeystrTmp := os.Getenv("KEY")
+	// []byte(signkeystr) str to byte slice
+	if len(signkeystrTmp) != 0 {
+		signkeystr = signkeystrTmp
 	}
 
 	// if fileStoragePath != storefiledfl && len(fileStoragePath) != 0 {
