@@ -432,6 +432,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 		}
 
 		if len(singKey) != 0 {
+			log.Println("singKey", singKey)
 			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
 			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
 			if err != nil {

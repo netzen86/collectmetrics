@@ -483,7 +483,7 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 	}
 }
 
-func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api.Metrics) (*http.Response, error) {
+func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics []api.Metrics) (*http.Response, error) {
 	var data, sing []byte
 
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
@@ -506,9 +506,9 @@ func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api
 		}
 		metricsData.Clean()
 	}
-	if len(key) != 0 {
-		sing = security.SingSendData(data, []byte(key))
-		log.Println("sing", hex.EncodeToString(sing))
+	if len(singKey) != 0 {
+		sing = security.SingSendData(data, []byte(singKey))
+		log.Println("singKey", singKey)
 	}
 
 	// если сервер поддерживает сжатие сжимаем данные
@@ -529,9 +529,9 @@ func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api
 
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
-	// if len(key) != 0 {
-	// 	request.Header.Add("HashSHA256", hex.EncodeToString(sing))
-	// }
+	if len(singKey) != 0 {
+		request.Header.Add("HashSHA256", hex.EncodeToString(sing))
+	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
