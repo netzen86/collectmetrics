@@ -424,13 +424,6 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			return
 		}
 
-		// распаковываем если контент упакован
-		err = utils.SelectDeCoHTTP(&buf, r)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
-			return
-		}
-
 		if len(singKey) != 0 {
 			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
 			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
@@ -443,6 +436,13 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "signature discrepancy"), 400)
 				return
 			}
+		}
+
+		// распаковываем если контент упакован
+		err = utils.SelectDeCoHTTP(&buf, r)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+			return
 		}
 
 		if strings.Contains(r.RequestURI, "/updates/") {

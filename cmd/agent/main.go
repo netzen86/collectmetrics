@@ -506,9 +506,6 @@ func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics [
 		}
 		metricsData.Clean()
 	}
-	if len(singKey) != 0 {
-		sing = security.SingSendData(data, []byte(singKey))
-	}
 
 	// если сервер поддерживает сжатие сжимаем данные
 	if encoding == "gzip" {
@@ -516,6 +513,10 @@ func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics [
 		if err != nil {
 			return nil, fmt.Errorf("%v", err)
 		}
+	}
+
+	if len(singKey) != 0 {
+		sing = security.SingSendData(data, []byte(singKey))
 	}
 
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
