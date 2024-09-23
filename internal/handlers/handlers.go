@@ -440,8 +440,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			}
 			comp := security.CompareSing(calcSing, recivedSing)
 			if !comp {
-				log.Println("signature discrepancy")
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), "signature discrepancy"), 404)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusTeapot), "signature discrepancy"), http.StatusTeapot)
 				return
 			}
 		}
