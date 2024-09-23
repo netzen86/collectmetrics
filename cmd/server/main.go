@@ -113,7 +113,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Println("!!! SERVER START !!!", endpoint, saveMetricsDefaultPath, fileStoragePath, dbconstring, restore, storeInterval)
+	log.Println("!!! SERVER START !!!", endpoint, saveMetricsDefaultPath, fileStoragePath, dbconstring, signkeystr, restore, storeInterval)
 
 	gw := chi.NewRouter()
 
