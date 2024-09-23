@@ -500,6 +500,11 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			return
 		}
 
+		if len(singKey) != 0 {
+			sing := security.SingSendData(resp, []byte(singKey))
+			w.Header().Add("HashSHA256", hex.EncodeToString(sing))
+		}
+
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
