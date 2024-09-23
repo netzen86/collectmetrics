@@ -432,7 +432,6 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 		}
 
 		if len(singKey) != 0 {
-			log.Println("singKey", singKey)
 			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
 			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
 			if err != nil {
@@ -441,7 +440,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			}
 			comp := security.CompareSing(calcSing, recivedSing)
 			if !comp {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusTeapot), "signature discrepancy"), http.StatusTeapot)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "signature discrepancy"), 400)
 				return
 			}
 		}

@@ -508,7 +508,6 @@ func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics [
 	}
 	if len(singKey) != 0 {
 		sing = security.SingSendData(data, []byte(singKey))
-		log.Println("singKey", singKey)
 	}
 
 	// если сервер поддерживает сжатие сжимаем данные
@@ -529,6 +528,7 @@ func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics [
 
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
+
 	if len(singKey) != 0 {
 		request.Header.Add("HashSHA256", hex.EncodeToString(sing))
 	}
@@ -545,7 +545,7 @@ func JSONSendMetrics(url, ce, singKey string, metricsData api.Metrics, metrics [
 	return response, nil
 }
 
-func CommonSendGag(nojson bool, endpoint, contentEnc, key, singKey string, value float64) error {
+func CommonSendGag(nojson bool, endpoint, contentEnc, singKey, key string, value float64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
@@ -566,7 +566,7 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key, singKey string, value
 	return nil
 }
 
-func CommonSendCnt(nojson bool, endpoint, contentEnc, key, singKey string, value int64) error {
+func CommonSendCnt(nojson bool, endpoint, contentEnc, singKey, key string, value int64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
