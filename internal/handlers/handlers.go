@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -429,19 +431,19 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			return
 		}
 
-		// if len(singKey) != 0 {
-		// 	calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
-		// 	recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
-		// 	if err != nil {
-		// 		http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sing str to []byte"), 500)
-		// 		return
-		// 	}
-		// 	comp := security.CompareSing(calcSing, recivedSing)
-		// 	if !comp {
-		// 		http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusTeapot), "signature discrepancy"), http.StatusTeapot)
-		// 		return
-		// 	}
-		// }
+		if len(singKey) != 0 {
+			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
+			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sing str to []byte"), 500)
+				return
+			}
+			comp := security.CompareSing(calcSing, recivedSing)
+			if !comp {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusTeapot), "signature discrepancy"), http.StatusTeapot)
+				return
+			}
+		}
 
 		if strings.Contains(r.RequestURI, "/updates/") {
 			// десериализуем JSON в metrics
@@ -712,10 +714,10 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-		// if len(singkeystr) != 0 {
-		// 	sing := security.SingSendData(resp, []byte(singkeystr))
-		// 	w.Header().Add("HashSHA256", hex.EncodeToString(sing))
-		// }
+		if len(singkeystr) != 0 {
+			sing := security.SingSendData(resp, []byte(singkeystr))
+			w.Header().Add("HashSHA256", hex.EncodeToString(sing))
+		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)

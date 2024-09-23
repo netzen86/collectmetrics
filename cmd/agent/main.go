@@ -508,6 +508,7 @@ func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api
 	}
 	if len(key) != 0 {
 		sing = security.SingSendData(data, []byte(key))
+		log.Println("sing", hex.EncodeToString(sing))
 	}
 
 	// если сервер поддерживает сжатие сжимаем данные
@@ -528,9 +529,9 @@ func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api
 
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
-	if len(key) != 0 {
-		request.Header.Add("HashSHA256", hex.EncodeToString(sing))
-	}
+	// if len(key) != 0 {
+	// 	request.Header.Add("HashSHA256", hex.EncodeToString(sing))
+	// }
 
 	client := &http.Client{}
 	response, err := client.Do(request)
