@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 	"github.com/spf13/pflag"
 )
@@ -481,8 +483,8 @@ func JSONdecode(resp *http.Response, batchSend bool) {
 	}
 }
 
-func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metrics) (*http.Response, error) {
-	var data []byte
+func JSONSendMetrics(url, ce, key string, metricsData api.Metrics, metrics []api.Metrics) (*http.Response, error) {
+	var data, sing []byte
 
 	// получаем от сервера ответ о поддерживаемыж методах сжатия
 	encoding, err := GetAccEnc(url, ce)
@@ -504,6 +506,10 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metr
 		}
 		metricsData.Clean()
 	}
+	if len(key) != 0 {
+		sing = security.SingSendData(data, []byte(key))
+	}
+
 	// если сервер поддерживает сжатие сжимаем данные
 	if encoding == "gzip" {
 		data, err = utils.GzipCompress(data)
@@ -522,6 +528,9 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metr
 
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
+	if len(key) != 0 {
+		request.Header.Add("HashSHA256", hex.EncodeToString(sing))
+	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
@@ -535,7 +544,7 @@ func JSONSendMetrics(url, ce string, metricsData api.Metrics, metrics []api.Metr
 	return response, nil
 }
 
-func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64) error {
+func CommonSendGag(nojson bool, endpoint, contentEnc, key, singKey string, value float64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("gauge/%s/%v", key, value))
@@ -545,7 +554,7 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64)
 	} else if !nojson {
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(templateAddressSrv, endpoint),
-			contentEnc,
+			contentEnc, singKey,
 			api.Metrics{MType: "gauge", ID: key, Value: &value},
 			metrics)
 		if err != nil {
@@ -556,7 +565,7 @@ func CommonSendGag(nojson bool, endpoint, contentEnc, key string, value float64)
 	return nil
 }
 
-func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) error {
+func CommonSendCnt(nojson bool, endpoint, contentEnc, key, singKey string, value int64) error {
 	var metrics []api.Metrics
 	if nojson {
 		err := SendMetrics(fmt.Sprintf(templateAddressSrv, endpoint), fmt.Sprintf("counter/%s/%v", key, value))
@@ -566,7 +575,7 @@ func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) e
 	} else if !nojson {
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(templateAddressSrv, endpoint),
-			contentEnc,
+			contentEnc, singKey,
 			api.Metrics{MType: "counter", ID: key, Delta: &value},
 			metrics)
 		if err != nil {
@@ -578,7 +587,7 @@ func CommonSendCnt(nojson bool, endpoint, contentEnc, key string, value int64) e
 	return nil
 }
 
-func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endpoint, contentEnc string) {
+func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endpoint, contentEnc, singKey string) {
 	var metrics []api.Metrics
 	for k, v := range storage.Gauge {
 		switch {
@@ -587,7 +596,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 		default:
 			retrybuilder := func() func() error {
 				return func() error {
-					err := CommonSendGag(nojson, endpoint, contentEnc, k, v)
+					err := CommonSendGag(nojson, endpoint, contentEnc, singKey, k, v)
 					if err != nil {
 						log.Println(err)
 					}
@@ -607,7 +616,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 		default:
 			retrybuilder := func() func() error {
 				return func() error {
-					err := CommonSendCnt(nojson, endpoint, contentEnc, k, v)
+					err := CommonSendCnt(nojson, endpoint, contentEnc, singKey, k, v)
 					if err != nil {
 						log.Println(err)
 					}
@@ -625,7 +634,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 		var metric api.Metrics
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(updatesAddress, endpoint),
-			contentEnc, metric, metrics)
+			contentEnc, singKey, metric, metrics)
 		if err != nil {
 			log.Println(err)
 		}
@@ -633,7 +642,7 @@ func iterMemStorage(storage *memstorage.MemStorage, nojson, batchSend bool, endp
 	}
 }
 
-func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
+func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc, singKey string) {
 	var metric api.Metrics
 	var metrics []api.Metrics
 
@@ -662,7 +671,7 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 		default:
 			retrybuilder := func() func() error {
 				return func() error {
-					err := CommonSendGag(nojson, endpoint, contentEnc, metric.ID, *metric.Value)
+					err := CommonSendGag(nojson, endpoint, contentEnc, singKey, metric.ID, *metric.Value)
 					if err != nil {
 						log.Println(err)
 					}
@@ -698,7 +707,7 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 		default:
 			retrybuilder := func() func() error {
 				return func() error {
-					err := CommonSendCnt(nojson, endpoint, contentEnc, metric.ID, *metric.Delta)
+					err := CommonSendCnt(nojson, endpoint, contentEnc, singKey, metric.ID, *metric.Delta)
 					if err != nil {
 						log.Println(err)
 					}
@@ -716,7 +725,7 @@ func iterDB(nojson, batchSend bool, dbconstr, endpoint, contentEnc string) {
 		var metric api.Metrics
 		resp, err := JSONSendMetrics(
 			fmt.Sprintf(updatesAddress, endpoint),
-			contentEnc, metric, metrics)
+			contentEnc, singKey, metric, metrics)
 		if err != nil {
 			log.Println(err)
 		}
@@ -757,7 +766,7 @@ func main() {
 	var contentEnc string
 	var dbconstring string
 	var fileStoragePath string
-	var signkeystr string
+	var singkeystr string
 	var nojson bool
 	var pInterv int
 	var rInterv int
@@ -779,7 +788,7 @@ func main() {
 	pflag.StringVarP(&contentEnc, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	// pflag.StringVarP(&fileStoragePath, "filepath", "f", storefiledfl, "Used to set file path to save metrics.")
 	pflag.StringVarP(&dbconstring, "dbconstring", "d", "", "Used to set file path to save metrics.")
-	pflag.StringVarP(&signkeystr, "signkeystr", "k", "", "Used to set key for calc hash.")
+	pflag.StringVarP(&singkeystr, "singkeystr", "k", "", "Used to set key for calc hash.")
 	pflag.IntVarP(&pInterv, "pollinterval", "p", pollInterval, "User for set poll interval in seconds.")
 	pflag.IntVarP(&rInterv, "reportinterval", "r", reportInterval, "User for set report interval (send to srv) in seconds.")
 	pflag.BoolVarP(&nojson, "nojson", "n", false, "Use for enable url request")
@@ -815,10 +824,9 @@ func main() {
 		}
 	}
 
-	signkeystrTmp := os.Getenv("KEY")
-	// []byte(signkeystr) str to byte slice
-	if len(signkeystrTmp) != 0 {
-		signkeystr = signkeystrTmp
+	singkeystrTmp := os.Getenv("KEY")
+	if len(singkeystrTmp) != 0 {
+		singkeystr = singkeystrTmp
 	}
 
 	// if fileStoragePath != storefiledfl && len(fileStoragePath) != 0 {
@@ -856,11 +864,6 @@ func main() {
 		panic("couldn't alloc mem")
 	}
 
-	// _, err = os.OpenFile(fmt.Sprintf(fileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	batchSend := ChkUpdates(endpoint)
 
 	pollTik := time.NewTicker(time.Duration(pInterv) * time.Second)
@@ -888,10 +891,10 @@ func main() {
 
 		case <-reportTik.C:
 			if storageSelecter == "MEMORY" {
-				iterMemStorage(storage, nojson, batchSend, endpoint, contentEnc)
+				iterMemStorage(storage, nojson, batchSend, endpoint, contentEnc, singkeystr)
 			}
 			if storageSelecter == "DATABASE" {
-				iterDB(nojson, batchSend, dbconstring, endpoint, contentEnc)
+				iterDB(nojson, batchSend, dbconstring, endpoint, contentEnc, singkeystr)
 			}
 			// if storageSelecter == "FILE" {
 			// 	iterFile(nojson, fileStoragePath, endpoint, contentEnc)

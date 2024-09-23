@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,6 +20,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -393,7 +395,7 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 }
 
 // Multiple value update handle
-func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
+func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter, singKey string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var newStorage *memstorage.MemStorage
@@ -428,6 +430,21 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
 			return
 		}
+
+		if len(singKey) != 0 {
+			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
+			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sing str to []byte"), 500)
+				return
+			}
+			comp := security.CompareSing(calcSing, recivedSing)
+			if !comp {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "signature discrepancy"), 400)
+				return
+			}
+		}
+
 		if strings.Contains(r.RequestURI, "/updates/") {
 			// десериализуем JSON в metrics
 			if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
@@ -575,7 +592,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 	return nil
 }
 
-func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string) http.HandlerFunc {
+func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter, singkeystr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics *api.Metrics
@@ -697,7 +714,10 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-
+		if len(singkeystr) != 0 {
+			sing := security.SingSendData(resp, []byte(singkeystr))
+			w.Header().Add("HashSHA256", hex.EncodeToString(sing))
+		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)

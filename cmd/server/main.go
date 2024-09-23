@@ -27,6 +27,7 @@ func main() {
 	var endpoint string
 	var fileStoragePath string
 	var dbconstring string
+	var signkeystr string
 	var storeInterval int
 	var tempfile *os.File
 	var restore bool
@@ -44,6 +45,7 @@ func main() {
 	flag.StringVar(&endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
 	flag.StringVar(&fileStoragePath, "f", saveMetricsDefaultPath, "Used to set file path to save metrics.")
 	flag.StringVar(&dbconstring, "d", "", "Used to set db connet string.")
+	flag.StringVar(&signkeystr, "k", "", "Used to set key for calc hash.")
 	flag.BoolVar(&restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&storeInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
@@ -89,6 +91,11 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	signkeystrTmp := os.Getenv("KEY")
+	if len(signkeystrTmp) != 0 {
+		signkeystr = signkeystrTmp
 	}
 
 	if len(dbconstring) != 0 {
@@ -158,12 +165,12 @@ func main() {
 		gw.Post("/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/", handlers.WithLogging(handlers.JSONUpdateMMHandle(
 			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath,
-			dbconstring, storageSelecter, storeInterval)))
+			dbconstring, storageSelecter, signkeystr, storeInterval)))
 		gw.Post("/updates/", handlers.WithLogging(handlers.JSONUpdateMMHandle(
 			memSto, fmt.Sprintf("%stmp", fileStoragePath), saveMetricsDefaultPath,
-			dbconstring, storageSelecter, storeInterval)))
+			dbconstring, storageSelecter, signkeystr, storeInterval)))
 		gw.Post("/value/", handlers.WithLogging(handlers.JSONRetrieveOneHandle(
-			memSto, fmt.Sprintf("%stmp", fileStoragePath), dbconstring, storageSelecter)))
+			memSto, fmt.Sprintf("%stmp", fileStoragePath), dbconstring, storageSelecter, signkeystr)))
 		gw.Post("/update/{mType}/{mName}", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/", handlers.WithLogging(handlers.BadRequest))
 		gw.Post("/update/{mType}/{mName}/{mValue}", handlers.WithLogging(handlers.UpdateMHandle(
