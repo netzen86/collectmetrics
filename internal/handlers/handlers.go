@@ -395,7 +395,8 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 }
 
 // Multiple value update handle
-func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter, singKey string, time int) http.HandlerFunc {
+func JSONUpdateMMHandle(storage repositories.Repo,
+	tempfilename, filename, dbconstr, storageSelecter, signKey string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var newStorage *memstorage.MemStorage
@@ -424,14 +425,14 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			return
 		}
 
-		if len(singKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
-			calcSing := security.SingSendData(buf.Bytes(), []byte(singKey))
-			recivedSing, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
+			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
+			recivedSign, err := hex.DecodeString(r.Header.Get("HashSHA256"))
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sing str to []byte"), 500)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sign str to []byte"), 500)
 				return
 			}
-			comp := security.CompareSing(calcSing, recivedSing)
+			comp := security.CompareSign(calcSign, recivedSign)
 			if !comp {
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), "signature discrepancy"), http.StatusBadRequest)
 				return
@@ -500,9 +501,9 @@ func JSONUpdateMMHandle(storage repositories.Repo, tempfilename, filename, dbcon
 			return
 		}
 
-		if len(singKey) != 0 {
-			sing := security.SingSendData(resp, []byte(singKey))
-			w.Header().Add("HashSHA256", hex.EncodeToString(sing))
+		if len(signKey) != 0 {
+			sign := security.SignSendData(resp, []byte(signKey))
+			w.Header().Add("HashSHA256", hex.EncodeToString(sign))
 		}
 
 		w.Header().Set("Content-Type", api.Js)
@@ -597,7 +598,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 	return nil
 }
 
-func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter, singkeystr string) http.HandlerFunc {
+func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter, signkeystr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics *api.Metrics
@@ -719,9 +720,9 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
-		if len(singkeystr) != 0 {
-			sing := security.SingSendData(resp, []byte(singkeystr))
-			w.Header().Add("HashSHA256", hex.EncodeToString(sing))
+		if len(signkeystr) != 0 {
+			sign := security.SignSendData(resp, []byte(signkeystr))
+			w.Header().Add("HashSHA256", hex.EncodeToString(sign))
 		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
