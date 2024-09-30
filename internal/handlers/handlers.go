@@ -438,7 +438,7 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				return
 			}
 		}
-
+		log.Println("ENCODING", r.Header.Get("Content-Encoding"))
 		// распаковываем если контент упакован
 		err = utils.SelectDeCoHTTP(&buf, r)
 		if err != nil {

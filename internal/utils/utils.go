@@ -39,7 +39,7 @@ func GzipDecompress(buf *bytes.Buffer) error {
 	if err != nil {
 		return fmt.Errorf("!!!%s!!! unpacking data error", err)
 	}
-	// defer gz.Close()
+	defer gz.Close()
 
 	// в отчищенную переменную buf записываются распакованные данные
 	buf.Reset()
