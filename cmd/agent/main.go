@@ -60,9 +60,10 @@ const (
 	reportInterval     int    = 10
 )
 
-func CollectMetrics(metrics *[]api.Metrics) {
+func CollectMetrics(metrics *[]api.Metrics, counter *int64) {
 	var memStats runtime.MemStats
-
+	var emptySlice []api.Metrics
+	*metrics = emptySlice
 	runtime.GC()
 	runtime.ReadMemStats(&memStats)
 
@@ -100,8 +101,8 @@ func CollectMetrics(metrics *[]api.Metrics) {
 		value := v()
 		*metrics = append(*metrics, api.Metrics{ID: k, MType: gag, Value: &value})
 	}
-	delta := int64(1)
-	*metrics = append(*metrics, api.Metrics{ID: PollCount, MType: cnt, Delta: &delta})
+	*counter += 1
+	*metrics = append(*metrics, api.Metrics{ID: PollCount, MType: cnt, Delta: counter})
 }
 
 func JSONdecode(resp *http.Response) {
@@ -200,6 +201,7 @@ func main() {
 	var endpoint string
 	var contentEnc string
 	var signkeystr string
+	var counter int64
 	var metrics []api.Metrics
 	var pInterv int
 	var rInterv int
@@ -257,7 +259,7 @@ func main() {
 	for {
 		select {
 		case <-pollTik.C:
-			CollectMetrics(&metrics)
+			CollectMetrics(&metrics, &counter)
 		case <-reportTik.C:
 			iterMemStorage(metrics, endpoint, signkeystr)
 		}

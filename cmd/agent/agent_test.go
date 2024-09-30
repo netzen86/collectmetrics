@@ -9,6 +9,7 @@ import (
 func TestCollectMetrics(t *testing.T) {
 	type args struct {
 		metrics *[]api.Metrics
+		counter *int64
 	}
 	tests := []struct {
 		name string
@@ -18,7 +19,7 @@ func TestCollectMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			CollectMetrics(tt.args.metrics)
+			CollectMetrics(tt.args.metrics, tt.args.counter)
 		})
 	}
 }
