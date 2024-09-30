@@ -440,12 +440,10 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		}
 		log.Println("ENCODING", r.Header.Get("Content-Encoding"))
 		// распаковываем если контент упакован
-		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) {
-			err = utils.SelectDeCoHTTP(&buf, r)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
-				return
-			}
+		err = utils.SelectDeCoHTTP(&buf, r)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+			return
 		}
 
 		if strings.Contains(r.RequestURI, "/updates/") {
