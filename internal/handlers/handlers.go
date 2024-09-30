@@ -407,17 +407,17 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		var err error
 
 		// читаем тело запроса
-		// readedbytes, err := buf.ReadFrom(r.Body)
-		// if err != nil {
-		// 	http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
-		// 	return
-		// }
+		readedbytes, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
+			return
+		}
 		// отвечаем агенту что поддерживаем компрессию
-		// if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
-		// 	w.Header().Add("Accept-Encoding", api.Gz)
-		// 	w.WriteHeader(http.StatusOK)
-		// 	return
-		// }
+		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
+			w.Header().Add("Accept-Encoding", api.Gz)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		// if readedbytes == 0 && r.RequestURI == "/updates/" {
 		// 	// w.Header().Add("Accept-Encoding", api.Gz)
@@ -460,7 +460,12 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				return
 			}
 			metrics = append(metrics, metric)
-			log.Println("METRICS", metrics)
+			if metrics[0].MType == "gauge" {
+				log.Println("METRICS", metrics[0].ID, metrics[0].Value)
+			} else if metrics[0].MType == "counter" {
+				log.Println("METRICS", metrics[0].ID, metrics[0].Delta)
+
+			}
 		}
 
 		for _, metr := range metrics {
