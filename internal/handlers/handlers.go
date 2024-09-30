@@ -407,17 +407,17 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		var err error
 
 		// читаем тело запроса
-		readedbytes, err := buf.ReadFrom(r.Body)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
-			return
-		}
+		// readedbytes, err := buf.ReadFrom(r.Body)
+		// if err != nil {
+		// 	http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)
+		// 	return
+		// }
 		// отвечаем агенту что поддерживаем компрессию
-		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
-			w.Header().Add("Accept-Encoding", api.Gz)
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+		// if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) && readedbytes == 0 {
+		// 	w.Header().Add("Accept-Encoding", api.Gz)
+		// 	w.WriteHeader(http.StatusOK)
+		// 	return
+		// }
 
 		// if readedbytes == 0 && r.RequestURI == "/updates/" {
 		// 	// w.Header().Add("Accept-Encoding", api.Gz)
@@ -440,10 +440,12 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		}
 		log.Println("ENCODING", r.Header.Get("Content-Encoding"))
 		// распаковываем если контент упакован
-		err = utils.SelectDeCoHTTP(&buf, r)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
-			return
+		if strings.Contains(r.Header.Get("Content-Encoding"), api.Gz) {
+			err = utils.SelectDeCoHTTP(&buf, r)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+				return
+			}
 		}
 
 		if strings.Contains(r.RequestURI, "/updates/") {
