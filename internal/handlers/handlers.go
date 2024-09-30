@@ -419,11 +419,11 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			return
 		}
 
-		if readedbytes == 0 && r.RequestURI == "/updates/" {
-			// w.Header().Add("Accept-Encoding", api.Gz)
-			w.WriteHeader(http.StatusOK)
-			return
-		}
+		// if readedbytes == 0 && r.RequestURI == "/updates/" {
+		// 	// w.Header().Add("Accept-Encoding", api.Gz)
+		// 	w.WriteHeader(http.StatusOK)
+		// 	return
+		// }
 
 		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
 			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
@@ -449,16 +449,18 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		if strings.Contains(r.RequestURI, "/updates/") {
 			// десериализуем JSON в metrics
 			if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode slice metric to json error"), 400)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode slice metrics to json error"), 400)
 				return
 			}
 		} else if strings.Contains(r.RequestURI, "/update/") {
 			// десериализуем JSON в metric
 			if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
+				log.Println("decode metric error")
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode one metric to json error"), 400)
 				return
 			}
 			metrics = append(metrics, metric)
+			log.Println("METRICS", metrics)
 		}
 
 		for _, metr := range metrics {
@@ -468,7 +470,6 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(400), "can't select sorage ", err), 400)
 				return
 			}
-
 		}
 
 		if len(metrics) == 0 {
