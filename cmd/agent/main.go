@@ -168,7 +168,7 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response
 
 	request.Header.Add("Content-Encoding", api.Gz)
 	request.Header.Add("Content-Type", api.Js)
-	// request.Header.Add("Accept-Encoding", api.Gz)
+	request.Header.Add("Accept-Encoding", api.Gz)
 
 	// если передан ключ добавляем подпись к заголовку
 	if len(signKey) != 0 {
