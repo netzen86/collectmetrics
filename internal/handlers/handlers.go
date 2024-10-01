@@ -438,7 +438,6 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				return
 			}
 		}
-		log.Println("ENCODING", r.Header.Get("Content-Encoding"))
 		// распаковываем если контент упакован
 		err = utils.SelectDeCoHTTP(&buf, r)
 		if err != nil {
@@ -460,10 +459,12 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				return
 			}
 			metrics = append(metrics, metric)
+			// debug
+			log.Println("METRIC", metrics)
 			if metrics[0].MType == "gauge" {
-				log.Println("METRICS", metrics[0].ID, metrics[0].Value)
+				log.Println("METRICS", metrics[0].ID, *metrics[0].Value)
 			} else if metrics[0].MType == "counter" {
-				log.Println("METRICS", metrics[0].ID, metrics[0].Delta)
+				log.Println("METRICS", metrics[0].ID, *metrics[0].Delta)
 
 			}
 		}
