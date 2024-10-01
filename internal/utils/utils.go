@@ -20,7 +20,7 @@ const (
 	backoffII       time.Duration = 1
 	backoffRF       float64       = 0.5
 	backoffMult     float64       = 2
-	backoffMaxETime time.Duration = 5
+	backoffMaxETime time.Duration = 8
 )
 
 func GzipCompress(data []byte) ([]byte, error) {
