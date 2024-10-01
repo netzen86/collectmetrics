@@ -4,18 +4,18 @@ import (
 	"log"
 	"time"
 
-	agent_config "github.com/netzen86/collectmetrics/config"
+	agentcfg "github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/agent"
 	"github.com/netzen86/collectmetrics/internal/api"
 )
 
 func main() {
 	var metrics []api.Metrics
-	var agentCfg agent_config.AgentCfg
+	var agentCfg agentcfg.AgentCfg
 	var counter int64
 	var err error
 
-	agentCfg, err = agent_config.GetAgentCfg()
+	agentCfg, err = agentcfg.GetAgentCfg()
 	if err != nil {
 		log.Fatalf("error on get configuration %v", err)
 	}
