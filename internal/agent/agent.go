@@ -190,7 +190,8 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response
 	return response, nil
 }
 
-func IterMemStorage(metrics []api.Metrics, endpoint, signKey string) {
+// функция для отправки метрик
+func SendMetrics(metrics []api.Metrics, endpoint, signKey string) {
 	resp, err := JSONSendMetrics(
 		fmt.Sprintf(updatesAddress, endpoint),
 		signKey, metrics)

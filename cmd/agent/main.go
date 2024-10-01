@@ -31,7 +31,7 @@ func main() {
 		case <-pollTik.C:
 			agent.CollectMetrics(&metrics, &counter)
 		case <-reportTik.C:
-			agent.IterMemStorage(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
+			agent.SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
 		}
 	}
 }
