@@ -107,6 +107,7 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 		_, err = db.ExecContext(ctx, stmtGauge, metricName, val)
 		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", err)
 		if err != nil {
+			db.Close()
 			return fmt.Errorf("insert table error - %w", err)
 		}
 
@@ -118,6 +119,7 @@ func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string,
 		_, err = db.ExecContext(ctx, stmtCounter, metricName, del)
 		// log.Println("Inserting counter table value: ", del, "ResVAl:", err)
 		if err != nil {
+			db.Close()
 			return fmt.Errorf("insert table error - %w", err)
 		}
 	default:
@@ -161,7 +163,7 @@ func RetriveOneMetricDB(ctx context.Context, dbconstr string, metric *api.Metric
 	if err != nil {
 		return err
 	}
-	// defer db.Close()
+	defer db.Close()
 	switch {
 	case metric.MType == "gauge":
 		smtpGag := `SELECT value FROM gauge WHERE name=$1`
