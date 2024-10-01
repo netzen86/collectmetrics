@@ -16,6 +16,13 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 )
 
+const (
+	backoffII       time.Duration = 1
+	backoffRF       float64       = 0.5
+	backoffMult     float64       = 2
+	backoffMaxETime time.Duration = 5
+)
+
 func GzipCompress(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
@@ -117,10 +124,10 @@ func ListDir(path string) error {
 
 func RetrayFunc(retrybuilder func() func() error) error {
 	ExpBackoff := backoff.NewExponentialBackOff()
-	ExpBackoff.InitialInterval = 1 * time.Second
-	ExpBackoff.RandomizationFactor = 0.5
-	ExpBackoff.Multiplier = 2
-	ExpBackoff.MaxElapsedTime = 9 * time.Second
+	ExpBackoff.InitialInterval = backoffII * time.Second
+	ExpBackoff.RandomizationFactor = backoffRF
+	ExpBackoff.Multiplier = backoffMult
+	ExpBackoff.MaxElapsedTime = backoffMaxETime * time.Second
 
 	err := backoff.Retry(retrybuilder(), ExpBackoff)
 	if err != nil {
