@@ -20,16 +20,16 @@ func main() {
 		log.Fatalf("error on get configuration %v", err)
 	}
 
-	// устанвливаем для отображения даты и времени в логах
+	// устанавливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
 
 	pollTik := time.NewTicker(time.Duration(agentCfg.PollInterval) * time.Second)
-	reportTik := time.NewTicker(time.Duration(agent.ReportInterval) * time.Second)
+	reportTik := time.NewTicker(time.Duration(agentCfg.Reportinterval) * time.Second)
 
 	for {
 		select {
 		case <-pollTik.C:
-			agent.CollectMetrics(&metrics, &counter)
+			metrics = agent.CollectMetrics(metrics, &counter)
 		case <-reportTik.C:
 			agent.SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
 		}
