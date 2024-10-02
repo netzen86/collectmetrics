@@ -10,7 +10,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"runtime"
-	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
@@ -18,91 +17,85 @@ import (
 )
 
 const (
-	AddressServer      string        = "localhost:8080"
-	TemplateAddressSrv string        = "http://%s/update/"
-	updatesAddress     string        = "http://%s/updates/"
-	Gag                string        = "gauge"
-	Cnt                string        = "counter"
-	Alloc              string        = "Alloc"
-	BuckHashSys        string        = "BuckHashSys"
-	Frees              string        = "Frees"
-	GCCPUFraction      string        = "GCCPUFraction"
-	GCSys              string        = "GCSys"
-	HeapAlloc          string        = "HeapAlloc"
-	HeapIdle           string        = "HeapIdle"
-	HeapInuse          string        = "HeapInuse"
-	HeapObjects        string        = "HeapObjects"
-	HeapReleased       string        = "HeapReleased"
-	HeapSys            string        = "HeapSys"
-	LastGC             string        = "LastGC"
-	Lookups            string        = "Lookups"
-	MCacheInuse        string        = "MCacheInuse"
-	MCacheSys          string        = "MCacheSys"
-	MSpanInuse         string        = "MSpanInuse"
-	MSpanSys           string        = "MSpanSys"
-	Mallocs            string        = "Mallocs"
-	NextGC             string        = "NextGC"
-	NumForcedGC        string        = "NumForcedGC"
-	NumGC              string        = "NumGC"
-	OtherSys           string        = "OtherSys"
-	PauseTotalNs       string        = "PauseTotalNs"
-	StackInuse         string        = "StackInuse"
-	StackSys           string        = "StackSys"
-	Sys                string        = "Sys"
-	TotalAlloc         string        = "TotalAlloc"
-	PollCount          string        = "PollCount"
-	RandomValue        string        = "RandomValue"
-	PollInterval       time.Duration = 2
-	ReportInterval     time.Duration = 10
+	updatesAddress string = "http://%s/updates/"
+	gag            string = "gauge"
+	cnt            string = "counter"
+	alloc          string = "Alloc"
+	buckHashSys    string = "BuckHashSys"
+	frees          string = "Frees"
+	gCCPUFraction  string = "GCCPUFraction"
+	gCSys          string = "GCSys"
+	heapAlloc      string = "HeapAlloc"
+	heapIdle       string = "HeapIdle"
+	heapInuse      string = "HeapInuse"
+	heapObjects    string = "HeapObjects"
+	heapReleased   string = "HeapReleased"
+	heapSys        string = "HeapSys"
+	lastGC         string = "LastGC"
+	lookups        string = "Lookups"
+	mCacheInuse    string = "MCacheInuse"
+	mCacheSys      string = "MCacheSys"
+	mSpanInuse     string = "MSpanInuse"
+	mSpanSys       string = "MSpanSys"
+	mallocs        string = "Mallocs"
+	nextGC         string = "NextGC"
+	numForcedGC    string = "NumForcedGC"
+	numGC          string = "NumGC"
+	otherSys       string = "OtherSys"
+	pauseTotalNs   string = "PauseTotalNs"
+	stackInuse     string = "StackInuse"
+	stackSys       string = "StackSys"
+	sys            string = "Sys"
+	totalAlloc     string = "TotalAlloc"
+	pollCount      string = "PollCount"
+	randomValue    string = "RandomValue"
 )
 
 // функция сбора метрик
-func CollectMetrics(metrics *[]api.Metrics, counter *int64) {
+func CollectMetrics(metrics []api.Metrics, counter *int64) []api.Metrics {
 	var memStats runtime.MemStats
-	var emptySlice []api.Metrics
 
-	// удаляем предыдущие метрики
-	*metrics = emptySlice
-	runtime.GC()
+	// runtime.GC()
 	runtime.ReadMemStats(&memStats)
 
 	// мапа анонимных функций для сбора метрик
 	metFunc := map[string]func() float64{
-		Alloc:         func() float64 { return float64(memStats.Alloc) },
-		BuckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
-		Frees:         func() float64 { return float64(memStats.Frees) },
-		GCCPUFraction: func() float64 { return float64(memStats.GCCPUFraction) },
-		GCSys:         func() float64 { return float64(memStats.GCSys) },
-		HeapAlloc:     func() float64 { return float64(memStats.HeapAlloc) },
-		HeapIdle:      func() float64 { return float64(memStats.HeapIdle) },
-		HeapInuse:     func() float64 { return float64(memStats.HeapInuse) },
-		HeapObjects:   func() float64 { return float64(memStats.HeapObjects) },
-		HeapReleased:  func() float64 { return float64(memStats.HeapReleased) },
-		HeapSys:       func() float64 { return float64(memStats.HeapSys) },
-		LastGC:        func() float64 { return float64(memStats.LastGC) },
-		Lookups:       func() float64 { return float64(memStats.Lookups) },
-		MCacheInuse:   func() float64 { return float64(memStats.MCacheInuse) },
-		MCacheSys:     func() float64 { return float64(memStats.MCacheSys) },
-		MSpanInuse:    func() float64 { return float64(memStats.MSpanInuse) },
-		MSpanSys:      func() float64 { return float64(memStats.MSpanSys) },
-		Mallocs:       func() float64 { return float64(memStats.Mallocs) },
-		NextGC:        func() float64 { return float64(memStats.NextGC) },
-		NumForcedGC:   func() float64 { return float64(memStats.NumForcedGC) },
-		NumGC:         func() float64 { return float64(memStats.NumGC) },
-		OtherSys:      func() float64 { return float64(memStats.OtherSys) },
-		PauseTotalNs:  func() float64 { return float64(memStats.PauseTotalNs) },
-		StackInuse:    func() float64 { return float64(memStats.StackInuse) },
-		StackSys:      func() float64 { return float64(memStats.StackSys) },
-		Sys:           func() float64 { return float64(memStats.Sys) },
-		TotalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
-		RandomValue:   func() float64 { return rand.Float64() }}
+		alloc:         func() float64 { return float64(memStats.Alloc) },
+		buckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
+		frees:         func() float64 { return float64(memStats.Frees) },
+		gCCPUFraction: func() float64 { return float64(memStats.GCCPUFraction) },
+		gCSys:         func() float64 { return float64(memStats.GCSys) },
+		heapAlloc:     func() float64 { return float64(memStats.HeapAlloc) },
+		heapIdle:      func() float64 { return float64(memStats.HeapIdle) },
+		heapInuse:     func() float64 { return float64(memStats.HeapInuse) },
+		heapObjects:   func() float64 { return float64(memStats.HeapObjects) },
+		heapReleased:  func() float64 { return float64(memStats.HeapReleased) },
+		heapSys:       func() float64 { return float64(memStats.HeapSys) },
+		lastGC:        func() float64 { return float64(memStats.LastGC) },
+		lookups:       func() float64 { return float64(memStats.Lookups) },
+		mCacheInuse:   func() float64 { return float64(memStats.MCacheInuse) },
+		mCacheSys:     func() float64 { return float64(memStats.MCacheSys) },
+		mSpanInuse:    func() float64 { return float64(memStats.MSpanInuse) },
+		mSpanSys:      func() float64 { return float64(memStats.MSpanSys) },
+		mallocs:       func() float64 { return float64(memStats.Mallocs) },
+		nextGC:        func() float64 { return float64(memStats.NextGC) },
+		numForcedGC:   func() float64 { return float64(memStats.NumForcedGC) },
+		numGC:         func() float64 { return float64(memStats.NumGC) },
+		otherSys:      func() float64 { return float64(memStats.OtherSys) },
+		pauseTotalNs:  func() float64 { return float64(memStats.PauseTotalNs) },
+		stackInuse:    func() float64 { return float64(memStats.StackInuse) },
+		stackSys:      func() float64 { return float64(memStats.StackSys) },
+		sys:           func() float64 { return float64(memStats.Sys) },
+		totalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
+		randomValue:   func() float64 { return rand.Float64() }}
 
 	for k, v := range metFunc {
 		value := v()
-		*metrics = append(*metrics, api.Metrics{ID: k, MType: Gag, Value: &value})
+		metrics = append(metrics, api.Metrics{ID: k, MType: gag, Value: &value})
 	}
 	*counter += 1
-	*metrics = append(*metrics, api.Metrics{ID: PollCount, MType: Cnt, Delta: counter})
+	metrics = append(metrics, api.Metrics{ID: pollCount, MType: cnt, Delta: counter})
+	return metrics
 }
 
 // функция для парсинга ответа на запрос обновления метрик
