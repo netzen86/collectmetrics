@@ -4,11 +4,17 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
-	"github.com/netzen86/collectmetrics/internal/agent"
-	"github.com/netzen86/collectmetrics/internal/api"
+	"time"
 
 	"github.com/spf13/pflag"
+
+	"github.com/netzen86/collectmetrics/internal/api"
+)
+
+const (
+	addressServer  string        = "localhost:8080"
+	pollInterval   time.Duration = 2
+	reportInterval time.Duration = 10
 )
 
 type AgentCfg struct {
@@ -24,11 +30,11 @@ func GetAgentCfg() (AgentCfg, error) {
 	var err error
 
 	// опредаляем флаги
-	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", agent.AddressServer, "Used to set the address and port to connect server.")
+	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&agentCfg.SignKeyString, "signkeystring", "k", "", "Used to set key for calc hash.")
-	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(agent.PollInterval), "User for set poll interval in seconds.")
-	pflag.IntVarP(&agentCfg.Reportinterval, "reportinterval", "r", int(agent.ReportInterval), "User for set report interval (send to srv) in seconds.")
+	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
+	pflag.IntVarP(&agentCfg.Reportinterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
 	pflag.Parse()
 
 	// если переданы аргументы не флаги печатаем подсказку
