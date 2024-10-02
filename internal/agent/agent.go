@@ -52,9 +52,9 @@ const (
 )
 
 // функция сбора метрик
-func CollectMetrics(metrics []api.Metrics, counter *int64) []api.Metrics {
+func CollectMetrics(counter *int64) []api.Metrics {
 	var memStats runtime.MemStats
-
+	var metrics []api.Metrics
 	// runtime.GC()
 	runtime.ReadMemStats(&memStats)
 

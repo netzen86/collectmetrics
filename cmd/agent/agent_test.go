@@ -4,12 +4,10 @@ import (
 	"testing"
 
 	"github.com/netzen86/collectmetrics/internal/agent"
-	"github.com/netzen86/collectmetrics/internal/api"
 )
 
 func TestCollectMetrics(t *testing.T) {
 	type args struct {
-		metrics []api.Metrics
 		counter *int64
 	}
 	tests := []struct {
@@ -20,7 +18,7 @@ func TestCollectMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			agent.CollectMetrics(tt.args.metrics, tt.args.counter)
+			agent.CollectMetrics(tt.args.counter)
 		})
 	}
 }

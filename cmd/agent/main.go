@@ -29,7 +29,7 @@ func main() {
 	for {
 		select {
 		case <-pollTik.C:
-			metrics = agent.CollectMetrics(metrics, &counter)
+			metrics = agent.CollectMetrics(&counter)
 		case <-reportTik.C:
 			agent.SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
 		}
