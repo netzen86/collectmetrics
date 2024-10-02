@@ -16,7 +16,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/db"
-	"github.com/netzen86/collectmetrics/internal/loger"
+	logger "github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
@@ -765,7 +765,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sugar := loger.Loger()
+		sugar := logger.Loger()
 
 		// функция Now() возвращает текущее время
 		start := time.Now()
@@ -775,7 +775,7 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 		// метод запроса
 		method := r.Method
 
-		lw, rd := loger.NewLRW(w)
+		lw, rd := logger.NewLRW(w)
 
 		// точка, где выполняется хендлер pingHandler
 		h.ServeHTTP(lw, r) // обслуживание оригинального запроса
