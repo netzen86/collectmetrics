@@ -9,7 +9,7 @@ import (
 
 func TestCollectMetrics(t *testing.T) {
 	type args struct {
-		metrics *[]api.Metrics
+		metrics []api.Metrics
 		counter *int64
 	}
 	tests := []struct {
