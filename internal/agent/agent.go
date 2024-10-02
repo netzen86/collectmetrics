@@ -135,7 +135,7 @@ func JSONdecode(resp *http.Response) {
 }
 
 // функция для отправки метрик
-func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response, error) {
+func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
 	var data, sign []byte
 	var err error
 
@@ -143,13 +143,13 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response
 	data, err = json.Marshal(metrics)
 	if err != nil {
 		log.Printf("serilazing error: %v\n", err)
-		return nil, fmt.Errorf("serilazing error: %v", err)
+		return fmt.Errorf("serilazing error: %v", err)
 	}
 
 	// сжимаем данные
 	data, err = utils.GzipCompress(data)
 	if err != nil {
-		return nil, fmt.Errorf("cannot compress data %v", err)
+		return fmt.Errorf("cannot compress data %v", err)
 	}
 
 	// если передан ключ создаем подпись
@@ -159,7 +159,7 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response
 
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return fmt.Errorf("%v", err)
 	}
 
 	request.Header.Add("Content-Encoding", api.Gz)
@@ -174,22 +174,23 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) (*http.Response
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("%v", err)
+		return fmt.Errorf("%v", err)
 	}
 	if response.StatusCode != 200 {
-		return nil, errors.New(response.Status)
+		return errors.New(response.Status)
 	}
 	// defer response.Body.Close()
-	return response, nil
+	JSONdecode(response)
+	return nil
 }
 
 // функция для отправки метрик
-func SendMetrics(metrics []api.Metrics, endpoint, signKey string) {
-	resp, err := JSONSendMetrics(
+func SendMetrics(metrics []api.Metrics, endpoint, signKey string) error {
+	err := JSONSendMetrics(
 		fmt.Sprintf(updatesAddress, endpoint),
 		signKey, metrics)
 	if err != nil {
-		log.Println(err)
+		return fmt.Errorf("get error when send metric %v", err)
 	}
-	JSONdecode(resp)
+	return nil
 }

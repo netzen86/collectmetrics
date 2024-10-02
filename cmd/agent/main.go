@@ -7,6 +7,7 @@ import (
 	agentcfg "github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/agent"
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 func main() {
@@ -31,7 +32,20 @@ func main() {
 		case <-pollTik.C:
 			metrics = agent.CollectMetrics(&counter)
 		case <-reportTik.C:
-			agent.SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
+			retrybuilder := func() func() error {
+				return func() error {
+					err = agent.SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 		}
 	}
 }
