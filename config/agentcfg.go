@@ -12,7 +12,6 @@ import (
 )
 
 const (
-	addressServer  string        = "localhost:8080"
 	pollInterval   time.Duration = 2
 	reportInterval time.Duration = 10
 )
