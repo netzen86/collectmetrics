@@ -1,4 +1,4 @@
-package agentcfg
+package config
 
 import (
 	"fmt"
