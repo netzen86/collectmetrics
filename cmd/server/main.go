@@ -10,9 +10,11 @@ import (
 )
 
 func main() {
+	var cfg config.ServerCfg
+
 	log.Println("!!! SERVER START !!!")
 
-	cfg, err := config.GetServerCfg()
+	err := cfg.GetServerCfg()
 	if err != nil {
 		log.Fatalf("error when getting config %v ", err)
 	}
