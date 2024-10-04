@@ -76,6 +76,7 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 		os.Exit(1)
 	}
 
+	// для земены значения по умолчания имени файла сохранения метрик
 	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef && len(serverCfg.FileStoragePath) != 0 {
 		serverCfg.FileStoragePathDef = serverCfg.FileStoragePath
 		serverCfg.StorageSelecter = ssFile
@@ -134,21 +135,25 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 func (serverCfg *ServerCfg) initSrv() error {
 	var err error
 
+	// создания мемсторожа
 	serverCfg.MemStorage, err = memstorage.NewMemStorage()
 	if err != nil {
 		return fmt.Errorf("error when get mem storage %v ", err)
 	}
 
+	// лог значений полученных из переменных окружения и флагов
 	log.Println("!!! SERVER START !!!",
 		serverCfg.Endpoint, serverCfg.FileStoragePathDef,
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
 
+	// создание фременого файла
 	serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("error create temp file %v ", err)
 	}
 
+	// если файл с метриками существует копируем его в файлсторож
 	if utils.ChkFileExist(serverCfg.FileStoragePath) {
 		data, err := os.ReadFile(serverCfg.FileStoragePath) //read the contents of source file
 		if err != nil {
@@ -160,11 +165,13 @@ func (serverCfg *ServerCfg) initSrv() error {
 		}
 	}
 
+	// копируем метрики из файла в мемсторож
 	if serverCfg.Restore {
 		log.Println("ENTER IN RESTORE")
 		files.LoadMetric(serverCfg.MemStorage, serverCfg.FileStoragePathDef)
 	}
 
+	// если храним метрики в базе данных то создаем таблицы counter и gauge
 	if serverCfg.StorageSelecter == ssDataBase {
 		retrybuilder := func() func() error {
 			return func() error {
