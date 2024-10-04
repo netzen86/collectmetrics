@@ -53,6 +53,7 @@ type ServerCfg struct {
 	MemStorage *memstorage.MemStorage `env:"" DefVal:""`
 }
 
+// метод для получения параметров запуска сервера из флагов
 func (serverCfg *ServerCfg) parseSrvFlags() error {
 
 	// значение переменных по умолчанию
@@ -87,47 +88,49 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	return nil
 }
 
-func (srvcfg *ServerCfg) getSrvEnv() error {
+// метод для получения параметров запуска сервера из переменных окружения
+func (serverCfg *ServerCfg) getSrvEnv() error {
 	var err error
 
 	// получаем данные для работы програмы из переменных окружения
 	// переменные окружения имеют наивысший приоритет
 	if len(os.Getenv(EnvAdd)) > 0 {
-		srvcfg.Endpoint = os.Getenv(EnvAdd)
+		serverCfg.Endpoint = os.Getenv(EnvAdd)
 	}
 
 	if len(os.Getenv(EnvSI)) != 0 {
-		srvcfg.StoreInterval, err = strconv.Atoi(os.Getenv(EnvSI))
+		serverCfg.StoreInterval, err = strconv.Atoi(os.Getenv(EnvSI))
 		if err != nil {
 			return fmt.Errorf("error atoi poll interval %v ", err)
 		}
 	}
 
 	if len(os.Getenv(EnvFSP)) != 0 {
-		srvcfg.FileStoragePath = os.Getenv(EnvFSP)
-		srvcfg.FileStoragePathDef = os.Getenv(EnvFSP)
-		srvcfg.StorageSelecter = ssFile
+		serverCfg.FileStoragePath = os.Getenv(EnvFSP)
+		serverCfg.FileStoragePathDef = os.Getenv(EnvFSP)
+		serverCfg.StorageSelecter = ssFile
 
 	}
 
 	if len(os.Getenv(EnvRes)) != 0 {
-		srvcfg.Restore, err = strconv.ParseBool(os.Getenv(EnvRes))
+		serverCfg.Restore, err = strconv.ParseBool(os.Getenv(EnvRes))
 		if err != nil {
 			return fmt.Errorf("error parse bool restore %v ", err)
 		}
 	}
 
 	if len(os.Getenv(EnvKey)) != 0 {
-		srvcfg.SignKeyString = os.Getenv(EnvKey)
+		serverCfg.SignKeyString = os.Getenv(EnvKey)
 	}
 
 	if len(os.Getenv(EnvDB)) != 0 {
-		srvcfg.DBconstring = os.Getenv(EnvDB)
-		srvcfg.StorageSelecter = ssDataBase
+		serverCfg.DBconstring = os.Getenv(EnvDB)
+		serverCfg.StorageSelecter = ssDataBase
 	}
 	return nil
 }
 
+// метод инициализации сервера
 func (serverCfg *ServerCfg) initSrv() error {
 	var err error
 
@@ -180,6 +183,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	return nil
 }
 
+// метод для получения конфигурации сервера
 func (serverCfg *ServerCfg) GetServerCfg() error {
 
 	err := serverCfg.parseSrvFlags()
