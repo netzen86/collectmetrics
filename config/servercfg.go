@@ -53,7 +53,41 @@ type ServerCfg struct {
 	MemStorage *memstorage.MemStorage `env:"" DefVal:""`
 }
 
-func getSrvEnv(srvcfg *ServerCfg) error {
+func (serverCfg *ServerCfg) parseSrvFlags() error {
+
+	// значение переменных по умолчанию
+	serverCfg.StorageSelecter = ssMemStor
+	serverCfg.FileStoragePathDef = "servermetrics.json"
+
+	// опредаляем флаги
+	flag.StringVar(&serverCfg.Endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
+	flag.StringVar(&serverCfg.FileStoragePath, "f", serverCfg.FileStoragePathDef, "Used to set file path to save metrics.")
+	flag.StringVar(&serverCfg.DBconstring, "d", "", "Used to set db connet string.")
+	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
+	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
+	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
+
+	flag.Parse()
+
+	// если серверу преданы параменты а не флаги печатаем какие параметры можно использовать
+	if len(flag.Args()) != 0 {
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef && len(serverCfg.FileStoragePath) != 0 {
+		serverCfg.FileStoragePathDef = serverCfg.FileStoragePath
+		serverCfg.StorageSelecter = ssFile
+	}
+
+	if len(serverCfg.DBconstring) != 0 {
+		serverCfg.StorageSelecter = ssDataBase
+	}
+
+	return nil
+}
+
+func (srvcfg *ServerCfg) getSrvEnv() error {
 	var err error
 
 	// получаем данные для работы програмы из переменных окружения
@@ -94,42 +128,8 @@ func getSrvEnv(srvcfg *ServerCfg) error {
 	return nil
 }
 
-func (serverCfg *ServerCfg) GetServerCfg() error {
+func (serverCfg *ServerCfg) initSrv() error {
 	var err error
-
-	// значение переменных по умолчанию
-	serverCfg.StorageSelecter = ssMemStor
-	serverCfg.FileStoragePathDef = "servermetrics.json"
-
-	// опредаляем флаги
-	flag.StringVar(&serverCfg.Endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
-	flag.StringVar(&serverCfg.FileStoragePath, "f", serverCfg.FileStoragePathDef, "Used to set file path to save metrics.")
-	flag.StringVar(&serverCfg.DBconstring, "d", "", "Used to set db connet string.")
-	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
-	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
-	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
-
-	flag.Parse()
-
-	// если серверу преданы параменты а не флаги печатаем какие параметры можно использовать
-	if len(flag.Args()) != 0 {
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
-
-	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef && len(serverCfg.FileStoragePath) != 0 {
-		serverCfg.FileStoragePathDef = serverCfg.FileStoragePath
-		serverCfg.StorageSelecter = ssFile
-	}
-
-	if len(serverCfg.DBconstring) != 0 {
-		serverCfg.StorageSelecter = ssDataBase
-	}
-
-	err = getSrvEnv(serverCfg)
-	if err != nil {
-		return fmt.Errorf("error when get env var %v ", err)
-	}
 
 	serverCfg.MemStorage, err = memstorage.NewMemStorage()
 	if err != nil {
@@ -176,6 +176,25 @@ func (serverCfg *ServerCfg) GetServerCfg() error {
 		if err != nil {
 			log.Fatal("tables not created ", err)
 		}
+	}
+	return nil
+}
+
+func (serverCfg *ServerCfg) GetServerCfg() error {
+
+	err := serverCfg.parseSrvFlags()
+	if err != nil {
+		return fmt.Errorf("error writing file: %v", err)
+	}
+
+	err = serverCfg.getSrvEnv()
+	if err != nil {
+		return fmt.Errorf("error writing file: %v", err)
+	}
+
+	err = serverCfg.initSrv()
+	if err != nil {
+		return fmt.Errorf("error writing file: %v", err)
 	}
 	return nil
 }
