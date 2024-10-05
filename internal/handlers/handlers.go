@@ -14,12 +14,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/db"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
@@ -92,33 +92,37 @@ func UpdateMHandle(storage repositories.Repo,
 	}
 }
 
+// функция выводит имена метрик хранящихся в хранилище
 func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		if r == nil {
-			http.Error(w, http.StatusText(500), 500)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		ctx := r.Context()
 		workDir := utils.WorkingDir()
 		if !utils.ChkFileExist(workDir + api.TemplatePath) {
-			http.Error(w, http.StatusText(500), 500)
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 			return
 		}
 		t, err := template.ParseFiles(workDir + api.TemplatePath)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
+			http.Error(w, fmt.Sprintf("%v %v\n",
+				http.StatusText(http.StatusInternalServerError), err),
+				http.StatusInternalServerError)
 			return
 		}
 		storage, err := storage.GetMemStorage(ctx)
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		t.Execute(&buf, storage)
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", api.HTML)
@@ -127,28 +131,22 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	}
 }
 
+// функция для получения значения метрики с помощью URI
 func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
-		var value float64
-		var delta int64
-		var ok bool
+		ctx := r.Context()
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
 
 		if metric.MType == "counter" {
 			if storageSelecter == "MEMORY" {
-				storage, err := storage.GetMemStorage(r.Context())
+				delta, err := storage.GetCounterMetric(ctx, metric.ID)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
-					return
-				}
-				delta, ok = storage.Counter[metric.ID]
-				if !ok {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
-						http.StatusText(404),
-						metric.ID, metric.MType), 404)
+						http.StatusText(http.StatusNotFound),
+						metric.ID, metric.MType), http.StatusNotFound)
 					return
 				}
 				metric.Delta = &delta
@@ -157,7 +155,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 
 				retrybuilder := func() func() error {
 					return func() error {
-						err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
+						err := db.RetriveOneMetricDB(ctx, dbconstr, &metric)
 						if err != nil {
 							log.Println(err)
 						}
@@ -168,20 +166,20 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(404),
-						metric.ID, metric.MType, err), 404)
+						http.StatusText(http.StatusNotFound),
+						metric.ID, metric.MType, err), http.StatusNotFound)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, http.StatusText(404), 404)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
-				_, err = files.ReadOneMetric(r.Context(), consumer, &metric)
+				_, err = files.ReadOneMetric(ctx, consumer, &metric)
 				if err != nil {
-					http.Error(w, http.StatusText(404), 404)
+					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 					return
 				}
 			}
@@ -192,17 +190,12 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 		} else if metric.MType == "gauge" {
 			log.Println("DB metric", metric.ID, metric.MType)
 			if storageSelecter == "MEMORY" {
-				storage, err := storage.GetMemStorage(r.Context())
+				value, err := storage.GetGaugeMetric(ctx, metric.ID)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
-					return
-				}
-				value, ok = storage.Gauge[metric.ID]
-				if !ok {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
-						http.StatusText(404),
-						metric.ID, metric.MType), 404)
+						http.StatusText(http.StatusNotFound),
+						metric.ID, metric.MType), http.StatusNotFound)
 					return
 				}
 				metric.Value = &value
@@ -211,7 +204,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 
 				retrybuilder := func() func() error {
 					return func() error {
-						err := db.RetriveOneMetricDB(r.Context(), dbconstr, &metric)
+						err := db.RetriveOneMetricDB(ctx, dbconstr, &metric)
 						if err != nil {
 							log.Println(err)
 						}
@@ -220,19 +213,22 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 				}
 				err := utils.RetrayFunc(retrybuilder)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(http.StatusNotFound), err),
+						http.StatusNotFound)
 					return
 				}
 			}
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(http.StatusNotFound), err),
+						http.StatusNotFound)
 					return
 				}
-				_, err = files.ReadOneMetric(r.Context(), consumer, &metric)
+				_, err = files.ReadOneMetric(ctx, consumer, &metric)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(404), err), 404)
+					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(http.StatusNotFound), err),
+						http.StatusNotFound)
 					return
 				}
 
@@ -242,7 +238,8 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			w.Write([]byte(valueStr))
 			return
 		} else {
-			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
+			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(http.StatusBadRequest)),
+				http.StatusBadRequest)
 			return
 		}
 	}
@@ -251,17 +248,9 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbconstr, storageSelecter string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		var newStorage *memstorage.MemStorage
 		var metrics api.Metrics
 		var buf bytes.Buffer
 		var err error
-		if storageSelecter == "MEMORY" {
-			newStorage, err = storage.GetMemStorage(ctx)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "error create new storage"), 500)
-				return
-			}
-		}
 
 		// читаем тело запроса
 		readedbytes, err := buf.ReadFrom(r.Body)
@@ -303,15 +292,21 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 			if storageSelecter == "MEMORY" {
 				err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Delta)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), err),
+						http.StatusBadRequest)
 					return
 				}
-				*metrics.Delta = newStorage.Counter[metrics.ID]
+				*metrics.Delta, err = storage.GetCounterMetric(ctx, metrics.ID)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), err),
+						http.StatusBadRequest)
+					return
+				}
 			}
 			if storageSelecter == "DATABASE" {
 				retrybuilder := func() func() error {
 					return func() error {
-						err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Delta)
+						err = db.UpdateParamDB(ctx, dbconstr, metrics.MType, metrics.ID, *metrics.Delta)
 						if err != nil {
 							log.Println(err)
 						}
@@ -327,7 +322,8 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 			if storageSelecter == "FILE" {
 				err := files.FileStorage(r.Context(), tempfilename, metrics)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("error in store metric counter in file %s %v\n", http.StatusText(400), err), 400)
+					http.Error(w, fmt.Sprintf("error in store metric counter in file %s %v\n",
+						http.StatusText(http.StatusBadRequest), err), http.StatusBadRequest)
 					return
 				}
 			}
@@ -340,15 +336,21 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 			if storageSelecter == "MEMORY" {
 				err := storage.UpdateParam(ctx, false, metrics.MType, metrics.ID, *metrics.Value)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), err),
+						http.StatusBadRequest)
 					return
 				}
-				*metrics.Value = newStorage.Gauge[metrics.ID]
+				*metrics.Value, err = storage.GetGaugeMetric(ctx, metrics.ID)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), err),
+						http.StatusBadRequest)
+					return
+				}
 			}
 			if storageSelecter == "DATABASE" {
 				retrybuilder := func() func() error {
 					return func() error {
-						err = db.UpdateParamDB(r.Context(), dbconstr, metrics.MType, metrics.ID, *metrics.Value)
+						err = db.UpdateParamDB(ctx, dbconstr, metrics.MType, metrics.ID, *metrics.Value)
 						if err != nil {
 							log.Println(err)
 						}
@@ -380,7 +382,13 @@ func JSONUpdateMHandle(storage repositories.Repo, tempfilename, filename, dbcons
 		}
 
 		if time == 0 {
-			files.SyncSaveMetrics(newStorage, filename)
+			memstorage, err := storage.GetMemStorage(ctx)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("error in store metric counter in file %s %v\n",
+					http.StatusText(http.StatusInternalServerError), err), http.StatusInternalServerError)
+				return
+			}
+			files.SyncSaveMetrics(memstorage, filename)
 		}
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
@@ -399,7 +407,6 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 	tempfilename, filename, dbconstr, storageSelecter, signKey string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		var newStorage *memstorage.MemStorage
 		var metrics []api.Metrics
 		var metric api.Metrics
 		var buf bytes.Buffer
@@ -418,12 +425,6 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-
-		// if readedbytes == 0 && r.RequestURI == "/updates/" {
-		// 	// w.Header().Add("Accept-Encoding", api.Gz)
-		// 	w.WriteHeader(http.StatusOK)
-		// 	return
-		// }
 
 		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
 			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
@@ -459,14 +460,6 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				return
 			}
 			metrics = append(metrics, metric)
-			// debug
-			log.Println("METRIC", metrics)
-			if metrics[0].MType == "gauge" {
-				log.Println("METRICS", metrics[0].ID, *metrics[0].Value)
-			} else if metrics[0].MType == "counter" {
-				log.Println("METRICS", metrics[0].ID, *metrics[0].Delta)
-
-			}
 		}
 
 		for _, metr := range metrics {
@@ -499,6 +492,11 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		}
 
 		if time == 0 {
+			newStorage, err := storage.GetMemStorage(ctx)
+			if err != nil {
+				http.Error(w, http.StatusText(500), 500)
+				return
+			}
 			files.SyncSaveMetrics(newStorage, filename)
 		}
 		// packing content
@@ -519,16 +517,9 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 	}
 }
 
-func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric *api.Metrics, storageSelecter, dbconstr, tempfilename string) error {
-	var newStorage *memstorage.MemStorage
+func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
+	metric *api.Metrics, storageSelecter, dbconstr, tempfilename string) error {
 	var err error
-
-	if storageSelecter == "MEMORY" {
-		newStorage, err = storage.GetMemStorage(ctx)
-		if err != nil {
-			return fmt.Errorf("can't create memstorage %v", err)
-		}
-	}
 
 	if metric.ID == "" {
 		return fmt.Errorf("%s", "not valid metric name")
@@ -544,7 +535,10 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 			if err != nil {
 				return fmt.Errorf("can't update memstorage counter value %v", err)
 			}
-			*metric.Delta = newStorage.Counter[metric.ID]
+			*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
+			if err != nil {
+				return fmt.Errorf("can't get updated counter value %v", err)
+			}
 		}
 		if storageSelecter == "DATABASE" {
 			retrybuilder := func() func() error {
@@ -576,7 +570,10 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo, metric
 			if err != nil {
 				return fmt.Errorf("can't update memstorage gauge value %v", err)
 			}
-			*metric.Value = newStorage.Gauge[metric.ID]
+			*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
+			if err != nil {
+				return fmt.Errorf("can't get updated gauge value %v", err)
+			}
 		}
 		if storageSelecter == "DATABASE" {
 			retrybuilder := func() func() error {
@@ -610,18 +607,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		ctx := r.Context()
 		var metrics *api.Metrics
 		var buf bytes.Buffer
-		var newStorage *memstorage.MemStorage
 		var err error
-
-		if storageSelecter == "MEMORY" {
-			newStorage, err = storage.GetMemStorage(ctx)
-			if err != nil {
-				http.Error(w, fmt.Sprintf(
-					"get memstorage %s - %v",
-					http.StatusText(500), err), 500)
-				return
-			}
-		}
 
 		// читаем тело запроса
 		_, err = buf.ReadFrom(r.Body)
@@ -636,15 +622,15 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 		}
 		if metrics.MType == "counter" {
 			if storageSelecter == "MEMORY" {
-				value, ok := newStorage.Counter[metrics.ID]
-				if !ok {
+				delta, err := storage.GetCounterMetric(ctx, metrics.ID)
+				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
 						http.StatusText(404),
 						metrics.ID, metrics.MType), 404)
 					return
 				}
-				metrics.Delta = &value
+				metrics.Delta = &delta
 			}
 			if storageSelecter == "DATABASE" {
 				retrybuilder := func() func() error {
@@ -679,8 +665,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			}
 		} else if metrics.MType == "gauge" {
 			if storageSelecter == "MEMORY" {
-				value, ok := newStorage.Gauge[metrics.ID]
-				if !ok {
+				value, err := storage.GetGaugeMetric(ctx, metrics.ID)
+				if err != nil {
 					http.Error(w, fmt.Sprintf(
 						"%s - metric %s not exist in %s\n",
 						http.StatusText(404),
