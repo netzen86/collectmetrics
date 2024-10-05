@@ -3,6 +3,7 @@ package memstorage
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
@@ -46,4 +47,20 @@ func (storage *MemStorage) GetMemStorage(ctx context.Context) (*MemStorage, erro
 		return nil, errors.New("storage not init")
 	}
 	return storage, nil
+}
+
+func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+	delta, ok := storage.Counter[metricID]
+	if !ok {
+		return 0, fmt.Errorf("error get counter metric %s", metricID)
+	}
+	return delta, nil
+}
+
+func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+	value, ok := storage.Gauge[metricID]
+	if !ok {
+		return 0, fmt.Errorf("error get gauge metric %s", metricID)
+	}
+	return value, nil
 }
