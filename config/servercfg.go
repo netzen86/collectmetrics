@@ -8,7 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/netzen86/collectmetrics/internal/db"
+	"github.com/netzen86/collectmetrics/internal/repositories"
+	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
@@ -50,7 +51,7 @@ type ServerCfg struct {
 	// указатель на временный файл хранения метрик
 	Tempfile *os.File `env:"" DefVal:""`
 	// указатель на memstorage
-	MemStorage *memstorage.MemStorage `env:"" DefVal:""`
+	Storage *repositories.Repo `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -133,12 +134,21 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 
 // метод инициализации сервера
 func (serverCfg *ServerCfg) initSrv() error {
+	var ctx context.Context
 	var err error
 
-	// создания мемсторожа
-	serverCfg.MemStorage, err = memstorage.NewMemStorage()
-	if err != nil {
-		return fmt.Errorf("error when get mem storage %v ", err)
+	if serverCfg.StorageSelecter == ssMemStor {
+		// создания мемсторожа
+		*serverCfg.Storage, err = memstorage.NewMemStorage()
+		if err != nil {
+			return fmt.Errorf("error when get mem storage %v ", err)
+		}
+	} else if serverCfg.StorageSelecter == ssDataBase {
+		// создания базы данных
+		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
+		if err != nil {
+			return fmt.Errorf("error when get mem storage %v ", err)
+		}
 	}
 
 	// лог значений полученных из переменных окружения и флагов
@@ -147,7 +157,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
 
-	// создание фременого файла
+	// создание временого файла
 	serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("error create temp file %v ", err)
@@ -166,9 +176,13 @@ func (serverCfg *ServerCfg) initSrv() error {
 	}
 
 	// копируем метрики из файла в мемсторож
-	if serverCfg.Restore {
+	if serverCfg.Restore && serverCfg.StorageSelecter == ssMemStor {
 		log.Println("ENTER IN RESTORE")
-		files.LoadMetric(serverCfg.MemStorage, serverCfg.FileStoragePathDef)
+		memstorage, err := repositories.Repo.GetStorage(*serverCfg.Storage, ctx)
+		if err != nil {
+			return fmt.Errorf("error get storage %w", err)
+		}
+		files.LoadMetric(memstorage, serverCfg.FileStoragePathDef)
 	}
 
 	// если храним метрики в базе данных то создаем таблицы counter и gauge

@@ -42,7 +42,8 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metr
 	return nil
 }
 
-func (storage *MemStorage) GetMemStorage(ctx context.Context) (*MemStorage, error) {
+// функция для получения мемсторожа, param не используется
+func (storage *MemStorage) GetStorage(ctx context.Context) (*MemStorage, error) {
 	if storage == nil {
 		return nil, errors.New("storage not init")
 	}
