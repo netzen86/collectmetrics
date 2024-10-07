@@ -140,13 +140,12 @@ func (serverCfg *ServerCfg) initSrv() error {
 
 	// serverCfg.Storage = &storage
 
-	if serverCfg.StorageSelecter == ssMemStor {
-		// создания мемсторожа
-		serverCfg.Storage, err = memstorage.NewMemStorage()
-		if err != nil {
-			return fmt.Errorf("error when get mem storage %v ", err)
-		}
-	} else if serverCfg.StorageSelecter == ssDataBase {
+	// создания мемсторожа
+	serverCfg.Storage, err = memstorage.NewMemStorage()
+	if err != nil {
+		return fmt.Errorf("error when get mem storage %v ", err)
+	}
+	if serverCfg.StorageSelecter == ssDataBase {
 		// создания базы данных
 		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
 		if err != nil {
