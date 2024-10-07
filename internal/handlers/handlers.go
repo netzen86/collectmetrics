@@ -144,6 +144,8 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 					return
 				}
 			} else {
+				var delta int64
+				metric.Delta = &delta
 				retrybuilder := func() func() error {
 					return func() error {
 						var err error
@@ -168,7 +170,6 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 			w.Write([]byte(deltaStr))
 			return
 		} else if metric.MType == "gauge" {
-
 			if storageSelecter == "FILE" {
 				consumer, err := files.NewConsumer(filename)
 				if err != nil {
@@ -183,6 +184,8 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 					return
 				}
 			} else {
+				var value float64
+				metric.Value = &value
 				retrybuilder := func() func() error {
 					return func() error {
 						var err error
