@@ -211,12 +211,13 @@ func UpdateParamFile(ctx context.Context, saveMetricsDefaultPath, metricType, me
 
 func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) (string, error) {
 	var scannedMetric api.Metrics
+	log.Println("consumer", consumer.file.Name())
 	scanner := consumer.Scanner
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
 		if err != nil {
-			log.Printf(" can't unmarshal string %v", err)
+			return "", fmt.Errorf(" can't unmarshal string %w", err)
 		}
 		if scannedMetric.ID == metric.ID {
 			switch {
@@ -225,7 +226,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 					metric.Value = scannedMetric.Value
 					return "", nil
 				} else {
-					return "", fmt.Errorf(" gauge vlaue is nil %v", err)
+					return "", fmt.Errorf(" gauge vlaue is nil %w", err)
 				}
 			case metric.MType == "counter":
 
@@ -233,7 +234,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 					metric.Delta = scannedMetric.Delta
 					return "", nil
 				} else {
-					return "", fmt.Errorf(" counter delta is nil %v", err)
+					return "", fmt.Errorf(" counter delta is nil %w", err)
 				}
 			default:
 				return fmt.Sprintf(" metric %s %s wrong type ", metric.ID, metric.MType), nil

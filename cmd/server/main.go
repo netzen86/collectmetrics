@@ -23,7 +23,7 @@ func main() {
 
 	gw := router.GetGateway(cfg)
 
-	if cfg.StoreInterval != 0 {
+	if cfg.StoreInterval != 0 && (cfg.StorageSelecter == "MEMORY" || cfg.StorageSelecter != "DATABASE") {
 		storage, err := repositories.Repo.GetStorage(cfg.Storage, context.TODO())
 		if err != nil {
 			log.Fatalf("error when getting memstorage %v ", err)
