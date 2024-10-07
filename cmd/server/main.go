@@ -20,12 +20,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("error when getting config %v ", err)
 	}
-	log.Println("DATA BASE CON STRING", cfg.Storage)
 
 	gw := router.GetGateway(cfg)
 
-	if cfg.StoreInterval != 0 {
-		storage, err := repositories.Repo.GetStorage(*cfg.Storage, context.TODO())
+	if cfg.StoreInterval != 0 && len(cfg.DBconstring) == 0 {
+		storage, err := repositories.Repo.GetStorage(cfg.Storage, context.TODO())
 		if err != nil {
 			log.Fatalf("error when getting memstorage %v ", err)
 		}

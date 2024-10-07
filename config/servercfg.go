@@ -51,7 +51,7 @@ type ServerCfg struct {
 	// указатель на временный файл хранения метрик
 	Tempfile *os.File `env:"" DefVal:""`
 	// указатель на memstorage
-	Storage *repositories.Repo `env:"" DefVal:""`
+	Storage repositories.Repo `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -135,11 +135,14 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 // метод инициализации сервера
 func (serverCfg *ServerCfg) initSrv() error {
 	var ctx context.Context
+	// var storage repositories.Repo
 	var err error
+
+	// serverCfg.Storage = &storage
 
 	if serverCfg.StorageSelecter == ssMemStor {
 		// создания мемсторожа
-		*serverCfg.Storage, err = memstorage.NewMemStorage()
+		serverCfg.Storage, err = memstorage.NewMemStorage()
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
 		}
@@ -178,7 +181,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	// копируем метрики из файла в мемсторож
 	if serverCfg.Restore && serverCfg.StorageSelecter == ssMemStor {
 		log.Println("ENTER IN RESTORE")
-		memstorage, err := repositories.Repo.GetStorage(*serverCfg.Storage, ctx)
+		memstorage, err := repositories.Repo.GetStorage(serverCfg.Storage, ctx)
 		if err != nil {
 			return fmt.Errorf("error get storage %w", err)
 		}
@@ -189,7 +192,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	if serverCfg.StorageSelecter == ssDataBase {
 		retrybuilder := func() func() error {
 			return func() error {
-				err := db.CreateTables(context.TODO(), serverCfg.DBconstring)
+				err := repositories.Repo.CreateTables(serverCfg.Storage, context.TODO())
 				if err != nil {
 					log.Println(err)
 				}

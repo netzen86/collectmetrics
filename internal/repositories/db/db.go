@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -45,24 +44,24 @@ func NewDBStorage(ctx context.Context, param string) (*DBStorage, error) {
 	return &dbstorage, nil
 }
 
-func CreateTables(ctx context.Context, dbconstring string) error {
+func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 	var err error
-	db, err := NewDBStorage(ctx, dbconstring)
-	if err != nil {
-		return fmt.Errorf("cannot connect fo data base %w", err)
-	}
-	defer db.DB.Close()
+	// db, err := NewDBStorage(ctx, dbconstring)
+	// if err != nil {
+	// 	return fmt.Errorf("cannot connect fo data base %w", err)
+	// }
+	// defer db.DB.Close()
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	stmtGauge := `CREATE TABLE IF NOT EXISTS gauge 
 	("id" SERIAL PRIMARY KEY, "name" TEXT UNIQUE, "value" FLOAT8)`
 	stmtCounter := `CREATE TABLE IF NOT EXISTS counter 
 	("id" SERIAL PRIMARY KEY, "name" TEXT UNIQUE, "delta" BIGINT)`
-	_, err = db.DB.ExecContext(ctx, stmtGauge)
+	_, err = dbstorage.DB.ExecContext(ctx, stmtGauge)
 	if err != nil {
 		return fmt.Errorf("create table error - %w", err)
 	}
-	_, err = db.DB.ExecContext(ctx, stmtCounter)
+	_, err = dbstorage.DB.ExecContext(ctx, stmtCounter)
 	if err != nil {
 		return fmt.Errorf("create table error - %w", err)
 	}
@@ -84,14 +83,12 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 	ON CONFLICT (name) DO UPDATE 
 	  SET delta = (SELECT delta FROM counter WHERE name=$1) + $2`
 
-	log.Println("URI DB", dbstorage.DBconstring)
-	db, err := NewDBStorage(ctx, dbstorage.DBconstring)
-	if err != nil {
-		return fmt.Errorf("cannot connect fo data base %w", err)
-	}
+	// db, err := NewDBStorage(ctx, dbstorage.DBconstring)
+	// if err != nil {
+	// 	return fmt.Errorf("cannot connect fo data base %w", err)
+	// }
 
-	log.Println(db.DB)
-	defer db.DB.Close()
+	// defer dbstorage.DB.Close()
 
 	switch {
 	case metricType == "gauge":
@@ -100,10 +97,10 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 		if err != nil {
 			return err
 		}
-		_, err = db.DB.ExecContext(ctx, stmtGauge, metricName, val)
+		_, err = dbstorage.DB.ExecContext(ctx, stmtGauge, metricName, val)
 		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", err)
 		if err != nil {
-			dbstorage.DB.Close()
+			// dbstorage.DB.Close()
 			return fmt.Errorf("insert in gauge table error - %w", err)
 		}
 
@@ -112,10 +109,10 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 		if err != nil {
 			return err
 		}
-		_, err = db.DB.ExecContext(ctx, stmtCounter, metricName, del)
+		_, err = dbstorage.DB.ExecContext(ctx, stmtCounter, metricName, del)
 		// log.Println("Inserting counter table value: ", del, "ResVAl:", err)
 		if err != nil {
-			dbstorage.DB.Close()
+			// dbstorage.DB.Close()
 			return fmt.Errorf("insert in counter table error - %w", err)
 		}
 	default:
@@ -128,7 +125,7 @@ func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID strin
 	var delta int64
 	smtp := `SELECT delta FROM counter WHERE name=$1`
 
-	defer dbstorage.DB.Close()
+	// defer dbstorage.DB.Close()
 	row := dbstorage.DB.QueryRowContext(ctx, smtp, metricID)
 
 	err := row.Scan(&delta)
@@ -142,7 +139,7 @@ func (dbstorage *DBStorage) GetGaugeMetric(ctx context.Context, metricID string)
 	var value float64
 	smtp := `SELECT value FROM gauge WHERE name=$1`
 
-	defer dbstorage.DB.Close()
+	// defer dbstorage.DB.Close()
 	row := dbstorage.DB.QueryRowContext(ctx, smtp, metricID)
 
 	err := row.Scan(&value)

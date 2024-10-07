@@ -11,4 +11,5 @@ type Repo interface {
 	GetCounterMetric(ctx context.Context, metricID string) (int64, error)
 	GetGaugeMetric(ctx context.Context, metricID string) (float64, error)
 	GetStorage(ctx context.Context) (*memstorage.MemStorage, error)
+	CreateTables(ctx context.Context) error
 }

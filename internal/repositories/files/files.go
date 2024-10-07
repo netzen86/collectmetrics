@@ -117,7 +117,7 @@ func SaveMetrics(storage *memstorage.MemStorage, metricFileName, tempfile, stora
 			log.Println("LOAD METRIC FORM TEMP FILE")
 			LoadMetric(storage, tempfile)
 		}
-		log.Println(storage.Counter, storage.Gauge, tempfile)
+		// log.Println(storage.Counter, storage.Gauge, tempfile)
 
 		log.Println("ENTER PRODUCER IN SM")
 		producer, err := NewProducer(metricFileName)

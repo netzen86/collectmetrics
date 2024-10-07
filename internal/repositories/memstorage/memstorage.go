@@ -65,3 +65,7 @@ func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string) 
 	}
 	return value, nil
 }
+
+func (storage *MemStorage) CreateTables(ctx context.Context) error {
+	return nil
+}
