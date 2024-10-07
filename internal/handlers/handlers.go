@@ -433,6 +433,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					return
 				}
 			} else {
+				var delta int64
+				metric.Delta = &delta
 				retrybuilder := func() func() error {
 					return func() error {
 						var err error
@@ -465,6 +467,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					return
 				}
 			} else {
+				var value float64
+				metric.Value = &value
 				retrybuilder := func() func() error {
 					return func() error {
 						var err error
