@@ -11,9 +11,15 @@ import (
 	"time"
 
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
+
+type filestorage struct {
+	Producer
+	Consumer
+}
 
 type Producer struct {
 	file     *os.File
@@ -27,6 +33,69 @@ type Consumer struct {
 	// добавляем Reader в Consumer
 	// reader  *bufio.Reader
 	Scanner *bufio.Scanner
+}
+
+func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
+	tempfile, metricType, metricName string, metricValue interface{}) error {
+	var pcMetric api.Metrics
+	var metrics api.MetricsSlice
+	var err error
+
+	// tmpStorage, err := memstorage.NewMemStorage()
+	// if err != nil {
+	// 	return err
+	// }
+	pcMetric.ID = metricName
+	pcMetric.MType = metricType
+
+	// в зависимости от типа метрик определяем тип metricValue
+	if metricType == api.Counter {
+		delta, ok := metricValue.(int64)
+		if !ok {
+			fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
+		}
+		// pcMetric.Delta = &delta
+		err = sumPc(ctx, tempfile, delta, &pcMetric)
+		if err != nil {
+			return err
+		}
+	} else if metricType == api.Gauge {
+		value, ok := metricValue.(float64)
+		if !ok {
+			fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
+		}
+		pcMetric.Value = &value
+	}
+
+	LoadMetric(&metrics, tempfile)
+
+	if metricType == api.Counter {
+		tmpStorage.Counter[metricName] = *pcMetric.Delta
+	} else if metricType == api.Gauge {
+		tmpStorage.Gauge[metricName] = *pcMetric.Value
+	}
+
+	SyncSaveMetrics(tmpStorage, tempfile)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+	return 0, nil
+}
+func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+	return 0, nil
+}
+func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
+	return api.MetricsSlice{}, nil
+}
+func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
+	return &memstorage.MemStorage{}, nil
+}
+func (fs *filestorage) CreateTables(ctx context.Context) error {
+	return nil
 }
 
 func NewProducer(filename string) (*Producer, error) {
@@ -75,9 +144,8 @@ func NewConsumer(filename string) (*Consumer, error) {
 	}, nil
 }
 
-func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
+func (c *Consumer) ReadMetric(metrics *api.MetricsSlice) error {
 	metric := api.Metrics{}
-	ctx := context.Background()
 	scanner := c.Scanner
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
@@ -90,50 +158,38 @@ func (c *Consumer) ReadMetric(storage *memstorage.MemStorage) error {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
-			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Value)
-			if err != nil {
-				return fmt.Errorf("gauge error %v", err)
-			}
+			metrics.Metrics = append(metrics.Metrics, metric)
 		}
 		if metric.MType == "counter" {
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
-			err := storage.UpdateParam(ctx, true, metric.MType, metric.ID, *metric.Delta)
-			if err != nil {
-				return fmt.Errorf("counter error %v", err)
-			}
+			metrics.Metrics = append(metrics.Metrics, metric)
 		}
 	}
 	return nil
 }
 
-func SaveMetrics(storage *memstorage.MemStorage, metricFileName, tempfile, storageSelecter string, storeInterval int) {
+// функция для сохранения метрик в файл
+// использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
+func SaveMetrics(storage repositories.Repo, metricFileName, tempfile, storageSelecter string, storeInterval int) {
 
 	for {
 		<-time.After(time.Duration(storeInterval) * time.Second)
-		if storageSelecter == "FILE" {
-			log.Println("LOAD METRIC FORM TEMP FILE")
-			LoadMetric(storage, tempfile)
+		metrics, err := storage.GetAllMetrics(context.TODO())
+		if err != nil {
+			log.Fatalf("error when getting all metrics %v", err)
 		}
-		// log.Println(storage.Counter, storage.Gauge, tempfile)
 
 		log.Println("ENTER PRODUCER IN SM")
 		producer, err := NewProducer(metricFileName)
 		if err != nil {
 			log.Fatal("can't create producer")
 		}
-		for k, v := range storage.Gauge {
-			log.Println("METRICS GAUGE WRITE")
-			err := producer.WriteMetric(api.Metrics{MType: "gauge", ID: k, Value: &v})
-			if err != nil {
-				log.Fatal("can't write metric")
-			}
-		}
-		for k, v := range storage.Counter {
-			log.Println("METRICS COUNTER WRITE")
-			err := producer.WriteMetric(api.Metrics{MType: "counter", ID: k, Delta: &v})
+		for _, metric := range metrics.Metrics {
+			log.Printf("METRIC %s WRITE IN FILE", metric.MType)
+			err := producer.WriteMetric(metric)
 			if err != nil {
 				log.Fatal("can't write metric")
 			}
@@ -163,14 +219,14 @@ func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
 
 }
 
-func LoadMetric(storage *memstorage.MemStorage, metricFileName string) {
+func LoadMetric(metrics *api.MetricsSlice, metricFileName string) {
 	if _, err := os.Stat(metricFileName); err == nil {
 		consumer, err := NewConsumer(metricFileName)
 		if err != nil {
 			log.Fatal(err, " can't create consumer in lm")
 		}
 		defer consumer.file.Close()
-		err = consumer.ReadMetric(storage)
+		err = consumer.ReadMetric(metrics)
 		if err != nil {
 			log.Fatal(err, " can't read metric in lm")
 		}
@@ -244,6 +300,7 @@ func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics)
 	return "", fmt.Errorf("metric %s %s not exist ", metric.ID, metric.MType)
 }
 
+// функция для накапливания значений в counter
 func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
 	consumer, err := NewConsumer(filename)
 	if err != nil {

@@ -6,6 +6,8 @@ const (
 	Js           string = "application/json"
 	Gz           string = "gzip"
 	TemplatePath string = "/web/template/metrics.html"
+	Gauge        string = "gauge"
+	Counter      string = "counter"
 )
 
 type Metrics struct {

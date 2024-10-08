@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -17,7 +19,7 @@ func NewMemStorage() (*MemStorage, error) {
 	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}, nil
 }
 
-func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
+func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, tempfile, metricType, metricName string, metricValue interface{}) error {
 	switch {
 	case metricType == "gauge":
 		val, err := utils.ParseValGag(metricValue)
@@ -40,6 +42,20 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metr
 		return errors.New("wrong metric type")
 	}
 	return nil
+}
+
+func (storage *MemStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
+	var metrics api.MetricsSlice
+
+	for k, v := range storage.Gauge {
+		log.Println("METRICS GAUGE WRITE")
+		metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: api.Gauge, ID: k, Value: &v})
+	}
+	for k, v := range storage.Counter {
+		log.Println("METRICS COUNTER WRITE")
+		metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: api.Counter, ID: k, Delta: &v})
+	}
+	return metrics, nil
 }
 
 // функция для получения мемсторожа, param не используется

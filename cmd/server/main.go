@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 
 	"github.com/netzen86/collectmetrics/config"
-	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/router"
 )
@@ -23,12 +21,8 @@ func main() {
 
 	gw := router.GetGateway(cfg)
 
-	if cfg.StoreInterval != 0 && (cfg.StorageSelecter == "MEMORY" || cfg.StorageSelecter != "DATABASE") {
-		storage, err := repositories.Repo.GetStorage(cfg.Storage, context.TODO())
-		if err != nil {
-			log.Fatalf("error when getting memstorage %v ", err)
-		}
-		go files.SaveMetrics(storage, cfg.FileStoragePathDef,
+	if cfg.StoreInterval != 0 {
+		go files.SaveMetrics(cfg.Storage, cfg.FileStoragePathDef,
 			cfg.Tempfile.Name(), cfg.StorageSelecter, cfg.StoreInterval)
 	}
 

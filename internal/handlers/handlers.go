@@ -68,7 +68,7 @@ func UpdateMHandle(storage repositories.Repo,
 
 		retrybuilder := func() func() error {
 			return func() error {
-				err := storage.UpdateParam(r.Context(), false, mType, mName, mValue)
+				err := storage.UpdateParam(r.Context(), false, tempfilename, mType, mName, mValue)
 				if err != nil {
 					log.Println(err)
 				}
@@ -352,9 +352,9 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		} else {
 			retrybuilder := func() func() error {
 				return func() error {
-					err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Delta)
+					err := storage.UpdateParam(ctx, false, tempfilename, metric.MType, metric.ID, *metric.Delta)
 					if err != nil {
-						log.Println(err)
+						log.Println("retry", err)
 					}
 					return err
 				}
@@ -382,9 +382,9 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		} else {
 			retrybuilder := func() func() error {
 				return func() error {
-					err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Value)
+					err := storage.UpdateParam(ctx, false, tempfilename, metric.MType, metric.ID, *metric.Value)
 					if err != nil {
-						log.Println(err)
+						log.Println("retry", err)
 					}
 					return err
 				}

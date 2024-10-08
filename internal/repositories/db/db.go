@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
@@ -16,21 +17,9 @@ const (
 	DataBaseConString string = "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
 )
 
-// type ConParam struct {
-// 	Host     string `default:"localhost"`
-// 	User     string `default:"postgres"`
-// 	Password string `default:"collectmetrics"`
-// 	DBname   string `default:"collectmetrics"`
-// 	SSLmode  string `default:"sslmode=disable"`
-// }
-
 type DBStorage struct {
 	DBconstring string
 	DB          *sql.DB
-}
-
-func (dbstorage *DBStorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
-	return nil, nil
 }
 
 // функция подключения к базе данных, param = строка для подключения к БД
@@ -44,13 +33,89 @@ func NewDBStorage(ctx context.Context, param string) (*DBStorage, error) {
 	return &dbstorage, nil
 }
 
+// функция для вставки данных в базу данных
+func insertData(ctx context.Context, dbstorage *DBStorage,
+	stmt, metricType, metricName string, metricValue interface{}) error {
+
+	if metricType == api.Gauge {
+		val, err := utils.ParseValGag(metricValue)
+		if err != nil {
+			return err
+		}
+		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, val)
+		if err != nil {
+			return fmt.Errorf("insert in table error - %w", err)
+		}
+	}
+
+	if metricType == api.Counter {
+		val, err := utils.ParseValCnt(metricValue)
+		if err != nil {
+			return err
+		}
+		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, val)
+		if err != nil {
+			return fmt.Errorf("insert in table error - %w", err)
+		}
+	}
+	return nil
+}
+
+func (dbstorage *DBStorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
+	return nil, nil
+}
+
+func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
+	var metrics api.MetricsSlice
+
+	smtp := `
+	SELECT name, value, 'gauge' as type
+	FROM gauge
+	UNION all
+	SELECT name, delta, 'counter' as type
+	FROM counter;`
+
+	rows, err := dbstorage.DB.QueryContext(ctx, smtp)
+	if err != nil {
+		return api.MetricsSlice{}, fmt.Errorf("error when execute select %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var mtype string
+		var val interface{}
+
+		err = rows.Scan(&name, &val, &mtype)
+		if err != nil {
+			return api.MetricsSlice{}, fmt.Errorf("error scan %w", err)
+		}
+		if mtype == "gauge" {
+			value, ok := val.(float64)
+			if !ok {
+				return api.MetricsSlice{}, fmt.Errorf("mismatch metric %s and value type", name)
+			}
+			metrics.Metrics = append(metrics.Metrics, api.Metrics{ID: name, MType: mtype, Value: &value})
+		}
+		if mtype == "counter" {
+			delta, ok := val.(float64)
+			if !ok {
+				return api.MetricsSlice{}, fmt.Errorf("mismatch metric %s and delta type", name)
+			}
+			metrics.Metrics = append(metrics.Metrics, api.Metrics{ID: name, MType: mtype, Value: &delta})
+		}
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return api.MetricsSlice{}, fmt.Errorf("errors rows %w", err)
+	}
+	return metrics, nil
+}
+
 func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 	var err error
-	// db, err := NewDBStorage(ctx, dbconstring)
-	// if err != nil {
-	// 	return fmt.Errorf("cannot connect fo data base %w", err)
-	// }
-	// defer db.DB.Close()
+
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	stmtGauge := `CREATE TABLE IF NOT EXISTS gauge 
@@ -68,9 +133,8 @@ func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 	return nil
 }
 
-func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
+func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, tempfile, metricType, metricName string, metricValue interface{}) error {
 
-	// func UpdateParamDB(ctx context.Context, dbconstr, metricType, metricName string, metricValue interface{}) error {
 	stmtGauge := `
 	INSERT INTO gauge (name, value) 
 	VALUES ($1, $2)
@@ -83,37 +147,16 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 	ON CONFLICT (name) DO UPDATE 
 	  SET delta = (SELECT delta FROM counter WHERE name=$1) + $2`
 
-	// db, err := NewDBStorage(ctx, dbstorage.DBconstring)
-	// if err != nil {
-	// 	return fmt.Errorf("cannot connect fo data base %w", err)
-	// }
-
-	// defer dbstorage.DB.Close()
-
 	switch {
 	case metricType == "gauge":
-
-		val, err := utils.ParseValGag(metricValue)
+		err := insertData(ctx, dbstorage, stmtGauge, metricType, metricName, metricValue)
 		if err != nil {
-			return err
+			return fmt.Errorf("gauge %w", err)
 		}
-		_, err = dbstorage.DB.ExecContext(ctx, stmtGauge, metricName, val)
-		// log.Println("Inserting gauge table value: ", val, "ResVAl: ", err)
-		if err != nil {
-			// dbstorage.DB.Close()
-			return fmt.Errorf("insert in gauge table error - %w", err)
-		}
-
 	case metricType == "counter":
-		del, err := utils.ParseValCnt(metricValue)
+		err := insertData(ctx, dbstorage, stmtCounter, metricType, metricName, metricValue)
 		if err != nil {
-			return err
-		}
-		_, err = dbstorage.DB.ExecContext(ctx, stmtCounter, metricName, del)
-		// log.Println("Inserting counter table value: ", del, "ResVAl:", err)
-		if err != nil {
-			// dbstorage.DB.Close()
-			return fmt.Errorf("insert in counter table error - %w", err)
+			return fmt.Errorf("counter %w", err)
 		}
 	default:
 		return errors.New("wrong metric type")
@@ -125,7 +168,6 @@ func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID strin
 	var delta int64
 	smtp := `SELECT delta FROM counter WHERE name=$1`
 
-	// defer dbstorage.DB.Close()
 	row := dbstorage.DB.QueryRowContext(ctx, smtp, metricID)
 
 	err := row.Scan(&delta)
@@ -139,7 +181,6 @@ func (dbstorage *DBStorage) GetGaugeMetric(ctx context.Context, metricID string)
 	var value float64
 	smtp := `SELECT value FROM gauge WHERE name=$1`
 
-	// defer dbstorage.DB.Close()
 	row := dbstorage.DB.QueryRowContext(ctx, smtp, metricID)
 
 	err := row.Scan(&value)
