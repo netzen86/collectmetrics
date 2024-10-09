@@ -12,11 +12,12 @@ import (
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
+	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
 type filestorage struct {
-	Producer
-	Consumer
+	Filename     string
+	FilenameTemp string
 }
 
 type Producer struct {
@@ -79,6 +80,14 @@ func NewConsumer(filename string) (*Consumer, error) {
 	}, nil
 }
 
+// функция подключения к базе данных, param = строка для подключения к БД
+func NewFileStorage(ctx context.Context, param string) (*filestorage, error) {
+	var filestorage filestorage
+	filestorage.Filename = param
+	filestorage.FilenameTemp = fmt.Sprintf("%stmp", param)
+	return &filestorage, nil
+}
+
 func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 	metric := api.Metrics{}
 	scanner := c.Scanner
@@ -93,16 +102,17 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
+			metrics.Metrics[metric.ID] = metric
 		} else if metric.MType == "counter" {
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
+			metrics.Metrics[metric.ID] = metric
 		} else {
 			return fmt.Errorf("rm func - wrong metric type")
-
 		}
-		metrics.Metrics[metric.ID] = metric
+		metric.Clean()
 	}
 	return nil
 }
@@ -134,108 +144,46 @@ func SaveMetrics(storage repositories.Repo, metricFileName, tempfile, storageSel
 	}
 }
 
-func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) {
+func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) error {
 	producer, err := NewProducer(metricFileName)
 	if err != nil {
-		log.Fatal("can't create producer")
+		return fmt.Errorf("can't create producer %w", err)
 	}
 	defer producer.file.Close()
+	err = producer.file.Truncate(0)
+	if err != nil {
+		return fmt.Errorf("can't create producer %w", err)
+	}
 	for _, metric := range metrics.Metrics {
+		// log.Panicln("METRIC", metric)
 		err := producer.WriteMetric(metric)
 		if err != nil {
-			log.Fatal("can't write metric")
+			return fmt.Errorf("can't write metric %v %v %w", metric.ID, metric.MType, err)
 		}
 
 	}
+	return nil
 }
-func LoadMetric(metrics *api.MetricsMap, metricFileName string) {
+func LoadMetric(metrics *api.MetricsMap, metricFileName string) error {
 	if _, err := os.Stat(metricFileName); err == nil {
 		consumer, err := NewConsumer(metricFileName)
 		if err != nil {
-			log.Fatal(err, " can't create consumer in lm")
+			return fmt.Errorf("can't create consumer in lm %w", err)
 		}
 		defer consumer.file.Close()
 		err = consumer.ReadMetric(metrics)
 		if err != nil {
-			log.Fatal(err, " can't read metric in lm")
+			return fmt.Errorf("can't read metric in lm %w", err)
 		}
 	}
-}
-
-// func UpdateParamFile(ctx context.Context, saveMetricsDefaultPath, metricType, metricName string, metricValue interface{}) error {
-// 	producer, err := NewProducer(saveMetricsDefaultPath)
-// 	if err != nil {
-// 		log.Fatal("can't create producer")
-// 	}
-// 	defer producer.file.Close()
-// 	if metricType == "gauge" {
-// 		// log.Println("METRICS GAUGE WRITE TO FILE")
-// 		val, err := utils.ParseValGag(metricValue)
-// 		if err != nil {
-// 			return fmt.Errorf("gauge value error %v", err)
-// 		}
-// 		err = producer.WriteMetric(api.Metrics{MType: "gauge", ID: metricName, Value: &val})
-// 		if err != nil {
-// 			return fmt.Errorf("can't write gauge metric %v", err)
-// 		}
-// 	} else if metricType == "counter" {
-// 		// log.Println("METRICS COUNTER WRITE TO FILE")
-// 		del, err := utils.ParseValCnt(metricValue)
-// 		if err != nil {
-// 			return fmt.Errorf("counter value error %v", err)
-// 		}
-// 		err = producer.WriteMetric(api.Metrics{MType: "counter", ID: metricName, Delta: &del})
-// 		if err != nil {
-// 			return fmt.Errorf("can't write counter metric %v", err)
-// 		}
-// 	} else {
-// 		return fmt.Errorf("%s", "wrong metric type")
-// 	}
-// 	return nil
-// }
-
-func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) (string, error) {
-	var scannedMetric api.Metrics
-	log.Println("consumer", consumer.file.Name())
-	scanner := consumer.Scanner
-	for scanner.Scan() {
-		// преобразуем данные из JSON-представления в структуру
-		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
-		if err != nil {
-			return "", fmt.Errorf(" can't unmarshal string %w", err)
-		}
-		if scannedMetric.ID == metric.ID {
-			switch {
-			case scannedMetric.MType == "gauge":
-				if scannedMetric.Value != nil {
-					metric.Value = scannedMetric.Value
-					return "", nil
-				} else {
-					return "", fmt.Errorf(" gauge vlaue is nil %w", err)
-				}
-			case metric.MType == "counter":
-
-				if scannedMetric.Delta != nil {
-					metric.Delta = scannedMetric.Delta
-					return "", nil
-				} else {
-					return "", fmt.Errorf(" counter delta is nil %w", err)
-				}
-			default:
-				return fmt.Sprintf(" metric %s %s wrong type ", metric.ID, metric.MType), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("metric %s %s not exist ", metric.ID, metric.MType)
+	return nil
 }
 
 // функция для накапливания значений в counter
-func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metrics) error {
-	consumer, err := NewConsumer(filename)
-	if err != nil {
-		return err
-	}
-	_, err = ReadOneMetric(ctx, consumer, pcMetric)
+func (fs *filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Metrics) error {
+
+	getdelta, err := fs.GetCounterMetric(ctx, pcMetric.ID)
+	pcMetric.Delta = &getdelta
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
 			*pcMetric.Delta = 0
@@ -243,47 +191,9 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 			return err
 		}
 	}
-
 	*pcMetric.Delta = *pcMetric.Delta + delta
-
 	return nil
 }
-
-// func FileStorage(ctx context.Context, tempfile string, metric api.Metrics) error {
-// 	var pcMetric api.Metrics
-// 	var err error
-
-// 	tmpStorage, err := memstorage.NewMemStorage()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	pcMetric.ID = metric.ID
-// 	pcMetric.MType = metric.MType
-
-// 	if metric.MType == "counter" {
-// 		pcMetric.Delta = metric.Delta
-// 		err = sumPc(ctx, tempfile, *metric.Delta, &pcMetric)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	} else if metric.MType == "gauge" {
-// 		pcMetric.Value = metric.Value
-// 	}
-
-// 	LoadMetric(tmpStorage, tempfile)
-
-// 	if metric.MType == "counter" {
-// 		tmpStorage.Counter[metric.ID] = *pcMetric.Delta
-// 	} else if metric.MType == "gauge" {
-// 		tmpStorage.Gauge[metric.ID] = *metric.Value
-// 	}
-
-// 	SyncSaveMetrics(tmpStorage, tempfile)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
 
 func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 	metricType, metricName string, metricValue interface{}) error {
@@ -291,10 +201,7 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 	var metrics api.MetricsMap
 	var err error
 
-	// tmpStorage, err := memstorage.NewMemStorage()
-	// if err != nil {
-	// 	return err
-	// }
+	metrics.Metrics = make(map[string]api.Metrics)
 	pcMetric.ID = metricName
 	pcMetric.MType = metricType
 
@@ -304,8 +211,8 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 		if !ok {
 			return fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
 		}
-		// pcMetric.Delta = &delta
-		err = sumPc(ctx, fmt.Sprintf("%stmp", fs.Filename), delta, &pcMetric)
+		pcMetric.Delta = &delta
+		err = fs.sumPc(ctx, delta, &pcMetric)
 		if err != nil {
 			return err
 		}
@@ -316,30 +223,94 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 		}
 		pcMetric.Value = &value
 	}
+	err = LoadMetric(&metrics, fs.FilenameTemp)
+	if err != nil {
+		return fmt.Errorf("updateparam error load metrics from file %w", err)
+	}
 
-	LoadMetric(&metrics, fmt.Sprintf("%stmp", fs.Filename))
+	log.Println("METRICS MAP", metrics.Metrics)
 
 	metrics.Metrics[metricName] = pcMetric
 
-	SyncSaveMetrics(metrics, fmt.Sprintf("%stmp", fs.Filename))
+	err = SyncSaveMetrics(metrics, fs.FilenameTemp)
 	if err != nil {
-		return err
+		return fmt.Errorf("updateparam error save metirc to file %w", err)
+
 	}
+
 	return nil
 }
 
-// func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
-// 	return 0, nil
-// }
-// func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
-// 	return 0, nil
-// }
-// func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
-// 	return api.MetricsSlice{}, nil
-// }
-// func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
-// 	return &memstorage.MemStorage{}, nil
-// }
-// func (fs *filestorage) CreateTables(ctx context.Context) error {
-// 	return nil
-// }
+func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+	var scannedMetric api.Metrics
+	consumer, err := NewConsumer(fs.FilenameTemp)
+	if err != nil {
+		return 0, fmt.Errorf("can't create consumer %w", err)
+	}
+	scanner := consumer.Scanner
+	for scanner.Scan() {
+		// преобразуем данные из JSON-представления в структуру
+		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
+		if err != nil {
+			return 0, fmt.Errorf("can't unmarshal string %w", err)
+		}
+		if scannedMetric.ID == metricID {
+			if scannedMetric.Delta != nil {
+				return *scannedMetric.Delta, nil
+			} else {
+				return 0, fmt.Errorf("counter delta is nil %w", err)
+			}
+		}
+	}
+	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Counter)
+}
+
+func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+	var scannedMetric api.Metrics
+	consumer, err := NewConsumer(fs.FilenameTemp)
+	if err != nil {
+		return 0, fmt.Errorf("can't create consumer %w", err)
+	}
+	scanner := consumer.Scanner
+	for scanner.Scan() {
+		// преобразуем данные из JSON-представления в структуру
+		err := json.Unmarshal(scanner.Bytes(), &scannedMetric)
+		if err != nil {
+			return 0, fmt.Errorf("can't unmarshal string %w", err)
+		}
+		if scannedMetric.ID == metricID {
+			if scannedMetric.Value != nil {
+				return *scannedMetric.Value, nil
+			} else {
+				return 0, fmt.Errorf("gauge value is nil %w", err)
+			}
+		}
+	}
+	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Gauge)
+}
+
+func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+	var metrics api.MetricsMap
+	metrics.Metrics = make(map[string]api.Metrics)
+
+	if _, err := os.Stat(fs.FilenameTemp); err == nil {
+		consumer, err := NewConsumer(fs.FilenameTemp)
+		if err != nil {
+			return api.MetricsMap{}, fmt.Errorf("can't create consumer in lm %w", err)
+		}
+		defer consumer.file.Close()
+		err = consumer.ReadMetric(&metrics)
+		if err != nil {
+			return api.MetricsMap{}, fmt.Errorf("can't read metric in lm %w", err)
+		}
+	}
+	return metrics, nil
+}
+
+func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
+	return &memstorage.MemStorage{}, nil
+}
+
+func (fs *filestorage) CreateTables(ctx context.Context) error {
+	return nil
+}

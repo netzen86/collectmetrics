@@ -132,78 +132,50 @@ func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSe
 		metric.ID = chi.URLParam(r, "mName")
 
 		if metric.MType == "counter" {
-			if storageSelecter == "FILE" {
-				consumer, err := files.NewConsumer(filename)
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-				_, err = files.ReadOneMetric(ctx, consumer, &metric)
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-					return
-				}
-			} else {
-				var delta int64
-				metric.Delta = &delta
-				retrybuilder := func() func() error {
-					return func() error {
-						var err error
-						*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
-						if err != nil {
-							log.Println(err)
-						}
-						return err
+			var delta int64
+			metric.Delta = &delta
+			retrybuilder := func() func() error {
+				return func() error {
+					var err error
+					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
+					if err != nil {
+						log.Println(err)
 					}
+					return err
 				}
-				err := utils.RetrayFunc(retrybuilder)
-				if err != nil {
-					http.Error(w, fmt.Sprintf(
-						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(http.StatusNotFound),
-						metric.ID, metric.MType, err), http.StatusNotFound)
-					return
-				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s with error %v\n",
+					http.StatusText(http.StatusNotFound),
+					metric.ID, metric.MType, err), http.StatusNotFound)
+				return
 			}
 			w.WriteHeader(http.StatusOK)
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
 			w.Write([]byte(deltaStr))
 			return
 		} else if metric.MType == "gauge" {
-			if storageSelecter == "FILE" {
-				consumer, err := files.NewConsumer(filename)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(http.StatusNotFound), err),
-						http.StatusNotFound)
-					return
-				}
-				_, err = files.ReadOneMetric(ctx, consumer, &metric)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s%v\n", http.StatusText(http.StatusNotFound), err),
-						http.StatusNotFound)
-					return
-				}
-			} else {
-				var value float64
-				metric.Value = &value
-				retrybuilder := func() func() error {
-					return func() error {
-						var err error
-						*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
-						if err != nil {
-							log.Println(err)
-						}
-						return err
+			var value float64
+			metric.Value = &value
+			retrybuilder := func() func() error {
+				return func() error {
+					var err error
+					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
+					if err != nil {
+						log.Println(err)
 					}
+					return err
 				}
-				err := utils.RetrayFunc(retrybuilder)
-				if err != nil {
-					http.Error(w, fmt.Sprintf(
-						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(http.StatusNotFound),
-						metric.ID, metric.MType, err), http.StatusNotFound)
-					return
-				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s with error %v\n",
+					http.StatusText(http.StatusNotFound),
+					metric.ID, metric.MType, err), http.StatusNotFound)
+				return
 			}
 			w.WriteHeader(http.StatusOK)
 			valueStr := fmt.Sprintf("%g", *metric.Value)
@@ -314,7 +286,11 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			}
 			var MetricsMap api.MetricsMap
 			memstorage.MemstoragetoMetricMap(&MetricsMap, *newStorage)
-			files.SyncSaveMetrics(MetricsMap, filename)
+			err = files.SyncSaveMetrics(MetricsMap, filename)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
 		}
 		// packing content
 		resp, err = utils.CoHTTP(resp, r, w)
@@ -426,72 +402,46 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			return
 		}
 		if metric.MType == "counter" {
-			if storageSelecter == "FILE" {
-				consumer, err := files.NewConsumer(filename)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
-					return
-				}
-				_, err = files.ReadOneMetric(r.Context(), consumer, metric)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
-					return
-				}
-			} else {
-				var delta int64
-				metric.Delta = &delta
-				retrybuilder := func() func() error {
-					return func() error {
-						var err error
-						*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
-						if err != nil {
-							log.Println(err)
-						}
-						return err
+			var delta int64
+			metric.Delta = &delta
+			retrybuilder := func() func() error {
+				return func() error {
+					var err error
+					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
+					if err != nil {
+						log.Println(err)
 					}
-				}
-				err := utils.RetrayFunc(retrybuilder)
-				if err != nil {
-					http.Error(w, fmt.Sprintf(
-						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(http.StatusNotFound),
-						metric.ID, metric.MType, err), http.StatusNotFound)
-					return
+					return err
 				}
 			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s with error %v\n",
+					http.StatusText(http.StatusNotFound),
+					metric.ID, metric.MType, err), http.StatusNotFound)
+				return
+			}
 		} else if metric.MType == "gauge" {
-			if storageSelecter == "FILE" {
-				consumer, err := files.NewConsumer(filename)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
-					return
-				}
-				_, err = files.ReadOneMetric(r.Context(), consumer, metric)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(404), err), 404)
-					return
-				}
-			} else {
-				var value float64
-				metric.Value = &value
-				retrybuilder := func() func() error {
-					return func() error {
-						var err error
-						*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
-						if err != nil {
-							log.Println(err)
-						}
-						return err
+			var value float64
+			metric.Value = &value
+			retrybuilder := func() func() error {
+				return func() error {
+					var err error
+					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
+					if err != nil {
+						log.Println(err)
 					}
+					return err
 				}
-				err := utils.RetrayFunc(retrybuilder)
-				if err != nil {
-					http.Error(w, fmt.Sprintf(
-						"%s - metric %s not exist in %s with error %v\n",
-						http.StatusText(http.StatusNotFound),
-						metric.ID, metric.MType, err), http.StatusNotFound)
-					return
-				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(
+					"%s - metric %s not exist in %s with error %v\n",
+					http.StatusText(http.StatusNotFound),
+					metric.ID, metric.MType, err), http.StatusNotFound)
+				return
 			}
 		} else {
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)

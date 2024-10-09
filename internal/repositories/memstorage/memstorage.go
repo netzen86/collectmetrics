@@ -44,16 +44,18 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metr
 	return nil
 }
 
-func (storage *MemStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
-	var metrics api.MetricsSlice
+func (storage *MemStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+	var metrics api.MetricsMap
 
-	for k, v := range storage.Gauge {
+	metrics.Metrics = make(map[string]api.Metrics)
+
+	for name, value := range storage.Gauge {
 		log.Println("METRICS GAUGE WRITE")
-		metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: api.Gauge, ID: k, Value: &v})
+		metrics.Metrics[name] = api.Metrics{MType: api.Gauge, ID: name, Value: &value}
 	}
-	for k, v := range storage.Counter {
+	for name, delta := range storage.Counter {
 		log.Println("METRICS COUNTER WRITE")
-		metrics.Metrics = append(metrics.Metrics, api.Metrics{MType: api.Counter, ID: k, Delta: &v})
+		metrics.Metrics[name] = api.Metrics{MType: api.Counter, ID: name, Delta: &delta}
 	}
 	return metrics, nil
 }

@@ -65,8 +65,8 @@ func (dbstorage *DBStorage) GetStorage(ctx context.Context) (*memstorage.MemStor
 	return nil, nil
 }
 
-func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
-	var metrics api.MetricsSlice
+func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+	var metrics api.MetricsMap
 
 	smtp := `
 	SELECT name, value, 'gauge' as type
@@ -77,7 +77,7 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice
 
 	rows, err := dbstorage.DB.QueryContext(ctx, smtp)
 	if err != nil {
-		return api.MetricsSlice{}, fmt.Errorf("error when execute select %w", err)
+		return api.MetricsMap{}, fmt.Errorf("error when execute select %w", err)
 	}
 	defer rows.Close()
 
@@ -88,27 +88,27 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice
 
 		err = rows.Scan(&name, &val, &mtype)
 		if err != nil {
-			return api.MetricsSlice{}, fmt.Errorf("error scan %w", err)
+			return api.MetricsMap{}, fmt.Errorf("error scan %w", err)
 		}
 		if mtype == "gauge" {
 			value, ok := val.(float64)
 			if !ok {
-				return api.MetricsSlice{}, fmt.Errorf("mismatch metric %s and value type", name)
+				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and value type", name)
 			}
-			metrics.Metrics = append(metrics.Metrics, api.Metrics{ID: name, MType: mtype, Value: &value})
+			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &value}
 		}
 		if mtype == "counter" {
 			delta, ok := val.(float64)
 			if !ok {
-				return api.MetricsSlice{}, fmt.Errorf("mismatch metric %s and delta type", name)
+				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and delta type", name)
 			}
-			metrics.Metrics = append(metrics.Metrics, api.Metrics{ID: name, MType: mtype, Value: &delta})
+			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &delta}
 		}
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return api.MetricsSlice{}, fmt.Errorf("errors rows %w", err)
+		return api.MetricsMap{}, fmt.Errorf("errors rows %w", err)
 	}
 	return metrics, nil
 }

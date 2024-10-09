@@ -141,16 +141,24 @@ func (serverCfg *ServerCfg) initSrv() error {
 
 	// serverCfg.Storage = &storage
 
-	// создания мемсторожа
+	// созданиe мемсторэжа
 	serverCfg.Storage, err = memstorage.NewMemStorage()
 	if err != nil {
 		return fmt.Errorf("error when get mem storage %v ", err)
 	}
 	if serverCfg.StorageSelecter == ssDataBase {
-		// создания базы данных
+		// созданиe базы данных
 		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
+		}
+	}
+
+	if serverCfg.StorageSelecter == ssFile {
+		// созданиe файлсторэжа
+		serverCfg.Storage, err = files.NewFileStorage(ctx, serverCfg.FileStoragePath)
+		if err != nil {
+			return fmt.Errorf("error when get file storage %v ", err)
 		}
 	}
 
@@ -186,7 +194,10 @@ func (serverCfg *ServerCfg) initSrv() error {
 		if err != nil {
 			return fmt.Errorf("error get storage %w", err)
 		}
-		files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
+		err = files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
+		if err != nil {
+			return fmt.Errorf("error load metrics fom file %w", err)
+		}
 		memstorage.MetricMapToMemstorage(&metrics, *memstor)
 	}
 
