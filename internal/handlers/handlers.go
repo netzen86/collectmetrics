@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
+	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
@@ -36,39 +36,39 @@ func UpdateMHandle(storage repositories.Repo,
 		mName := chi.URLParam(r, "mName")
 		mValue := chi.URLParam(r, "mValue")
 
-		if storageSelecter == "FILE" {
-			var tmpmetric api.Metrics
-			tmpmetric.MType = mType
-			tmpmetric.ID = mName
+		// if storageSelecter == "FILE" {
+		// 	var tmpmetric api.Metrics
+		// 	tmpmetric.MType = mType
+		// 	tmpmetric.ID = mName
 
-			if tmpmetric.MType == "counter" {
-				tmpDel, err := strconv.ParseInt(mValue, 10, 64)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
-					return
-				}
-				tmpmetric.Delta = &tmpDel
-			} else if tmpmetric.MType == "gauge" {
-				tmpVal, err := strconv.ParseFloat(mValue, 64)
-				if err != nil {
-					http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
-					return
-				}
-				tmpmetric.Value = &tmpVal
-			} else {
-				http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
-				return
-			}
-			err := files.FileStorage(r.Context(), tempfilename, tmpmetric)
-			if err != nil {
-				http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
-				return
-			}
-		}
+		// 	if tmpmetric.MType == "counter" {
+		// 		tmpDel, err := strconv.ParseInt(mValue, 10, 64)
+		// 		if err != nil {
+		// 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+		// 			return
+		// 		}
+		// 		tmpmetric.Delta = &tmpDel
+		// 	} else if tmpmetric.MType == "gauge" {
+		// 		tmpVal, err := strconv.ParseFloat(mValue, 64)
+		// 		if err != nil {
+		// 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
+		// 			return
+		// 		}
+		// 		tmpmetric.Value = &tmpVal
+		// 	} else {
+		// 		http.Error(w, fmt.Sprintf("wrong metric type%s\n", http.StatusText(400)), 400)
+		// 		return
+		// 	}
+		// 	// err := storage.FileStorage(r.Context(), tempfilename, tmpmetric)
+		// 	// if err != nil {
+		// 	// 	http.Error(w, fmt.Sprintf("error in store metric in file %s %v\n", http.StatusText(400), err), 400)
+		// 	// 	return
+		// 	// }
+		// }
 
 		retrybuilder := func() func() error {
 			return func() error {
-				err := storage.UpdateParam(r.Context(), false, tempfilename, mType, mName, mValue)
+				err := storage.UpdateParam(r.Context(), false, mType, mName, mValue)
 				if err != nil {
 					log.Println(err)
 				}
@@ -312,7 +312,9 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				http.Error(w, http.StatusText(500), 500)
 				return
 			}
-			files.SyncSaveMetrics(newStorage, filename)
+			var MetricsMap api.MetricsMap
+			memstorage.MemstoragetoMetricMap(&MetricsMap, *newStorage)
+			files.SyncSaveMetrics(MetricsMap, filename)
 		}
 		// packing content
 		resp, err = utils.CoHTTP(resp, r, w)
@@ -344,61 +346,61 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
 
 		}
-		if storageSelecter == "FILE" {
-			err := files.FileStorage(ctx, tempfilename, *metric)
-			if err != nil {
-				return fmt.Errorf("error in store metric counter in file %v", err)
-			}
-		} else {
-			retrybuilder := func() func() error {
-				return func() error {
-					err := storage.UpdateParam(ctx, false, tempfilename, metric.MType, metric.ID, *metric.Delta)
-					if err != nil {
-						log.Println("retry", err)
-					}
-					return err
+		// if storageSelecter == "FILE" {
+		// 	err := files.FileStorage(ctx, tempfilename, *metric)
+		// 	if err != nil {
+		// 		return fmt.Errorf("error in store metric counter in file %v", err)
+		// 	}
+		// } else {
+		retrybuilder := func() func() error {
+			return func() error {
+				err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Delta)
+				if err != nil {
+					log.Println("retry", err)
 				}
-			}
-			err := utils.RetrayFunc(retrybuilder)
-			if err != nil {
-				return fmt.Errorf("can't update storage counter value %w", err)
-			}
-
-			*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
-			if err != nil {
-				return fmt.Errorf("can't get updated counter value %w", err)
+				return err
 			}
 		}
+		err := utils.RetrayFunc(retrybuilder)
+		if err != nil {
+			return fmt.Errorf("can't update storage counter value %w", err)
+		}
+
+		*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
+		if err != nil {
+			return fmt.Errorf("can't get updated counter value %w", err)
+		}
+		// }
 	} else if metric.MType == "gauge" {
 		if metric.Value == nil {
 			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
 		}
 
-		if storageSelecter == "FILE" {
-			err := files.FileStorage(ctx, tempfilename, *metric)
-			if err != nil {
-				return fmt.Errorf("error in store metric gauge in file %v", err)
-			}
-		} else {
-			retrybuilder := func() func() error {
-				return func() error {
-					err := storage.UpdateParam(ctx, false, tempfilename, metric.MType, metric.ID, *metric.Value)
-					if err != nil {
-						log.Println("retry", err)
-					}
-					return err
+		// if storageSelecter == "FILE" {
+		// 	err := files.FileStorage(ctx, tempfilename, *metric)
+		// 	if err != nil {
+		// 		return fmt.Errorf("error in store metric gauge in file %v", err)
+		// 	}
+		// } else {
+		retrybuilder := func() func() error {
+			return func() error {
+				err := storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Value)
+				if err != nil {
+					log.Println("retry", err)
 				}
-			}
-			err := utils.RetrayFunc(retrybuilder)
-			if err != nil {
-				return fmt.Errorf("can't update storage gauge value %w", err)
-			}
-
-			*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
-			if err != nil {
-				return fmt.Errorf("can't get updated gauge value %w", err)
+				return err
 			}
 		}
+		err := utils.RetrayFunc(retrybuilder)
+		if err != nil {
+			return fmt.Errorf("can't update storage gauge value %w", err)
+		}
+
+		*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
+		if err != nil {
+			return fmt.Errorf("can't get updated gauge value %w", err)
+		}
+		// }
 	} else {
 		return fmt.Errorf("%s", "empty metic")
 	}

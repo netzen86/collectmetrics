@@ -21,6 +21,10 @@ type MetricsSlice struct {
 	Metrics []Metrics
 }
 
+type MetricsMap struct {
+	Metrics map[string]Metrics
+}
+
 func (metrics *Metrics) Clean() {
 
 	if metrics.Delta != nil {

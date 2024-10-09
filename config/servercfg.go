@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
@@ -179,12 +180,14 @@ func (serverCfg *ServerCfg) initSrv() error {
 
 	// копируем метрики из файла в мемсторож
 	if serverCfg.Restore && serverCfg.StorageSelecter == ssMemStor {
+		var metrics api.MetricsMap
 		log.Println("ENTER IN RESTORE")
-		memstorage, err := repositories.Repo.GetStorage(serverCfg.Storage, ctx)
+		memstor, err := repositories.Repo.GetStorage(serverCfg.Storage, ctx)
 		if err != nil {
 			return fmt.Errorf("error get storage %w", err)
 		}
-		files.LoadMetric(memstorage, serverCfg.FileStoragePathDef)
+		files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
+		memstorage.MetricMapToMemstorage(&metrics, *memstor)
 	}
 
 	// если храним метрики в базе данных то создаем таблицы counter и gauge

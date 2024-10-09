@@ -34,11 +34,10 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 		Counter map[string]int64
 	}
 	type args struct {
-		ctx          context.Context
-		tempfilename string
-		metricType   string
-		metricName   string
-		metricValue  interface{}
+		ctx         context.Context
+		metricType  string
+		metricName  string
+		metricValue interface{}
 	}
 	tests := []struct {
 		name    string
@@ -54,7 +53,7 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 				Gauge:   tt.fields.Gauge,
 				Counter: tt.fields.Counter,
 			}
-			if err := storage.UpdateParam(tt.args.ctx, false, tt.args.tempfilename, tt.args.metricType, tt.args.metricName, tt.args.metricValue); (err != nil) != tt.wantErr {
+			if err := storage.UpdateParam(tt.args.ctx, false, tt.args.metricType, tt.args.metricName, tt.args.metricValue); (err != nil) != tt.wantErr {
 				t.Errorf("MemStorage.UpdateParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

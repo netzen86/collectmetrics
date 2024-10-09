@@ -12,8 +12,6 @@ import (
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
-	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 type filestorage struct {
@@ -33,69 +31,6 @@ type Consumer struct {
 	// добавляем Reader в Consumer
 	// reader  *bufio.Reader
 	Scanner *bufio.Scanner
-}
-
-func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
-	tempfile, metricType, metricName string, metricValue interface{}) error {
-	var pcMetric api.Metrics
-	var metrics api.MetricsSlice
-	var err error
-
-	// tmpStorage, err := memstorage.NewMemStorage()
-	// if err != nil {
-	// 	return err
-	// }
-	pcMetric.ID = metricName
-	pcMetric.MType = metricType
-
-	// в зависимости от типа метрик определяем тип metricValue
-	if metricType == api.Counter {
-		delta, ok := metricValue.(int64)
-		if !ok {
-			fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
-		}
-		// pcMetric.Delta = &delta
-		err = sumPc(ctx, tempfile, delta, &pcMetric)
-		if err != nil {
-			return err
-		}
-	} else if metricType == api.Gauge {
-		value, ok := metricValue.(float64)
-		if !ok {
-			fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
-		}
-		pcMetric.Value = &value
-	}
-
-	LoadMetric(&metrics, tempfile)
-
-	if metricType == api.Counter {
-		tmpStorage.Counter[metricName] = *pcMetric.Delta
-	} else if metricType == api.Gauge {
-		tmpStorage.Gauge[metricName] = *pcMetric.Value
-	}
-
-	SyncSaveMetrics(tmpStorage, tempfile)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
-	return 0, nil
-}
-func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
-	return 0, nil
-}
-func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
-	return api.MetricsSlice{}, nil
-}
-func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
-	return &memstorage.MemStorage{}, nil
-}
-func (fs *filestorage) CreateTables(ctx context.Context) error {
-	return nil
 }
 
 func NewProducer(filename string) (*Producer, error) {
@@ -144,7 +79,7 @@ func NewConsumer(filename string) (*Consumer, error) {
 	}, nil
 }
 
-func (c *Consumer) ReadMetric(metrics *api.MetricsSlice) error {
+func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 	metric := api.Metrics{}
 	scanner := c.Scanner
 	for scanner.Scan() {
@@ -158,15 +93,16 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsSlice) error {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
-			metrics.Metrics = append(metrics.Metrics, metric)
-		}
-		if metric.MType == "counter" {
+		} else if metric.MType == "counter" {
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
-			metrics.Metrics = append(metrics.Metrics, metric)
+		} else {
+			return fmt.Errorf("rm func - wrong metric type")
+
 		}
+		metrics.Metrics[metric.ID] = metric
 	}
 	return nil
 }
@@ -198,28 +134,21 @@ func SaveMetrics(storage repositories.Repo, metricFileName, tempfile, storageSel
 	}
 }
 
-func SyncSaveMetrics(storage *memstorage.MemStorage, metricFileName string) {
+func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) {
 	producer, err := NewProducer(metricFileName)
 	if err != nil {
 		log.Fatal("can't create producer")
 	}
 	defer producer.file.Close()
-	for k, v := range storage.Gauge {
-		err := producer.WriteMetric(api.Metrics{MType: "gauge", ID: k, Value: &v})
+	for _, metric := range metrics.Metrics {
+		err := producer.WriteMetric(metric)
 		if err != nil {
 			log.Fatal("can't write metric")
 		}
-	}
-	for k, v := range storage.Counter {
-		err := producer.WriteMetric(api.Metrics{MType: "counter", ID: k, Delta: &v})
-		if err != nil {
-			log.Fatal("can't write metric")
-		}
-	}
 
+	}
 }
-
-func LoadMetric(metrics *api.MetricsSlice, metricFileName string) {
+func LoadMetric(metrics *api.MetricsMap, metricFileName string) {
 	if _, err := os.Stat(metricFileName); err == nil {
 		consumer, err := NewConsumer(metricFileName)
 		if err != nil {
@@ -233,37 +162,37 @@ func LoadMetric(metrics *api.MetricsSlice, metricFileName string) {
 	}
 }
 
-func UpdateParamFile(ctx context.Context, saveMetricsDefaultPath, metricType, metricName string, metricValue interface{}) error {
-	producer, err := NewProducer(saveMetricsDefaultPath)
-	if err != nil {
-		log.Fatal("can't create producer")
-	}
-	defer producer.file.Close()
-	if metricType == "gauge" {
-		// log.Println("METRICS GAUGE WRITE TO FILE")
-		val, err := utils.ParseValGag(metricValue)
-		if err != nil {
-			return fmt.Errorf("gauge value error %v", err)
-		}
-		err = producer.WriteMetric(api.Metrics{MType: "gauge", ID: metricName, Value: &val})
-		if err != nil {
-			return fmt.Errorf("can't write gauge metric %v", err)
-		}
-	} else if metricType == "counter" {
-		// log.Println("METRICS COUNTER WRITE TO FILE")
-		del, err := utils.ParseValCnt(metricValue)
-		if err != nil {
-			return fmt.Errorf("counter value error %v", err)
-		}
-		err = producer.WriteMetric(api.Metrics{MType: "counter", ID: metricName, Delta: &del})
-		if err != nil {
-			return fmt.Errorf("can't write counter metric %v", err)
-		}
-	} else {
-		return fmt.Errorf("%s", "wrong metric type")
-	}
-	return nil
-}
+// func UpdateParamFile(ctx context.Context, saveMetricsDefaultPath, metricType, metricName string, metricValue interface{}) error {
+// 	producer, err := NewProducer(saveMetricsDefaultPath)
+// 	if err != nil {
+// 		log.Fatal("can't create producer")
+// 	}
+// 	defer producer.file.Close()
+// 	if metricType == "gauge" {
+// 		// log.Println("METRICS GAUGE WRITE TO FILE")
+// 		val, err := utils.ParseValGag(metricValue)
+// 		if err != nil {
+// 			return fmt.Errorf("gauge value error %v", err)
+// 		}
+// 		err = producer.WriteMetric(api.Metrics{MType: "gauge", ID: metricName, Value: &val})
+// 		if err != nil {
+// 			return fmt.Errorf("can't write gauge metric %v", err)
+// 		}
+// 	} else if metricType == "counter" {
+// 		// log.Println("METRICS COUNTER WRITE TO FILE")
+// 		del, err := utils.ParseValCnt(metricValue)
+// 		if err != nil {
+// 			return fmt.Errorf("counter value error %v", err)
+// 		}
+// 		err = producer.WriteMetric(api.Metrics{MType: "counter", ID: metricName, Delta: &del})
+// 		if err != nil {
+// 			return fmt.Errorf("can't write counter metric %v", err)
+// 		}
+// 	} else {
+// 		return fmt.Errorf("%s", "wrong metric type")
+// 	}
+// 	return nil
+// }
 
 func ReadOneMetric(ctx context.Context, consumer *Consumer, metric *api.Metrics) (string, error) {
 	var scannedMetric api.Metrics
@@ -320,38 +249,97 @@ func sumPc(ctx context.Context, filename string, delta int64, pcMetric *api.Metr
 	return nil
 }
 
-func FileStorage(ctx context.Context, tempfile string, metric api.Metrics) error {
+// func FileStorage(ctx context.Context, tempfile string, metric api.Metrics) error {
+// 	var pcMetric api.Metrics
+// 	var err error
+
+// 	tmpStorage, err := memstorage.NewMemStorage()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	pcMetric.ID = metric.ID
+// 	pcMetric.MType = metric.MType
+
+// 	if metric.MType == "counter" {
+// 		pcMetric.Delta = metric.Delta
+// 		err = sumPc(ctx, tempfile, *metric.Delta, &pcMetric)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	} else if metric.MType == "gauge" {
+// 		pcMetric.Value = metric.Value
+// 	}
+
+// 	LoadMetric(tmpStorage, tempfile)
+
+// 	if metric.MType == "counter" {
+// 		tmpStorage.Counter[metric.ID] = *pcMetric.Delta
+// 	} else if metric.MType == "gauge" {
+// 		tmpStorage.Gauge[metric.ID] = *metric.Value
+// 	}
+
+// 	SyncSaveMetrics(tmpStorage, tempfile)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
+	metricType, metricName string, metricValue interface{}) error {
 	var pcMetric api.Metrics
+	var metrics api.MetricsMap
 	var err error
 
-	tmpStorage, err := memstorage.NewMemStorage()
-	if err != nil {
-		return err
-	}
-	pcMetric.ID = metric.ID
-	pcMetric.MType = metric.MType
+	// tmpStorage, err := memstorage.NewMemStorage()
+	// if err != nil {
+	// 	return err
+	// }
+	pcMetric.ID = metricName
+	pcMetric.MType = metricType
 
-	if metric.MType == "counter" {
-		pcMetric.Delta = metric.Delta
-		err = sumPc(ctx, tempfile, *metric.Delta, &pcMetric)
+	// в зависимости от типа метрик определяем тип metricValue
+	if metricType == api.Counter {
+		delta, ok := metricValue.(int64)
+		if !ok {
+			return fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
+		}
+		// pcMetric.Delta = &delta
+		err = sumPc(ctx, fmt.Sprintf("%stmp", fs.Filename), delta, &pcMetric)
 		if err != nil {
 			return err
 		}
-	} else if metric.MType == "gauge" {
-		pcMetric.Value = metric.Value
+	} else if metricType == api.Gauge {
+		value, ok := metricValue.(float64)
+		if !ok {
+			return fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
+		}
+		pcMetric.Value = &value
 	}
 
-	LoadMetric(tmpStorage, tempfile)
+	LoadMetric(&metrics, fmt.Sprintf("%stmp", fs.Filename))
 
-	if metric.MType == "counter" {
-		tmpStorage.Counter[metric.ID] = *pcMetric.Delta
-	} else if metric.MType == "gauge" {
-		tmpStorage.Gauge[metric.ID] = *metric.Value
-	}
+	metrics.Metrics[metricName] = pcMetric
 
-	SyncSaveMetrics(tmpStorage, tempfile)
+	SyncSaveMetrics(metrics, fmt.Sprintf("%stmp", fs.Filename))
 	if err != nil {
 		return err
 	}
 	return nil
 }
+
+// func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+// 	return 0, nil
+// }
+// func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+// 	return 0, nil
+// }
+// func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsSlice, error) {
+// 	return api.MetricsSlice{}, nil
+// }
+// func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
+// 	return &memstorage.MemStorage{}, nil
+// }
+// func (fs *filestorage) CreateTables(ctx context.Context) error {
+// 	return nil
+// }

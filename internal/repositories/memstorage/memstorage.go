@@ -19,7 +19,7 @@ func NewMemStorage() (*MemStorage, error) {
 	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}, nil
 }
 
-func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, tempfile, metricType, metricName string, metricValue interface{}) error {
+func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
 	switch {
 	case metricType == "gauge":
 		val, err := utils.ParseValGag(metricValue)
@@ -84,4 +84,24 @@ func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string) 
 
 func (storage *MemStorage) CreateTables(ctx context.Context) error {
 	return nil
+}
+
+func MetricMapToMemstorage(metrics *api.MetricsMap, storage MemStorage) {
+	for _, metric := range metrics.Metrics {
+		if metric.MType == api.Gauge {
+			storage.Gauge[metric.ID] = *metric.Value
+		}
+		if metric.MType == api.Counter {
+			storage.Counter[metric.ID] = *metric.Delta
+		}
+	}
+}
+
+func MemstoragetoMetricMap(metrics *api.MetricsMap, storage MemStorage) {
+	for name, value := range storage.Gauge {
+		metrics.Metrics[name] = api.Metrics{ID: name, MType: api.Gauge, Value: &value}
+	}
+	for name, delta := range storage.Counter {
+		metrics.Metrics[name] = api.Metrics{ID: name, MType: api.Counter, Delta: &delta}
+	}
 }

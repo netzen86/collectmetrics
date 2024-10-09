@@ -133,7 +133,7 @@ func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 	return nil
 }
 
-func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, tempfile, metricType, metricName string, metricValue interface{}) error {
+func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
 
 	stmtGauge := `
 	INSERT INTO gauge (name, value) 
