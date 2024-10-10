@@ -67,6 +67,7 @@ func (dbstorage *DBStorage) GetStorage(ctx context.Context) (*memstorage.MemStor
 
 func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
+	metrics.Metrics = make(map[string]api.Metrics)
 
 	smtp := `
 	SELECT name, value, 'gauge' as type
