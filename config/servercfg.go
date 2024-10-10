@@ -212,12 +212,12 @@ func (serverCfg *ServerCfg) initSrv() error {
 		}
 		for _, metric := range metrics.Metrics {
 			if metric.MType == api.Gauge {
-				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, metric.Value)
+				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Value)
 				if err != nil {
 					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
 				}
 			} else if metric.MType == api.Counter {
-				err := serverCfg.Storage.UpdateParam(ctx, true, metric.MType, metric.ID, metric.Delta)
+				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Delta)
 				if err != nil {
 					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
 				}

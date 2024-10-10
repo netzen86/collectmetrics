@@ -103,13 +103,15 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
-			metrics.Metrics[metric.ID] = metric
+			value := float64(*metric.Value)
+			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Value: &value}
 		} else if metric.MType == "counter" {
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
-			metrics.Metrics[metric.ID] = metric
+			delta := int64(*metric.Delta)
+			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Delta: &delta}
 		} else {
 			return fmt.Errorf("rm func - wrong metric type")
 		}
@@ -213,9 +215,11 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 			return fmt.Errorf("mismatch metric %s and value type in filestorage", metricName)
 		}
 		pcMetric.Delta = &delta
-		err = fs.sumPc(ctx, delta, &pcMetric)
-		if err != nil {
-			return err
+		if cntSummed {
+			err = fs.sumPc(ctx, delta, &pcMetric)
+			if err != nil {
+				return err
+			}
 		}
 	} else if metricType == api.Gauge {
 		value, ok := metricValue.(float64)
@@ -228,8 +232,6 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 	if err != nil {
 		return fmt.Errorf("updateparam error load metrics from file %w", err)
 	}
-
-	log.Println("METRICS MAP", metrics.Metrics)
 
 	metrics.Metrics[metricName] = pcMetric
 

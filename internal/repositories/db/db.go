@@ -100,11 +100,11 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, 
 			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &value}
 		}
 		if mtype == "counter" {
-			deltatmp, ok := val.(float64)
+			deltaFLoat, ok := val.(float64)
 			if !ok {
 				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and delta type", name)
 			}
-			delta := int64(deltatmp)
+			delta := int64(deltaFLoat)
 			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Delta: &delta}
 		}
 	}
