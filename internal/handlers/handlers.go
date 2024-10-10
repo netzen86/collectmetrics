@@ -284,9 +284,10 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 				http.Error(w, http.StatusText(500), 500)
 				return
 			}
-			var MetricsMap api.MetricsMap
-			memstorage.MemstoragetoMetricMap(&MetricsMap, *newStorage)
-			err = files.SyncSaveMetrics(MetricsMap, filename)
+			var metricsMap api.MetricsMap
+			metricsMap.Metrics = make(map[string]api.Metrics)
+			memstorage.MemstoragetoMetricMap(&metricsMap, *newStorage)
+			err = files.SyncSaveMetrics(metricsMap, filename)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return

@@ -189,6 +189,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	// копируем метрики из файла в мемсторож
 	if serverCfg.Restore && serverCfg.StorageSelecter == ssMemStor {
 		var metrics api.MetricsMap
+		metrics.Metrics = make(map[string]api.Metrics)
 		log.Println("ENTER IN RESTORE")
 		memstor, err := repositories.Repo.GetStorage(serverCfg.Storage, ctx)
 		if err != nil {
