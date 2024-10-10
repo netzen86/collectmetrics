@@ -16,11 +16,8 @@ func TestNewMemStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewMemStorage()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewMemStorage() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := NewMemStorage()
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewMemStorage() = %v, want %v", got, tt.want)
 			}

@@ -135,17 +135,14 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 
 // метод инициализации сервера
 func (serverCfg *ServerCfg) initSrv() error {
-	var ctx context.Context
-	// var storage repositories.Repo
 	var err error
-
-	// serverCfg.Storage = &storage
+	ctx := context.Background()
 
 	// созданиe мемсторэжа
-	serverCfg.Storage, err = memstorage.NewMemStorage()
-	if err != nil {
-		return fmt.Errorf("error when get mem storage %v ", err)
+	if serverCfg.StorageSelecter == ssMemStor {
+		serverCfg.Storage = memstorage.NewMemStorage()
 	}
+
 	if serverCfg.StorageSelecter == ssDataBase {
 		// созданиe базы данных
 		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
@@ -163,7 +160,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	}
 
 	// лог значений полученных из переменных окружения и флагов
-	log.Println("!!! SERVER START !!!",
+	log.Println("!!! SERVER CONFIGURED !!!",
 		serverCfg.Endpoint, serverCfg.FileStoragePathDef,
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
@@ -186,22 +183,6 @@ func (serverCfg *ServerCfg) initSrv() error {
 		}
 	}
 
-	// копируем метрики из файла в мемсторож
-	if serverCfg.Restore && serverCfg.StorageSelecter == ssMemStor {
-		var metrics api.MetricsMap
-		metrics.Metrics = make(map[string]api.Metrics)
-		log.Println("ENTER IN RESTORE")
-		memstor, err := repositories.Repo.GetStorage(serverCfg.Storage, ctx)
-		if err != nil {
-			return fmt.Errorf("error get storage %w", err)
-		}
-		err = files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
-		if err != nil {
-			return fmt.Errorf("error load metrics fom file %w", err)
-		}
-		memstorage.MetricMapToMemstorage(&metrics, *memstor)
-	}
-
 	// если храним метрики в базе данных то создаем таблицы counter и gauge
 	if serverCfg.StorageSelecter == ssDataBase {
 		retrybuilder := func() func() error {
@@ -216,6 +197,31 @@ func (serverCfg *ServerCfg) initSrv() error {
 		err = utils.RetrayFunc(retrybuilder)
 		if err != nil {
 			log.Fatal("tables not created ", err)
+		}
+	}
+
+	// копируем метрики из файла в мемсторож
+	if serverCfg.Restore {
+		var metrics api.MetricsMap
+		metrics.Metrics = make(map[string]api.Metrics)
+		log.Println("ENTER IN RESTORE")
+
+		err = files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
+		if err != nil {
+			return fmt.Errorf("error load metrics fom file %w", err)
+		}
+		for _, metric := range metrics.Metrics {
+			if metric.MType == api.Gauge {
+				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, metric.Value)
+				if err != nil {
+					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
+				}
+			} else if metric.MType == api.Counter {
+				err := serverCfg.Storage.UpdateParam(ctx, true, metric.MType, metric.ID, metric.Delta)
+				if err != nil {
+					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
+				}
+			}
 		}
 	}
 	return nil

@@ -15,30 +15,28 @@ type MemStorage struct {
 	Counter map[string]int64
 }
 
-func NewMemStorage() (*MemStorage, error) {
-	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}, nil
+func NewMemStorage() *MemStorage {
+	return &MemStorage{Gauge: make(map[string]float64), Counter: make(map[string]int64)}
 }
 
 func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
-	switch {
-	case metricType == "gauge":
-		val, err := utils.ParseValGag(metricValue)
+	if metricType == api.Gauge {
+		value, err := utils.ParseValGag(metricValue)
 		if err != nil {
 			return err
 		}
-		storage.Gauge[metricName] = val
-
-	case metricType == "counter":
-		del, err := utils.ParseValCnt(metricValue)
+		storage.Gauge[metricName] = value
+	} else if metricType == api.Counter {
+		delta, err := utils.ParseValCnt(metricValue)
 		if err != nil {
 			return err
 		}
 		if !cntSummed {
-			storage.Counter[metricName] += del
+			storage.Counter[metricName] += delta
 		} else {
-			storage.Counter[metricName] = del
+			storage.Counter[metricName] = delta
 		}
-	default:
+	} else {
 		return errors.New("wrong metric type")
 	}
 	return nil

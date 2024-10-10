@@ -96,6 +96,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 		err := json.Unmarshal(scanner.Bytes(), &metric)
 		if err != nil {
 			log.Printf("can't unmarshal string %v", err)
+			continue
 		}
 		if metric.MType == "gauge" {
 			if metric.Value == nil {

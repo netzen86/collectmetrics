@@ -34,29 +34,30 @@ func NewDBStorage(ctx context.Context, param string) (*DBStorage, error) {
 }
 
 // функция для вставки данных в базу данных
-func insertData(ctx context.Context, dbstorage *DBStorage,
-	stmt, metricType, metricName string, metricValue interface{}) error {
-
+func (dbstorage *DBStorage) insertData(ctx context.Context, stmt, metricType,
+	metricName string, metricValue interface{}) error {
 	if metricType == api.Gauge {
-		val, err := utils.ParseValGag(metricValue)
+
+		value, err := utils.ParseValGag(metricValue)
 		if err != nil {
 			return err
 		}
-		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, val)
+		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, value)
 		if err != nil {
 			return fmt.Errorf("insert in table error - %w", err)
 		}
 	}
 
 	if metricType == api.Counter {
-		val, err := utils.ParseValCnt(metricValue)
+		delta, err := utils.ParseValCnt(metricValue)
 		if err != nil {
 			return err
 		}
-		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, val)
+		_, err = dbstorage.DB.ExecContext(ctx, stmt, metricName, delta)
 		if err != nil {
 			return fmt.Errorf("insert in table error - %w", err)
 		}
+
 	}
 	return nil
 }
@@ -99,11 +100,12 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, 
 			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &value}
 		}
 		if mtype == "counter" {
-			delta, ok := val.(float64)
+			deltatmp, ok := val.(float64)
 			if !ok {
 				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and delta type", name)
 			}
-			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &delta}
+			delta := int64(deltatmp)
+			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Delta: &delta}
 		}
 	}
 
@@ -135,7 +137,6 @@ func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 }
 
 func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
-
 	stmtGauge := `
 	INSERT INTO gauge (name, value) 
 	VALUES ($1, $2)
@@ -150,12 +151,12 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 
 	switch {
 	case metricType == "gauge":
-		err := insertData(ctx, dbstorage, stmtGauge, metricType, metricName, metricValue)
+		err := dbstorage.insertData(ctx, stmtGauge, metricType, metricName, metricValue)
 		if err != nil {
 			return fmt.Errorf("gauge %w", err)
 		}
 	case metricType == "counter":
-		err := insertData(ctx, dbstorage, stmtCounter, metricType, metricName, metricValue)
+		err := dbstorage.insertData(ctx, stmtCounter, metricType, metricName, metricValue)
 		if err != nil {
 			return fmt.Errorf("counter %w", err)
 		}
