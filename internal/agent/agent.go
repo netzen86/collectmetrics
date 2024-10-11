@@ -18,8 +18,6 @@ import (
 
 const (
 	updatesAddress string = "http://%s/updates/"
-	gag            string = "gauge"
-	cnt            string = "counter"
 	alloc          string = "Alloc"
 	buckHashSys    string = "BuckHashSys"
 	frees          string = "Frees"
@@ -90,10 +88,10 @@ func CollectMetrics(counter *int64) []api.Metrics {
 
 	for k, v := range metFunc {
 		value := v()
-		metrics = append(metrics, api.Metrics{ID: k, MType: gag, Value: &value})
+		metrics = append(metrics, api.Metrics{ID: k, MType: api.Gauge, Value: &value})
 	}
 	*counter += 1
-	metrics = append(metrics, api.Metrics{ID: pollCount, MType: cnt, Delta: counter})
+	metrics = append(metrics, api.Metrics{ID: pollCount, MType: api.Counter, Delta: counter})
 	return metrics
 }
 
@@ -124,10 +122,10 @@ func JSONdecode(resp *http.Response) {
 
 	// типа лог
 	for _, m := range metrics {
-		if m.MType == "counter" {
+		if m.MType == api.Counter {
 			log.Printf("%s %v\n", m.ID, *m.Delta)
 		}
-		if m.MType == "gauge" {
+		if m.MType == api.Gauge {
 			log.Printf("%s %v\n", m.ID, *m.Value)
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/netzen86/collectmetrics/internal/api"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
 type Repo interface {
@@ -12,6 +11,5 @@ type Repo interface {
 	GetCounterMetric(ctx context.Context, metricID string) (int64, error)
 	GetGaugeMetric(ctx context.Context, metricID string) (float64, error)
 	GetAllMetrics(ctx context.Context) (api.MetricsMap, error)
-	GetStorage(ctx context.Context) (*memstorage.MemStorage, error)
 	CreateTables(ctx context.Context) error
 }

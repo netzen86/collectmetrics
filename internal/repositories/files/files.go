@@ -12,7 +12,6 @@ import (
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
 type Filestorage struct {
@@ -98,14 +97,14 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 			log.Printf("can't unmarshal string %v", err)
 			continue
 		}
-		if metric.MType == "gauge" {
+		if metric.MType == api.Gauge {
 			if metric.Value == nil {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
 			value := float64(*metric.Value)
 			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Value: &value}
-		} else if metric.MType == "counter" {
+		} else if metric.MType == api.Counter {
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
@@ -122,7 +121,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 
 // функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
-func SaveMetrics(storage repositories.Repo, metricFileName, tempfile, storageSelecter string, storeInterval int) {
+func SaveMetrics(storage repositories.Repo, metricFileName, storageSelecter string, storeInterval int) {
 
 	for {
 		<-time.After(time.Duration(storeInterval) * time.Second)
@@ -308,10 +307,6 @@ func (fs *Filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error
 		}
 	}
 	return metrics, nil
-}
-
-func (fs *Filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
-	return &memstorage.MemStorage{}, nil
 }
 
 func (fs *Filestorage) CreateTables(ctx context.Context) error {

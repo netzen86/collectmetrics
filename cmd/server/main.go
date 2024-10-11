@@ -26,7 +26,7 @@ func main() {
 	// восстанавливаем метрики из файла
 	if cfg.StoreInterval != 0 {
 		go files.SaveMetrics(cfg.Storage, cfg.FileStoragePathDef,
-			cfg.Tempfile.Name(), cfg.StorageSelecter, cfg.StoreInterval)
+			cfg.StorageSelecter, cfg.StoreInterval)
 	}
 
 	// запуск обработчика http запросов

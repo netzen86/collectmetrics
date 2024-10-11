@@ -154,46 +154,10 @@ func (serverCfg *ServerCfg) initSrv() error {
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
 		}
-	}
-
-	// созданиe файлсторэжа
-	if serverCfg.StorageSelecter == SsFile {
-		serverCfg.Storage, err = files.NewFileStorage(ctx, serverCfg.FileStoragePath)
-		if err != nil {
-			return fmt.Errorf("error when get file storage %v ", err)
-		}
-	}
-
-	// лог значений полученных из переменных окружения и флагов
-	log.Println("!!! SERVER CONFIGURED !!!",
-		serverCfg.Endpoint, serverCfg.FileStoragePathDef,
-		serverCfg.FileStoragePath, serverCfg.DBconstring,
-		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
-
-	// создание временого файла для файлсторож
-	serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return fmt.Errorf("error create temp file %v ", err)
-	}
-
-	// // если файл с метриками существует копируем его в файлсторож(FileStoragePath + tmp)
-	// if utils.ChkFileExist(serverCfg.FileStoragePath) &&
-	// 	serverCfg.StorageSelecter == SsFile {
-	// 	data, err := os.ReadFile(serverCfg.FileStoragePath)
-	// 	if err != nil {
-	// 		return fmt.Errorf("error reading file: %v", err)
-	// 	}
-	// 	err = os.WriteFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), data, 0666)
-	// 	if err != nil {
-	// 		return fmt.Errorf("error writing file: %v", err)
-	// 	}
-	// }
-
-	// если храним метрики в базе данных то создаем таблицы counter и gauge
-	if serverCfg.StorageSelecter == SsDataBase {
+		// создание таблиц counter и gauge
 		retrybuilder := func() func() error {
 			return func() error {
-				err := repositories.Repo.CreateTables(serverCfg.Storage, context.TODO())
+				err := serverCfg.Storage.CreateTables(ctx)
 				if err != nil {
 					log.Println(err)
 				}
@@ -205,6 +169,26 @@ func (serverCfg *ServerCfg) initSrv() error {
 			log.Fatal("tables not created ", err)
 		}
 	}
+
+	// созданиe файлсторэжа
+	if serverCfg.StorageSelecter == SsFile {
+		serverCfg.Storage, err = files.NewFileStorage(ctx, serverCfg.FileStoragePath)
+		if err != nil {
+			return fmt.Errorf("error when get file storage %v ", err)
+		}
+		// создание временого файла для файлсторож
+		serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp",
+			serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+		if err != nil {
+			return fmt.Errorf("error create temp file %v ", err)
+		}
+	}
+
+	// лог значений полученных из переменных окружения и флагов
+	log.Println("!!! SERVER CONFIGURED !!!",
+		serverCfg.Endpoint, serverCfg.FileStoragePathDef,
+		serverCfg.FileStoragePath, serverCfg.DBconstring,
+		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
 
 	// копируем метрики из файла в мемсторож
 	if serverCfg.Restore {

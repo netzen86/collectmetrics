@@ -58,14 +58,6 @@ func (storage *MemStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, e
 	return metrics, nil
 }
 
-// функция для получения мемсторожа, param не используется
-func (storage *MemStorage) GetStorage(ctx context.Context) (*MemStorage, error) {
-	if storage == nil {
-		return nil, errors.New("storage not init")
-	}
-	return storage, nil
-}
-
 func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
 	delta, ok := storage.Counter[metricID]
 	if !ok {

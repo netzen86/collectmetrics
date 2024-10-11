@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/handlers"
 )

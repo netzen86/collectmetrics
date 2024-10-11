@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+
 	"github.com/netzen86/collectmetrics/internal/api"
 )
 
@@ -51,11 +51,8 @@ func GzipDecompress(buf *bytes.Buffer) error {
 
 	// в отчищенную переменную buf записываются распакованные данные
 	buf.Reset()
-	// _, err =
 	buf.ReadFrom(gz)
-	// if err != nil {
-	// 	return fmt.Errorf("%s read unpacked data error", err)
-	// }
+
 	return nil
 }
 
@@ -106,21 +103,6 @@ func WorkingDir() string {
 	// Working Directory
 	wd, _ := os.Getwd()
 	return wd
-}
-
-func ListDir(path string) error {
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		log.Printf("dir: %v: name: %s\n", info.IsDir(), path)
-		return nil
-	})
-	if err != nil {
-		log.Println(err)
-	}
-	return nil
 }
 
 func RetrayFunc(retrybuilder func() func() error) error {

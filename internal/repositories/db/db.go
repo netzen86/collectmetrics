@@ -8,8 +8,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/netzen86/collectmetrics/internal/api"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
@@ -62,10 +62,6 @@ func (dbstorage *DBStorage) insertData(ctx context.Context, stmt, metricType,
 	return nil
 }
 
-func (dbstorage *DBStorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
-	return nil, nil
-}
-
 func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 	metrics.Metrics = make(map[string]api.Metrics)
@@ -92,14 +88,14 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, 
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("error scan %w", err)
 		}
-		if mtype == "gauge" {
+		if mtype == api.Gauge {
 			value, ok := val.(float64)
 			if !ok {
 				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and value type", name)
 			}
 			metrics.Metrics[name] = api.Metrics{ID: name, MType: mtype, Value: &value}
 		}
-		if mtype == "counter" {
+		if mtype == api.Counter {
 			deltaFLoat, ok := val.(float64)
 			if !ok {
 				return api.MetricsMap{}, fmt.Errorf("mismatch metric %s and delta type", name)
@@ -150,12 +146,12 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 	  SET delta = (SELECT delta FROM counter WHERE name=$1) + $2`
 
 	switch {
-	case metricType == "gauge":
+	case metricType == api.Gauge:
 		err := dbstorage.insertData(ctx, stmtGauge, metricType, metricName, metricValue)
 		if err != nil {
 			return fmt.Errorf("gauge %w", err)
 		}
-	case metricType == "counter":
+	case metricType == api.Counter:
 		err := dbstorage.insertData(ctx, stmtCounter, metricType, metricName, metricValue)
 		if err != nil {
 			return fmt.Errorf("counter %w", err)

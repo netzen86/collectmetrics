@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
@@ -29,7 +30,7 @@ func UpdateMHandle(storage repositories.Repo,
 	return func(w http.ResponseWriter, r *http.Request) {
 		cntSummed := false
 		mType := chi.URLParam(r, "mType")
-		if mType != "counter" && mType != "gauge" {
+		if mType != api.Counter && mType != api.Gauge {
 			http.Error(w, "wrong metric type", http.StatusBadRequest)
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -37,7 +38,7 @@ func UpdateMHandle(storage repositories.Repo,
 		mName := chi.URLParam(r, "mName")
 		mValue := chi.URLParam(r, "mValue")
 
-		if storageSelecter == "FILE" {
+		if storageSelecter == config.SsFile {
 			cntSummed = true
 		}
 		retrybuilder := func() func() error {
@@ -105,7 +106,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename,
 		ctx := r.Context()
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
-		if metric.MType == "counter" {
+		if metric.MType == api.Counter {
 			var delta int64
 			metric.Delta = &delta
 			retrybuilder := func() func() error {
@@ -130,7 +131,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename,
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
 			w.Write([]byte(deltaStr))
 			return
-		} else if metric.MType == "gauge" {
+		} else if metric.MType == api.Gauge {
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
@@ -306,11 +307,11 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		return fmt.Errorf("%s", "not valid metric name")
 	}
 
-	if storageSelecter == "FILE" {
+	if storageSelecter == config.SsFile {
 		cntSummed = true
 	}
 
-	if metric.MType == "counter" {
+	if metric.MType == api.Counter {
 		if metric.Delta == nil {
 			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
 		}
@@ -331,7 +332,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't get updated counter value %w", err)
 		}
-	} else if metric.MType == "gauge" {
+	} else if metric.MType == api.Gauge {
 		if metric.Value == nil {
 			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
 		}
@@ -378,7 +379,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			return
 		}
 		// зарашиваем метрики
-		if metric.MType == "counter" {
+		if metric.MType == api.Counter {
 			var delta int64
 			metric.Delta = &delta
 			// делаем несколько попыток получить метрику
@@ -400,7 +401,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 					metric.ID, metric.MType, err), http.StatusNotFound)
 				return
 			}
-		} else if metric.MType == "gauge" {
+		} else if metric.MType == api.Gauge {
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
