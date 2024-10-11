@@ -16,6 +16,7 @@ func main() {
 	var counter int64
 	var err error
 
+	// получаем конфиг агента
 	agentCfg, err = config.GetAgentCfg()
 	if err != nil {
 		log.Fatalf("error on get configuration %v", err)
@@ -24,6 +25,7 @@ func main() {
 	// устанавливаем для отображения даты и времени в логах
 	log.SetFlags(log.Ldate | log.Ltime)
 
+	// установка интервалов получения и отправки метрик
 	pollTik := time.NewTicker(time.Duration(agentCfg.PollInterval) * time.Second)
 	reportTik := time.NewTicker(time.Duration(agentCfg.Reportinterval) * time.Second)
 

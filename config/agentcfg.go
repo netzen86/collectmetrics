@@ -24,6 +24,7 @@ type AgentCfg struct {
 	Reportinterval  int
 }
 
+// функция получения конфигурации сервера
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error
@@ -47,6 +48,7 @@ func GetAgentCfg() (AgentCfg, error) {
 		agentCfg.Endpoint = os.Getenv("ADDRESS")
 	}
 
+	// получение интервала сбора метрик
 	if len(os.Getenv("POLL_INTERVAL")) != 0 {
 		agentCfg.PollInterval, err = strconv.Atoi(os.Getenv("POLL_INTERVAL"))
 		if err != nil {
@@ -54,13 +56,14 @@ func GetAgentCfg() (AgentCfg, error) {
 		}
 	}
 
+	// получение интервала отправки метрик
 	if len(os.Getenv("REPORT_INTERVAL")) != 0 {
 		agentCfg.Reportinterval, err = strconv.Atoi(os.Getenv("REPORT_INTERVAL"))
 		if err != nil {
 			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
 		}
 	}
-
+	// получение ключа для генерации подписи при отправки данных
 	if len(os.Getenv("KEY")) != 0 {
 		agentCfg.SignKeyString = os.Getenv("KEY")
 	}

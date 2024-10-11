@@ -15,7 +15,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
-type filestorage struct {
+type Filestorage struct {
 	Filename     string
 	FilenameTemp string
 }
@@ -81,8 +81,8 @@ func NewConsumer(filename string) (*Consumer, error) {
 }
 
 // функция подключения к базе данных, param = строка для подключения к БД
-func NewFileStorage(ctx context.Context, param string) (*filestorage, error) {
-	var filestorage filestorage
+func NewFileStorage(ctx context.Context, param string) (*Filestorage, error) {
+	var filestorage Filestorage
 	filestorage.Filename = param
 	filestorage.FilenameTemp = fmt.Sprintf("%stmp", param)
 	return &filestorage, nil
@@ -183,7 +183,7 @@ func LoadMetric(metrics *api.MetricsMap, metricFileName string) error {
 }
 
 // функция для накапливания значений в counter
-func (fs *filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Metrics) error {
+func (fs *Filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Metrics) error {
 
 	getdelta, err := fs.GetCounterMetric(ctx, pcMetric.ID)
 	pcMetric.Delta = &getdelta
@@ -198,7 +198,7 @@ func (fs *filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Met
 	return nil
 }
 
-func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
+func (fs *Filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 	metricType, metricName string, metricValue interface{}) error {
 	var pcMetric api.Metrics
 	var metrics api.MetricsMap
@@ -244,7 +244,7 @@ func (fs *filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 	return nil
 }
 
-func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+func (fs *Filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
 	var scannedMetric api.Metrics
 	consumer, err := NewConsumer(fs.FilenameTemp)
 	if err != nil {
@@ -268,7 +268,7 @@ func (fs *filestorage) GetCounterMetric(ctx context.Context, metricID string) (i
 	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Counter)
 }
 
-func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+func (fs *Filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
 	var scannedMetric api.Metrics
 	consumer, err := NewConsumer(fs.FilenameTemp)
 	if err != nil {
@@ -292,7 +292,7 @@ func (fs *filestorage) GetGaugeMetric(ctx context.Context, metricID string) (flo
 	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Gauge)
 }
 
-func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+func (fs *Filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 	metrics.Metrics = make(map[string]api.Metrics)
 
@@ -310,10 +310,10 @@ func (fs *filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error
 	return metrics, nil
 }
 
-func (fs *filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
+func (fs *Filestorage) GetStorage(ctx context.Context) (*memstorage.MemStorage, error) {
 	return &memstorage.MemStorage{}, nil
 }
 
-func (fs *filestorage) CreateTables(ctx context.Context) error {
+func (fs *Filestorage) CreateTables(ctx context.Context) error {
 	return nil
 }

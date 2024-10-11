@@ -19,11 +19,11 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
-	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
+// функция для изменения значений метрик с помощью URI
 func UpdateMHandle(storage repositories.Repo,
 	tempfilename, saveMetricsDefaultPath, dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,6 @@ func UpdateMHandle(storage repositories.Repo,
 		if storageSelecter == "FILE" {
 			cntSummed = true
 		}
-
 		retrybuilder := func() func() error {
 			return func() error {
 				err := storage.UpdateParam(r.Context(), cntSummed, mType, mName, mValue)
@@ -81,7 +80,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 				http.StatusInternalServerError)
 			return
 		}
-		storage, err := storage.GetStorage(ctx)
+		storage, err := storage.GetAllMetrics(ctx)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
@@ -99,13 +98,13 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 }
 
 // функция для получения значения метрики с помощью URI
-func RetrieveOneMHandle(storage repositories.Repo, filename, dbconstr, storageSelecter string) http.HandlerFunc {
+func RetrieveOneMHandle(storage repositories.Repo, filename,
+	dbconstr, storageSelecter string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
 		ctx := r.Context()
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
-
 		if metric.MType == "counter" {
 			var delta int64
 			metric.Delta = &delta
@@ -188,6 +187,7 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			return
 		}
 
+		// проверяем подпись в заголовке
 		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
 			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
 			recivedSign, err := hex.DecodeString(r.Header.Get("HashSHA256"))
@@ -204,33 +204,26 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		// распаковываем если контент упакован
 		err = utils.SelectDeCoHTTP(&buf, r)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "can't unpack data"), 400)
+			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
+				"can't unpack data"), http.StatusBadRequest)
 			return
 		}
 
+		// десериализуем JSON в metrics
 		if strings.Contains(r.RequestURI, "/updates/") {
-			// десериализуем JSON в metrics
 			if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode slice metrics to json error"), 400)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
+					"decode slice metrics to json error"), http.StatusBadRequest)
 				return
 			}
 		} else if strings.Contains(r.RequestURI, "/update/") {
-			// десериализуем JSON в metric
 			if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 				log.Println("decode metric error")
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "decode one metric to json error"), 400)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
+					"decode one metric to json error"), http.StatusBadRequest)
 				return
 			}
 			metrics = append(metrics, metric)
-		}
-
-		for _, metr := range metrics {
-			err = MetricParseSelecStor(ctx, storage, &metr, storageSelecter, dbconstr, tempfilename)
-			if err != nil {
-				log.Println("ERROR", err)
-				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(400), "can't select sorage ", err), 400)
-				return
-			}
 		}
 
 		if len(metrics) == 0 {
@@ -238,43 +231,58 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			return
 		}
 
+		for _, metric := range metrics {
+			err = MetricParseSelecStor(ctx, storage, &metric, storageSelecter, dbconstr, tempfilename)
+			if err != nil {
+				log.Println("ERROR", err)
+				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(http.StatusBadRequest),
+					"can't select sorage ", err), http.StatusBadRequest)
+				return
+			}
+		}
+
 		switch {
 		case r.RequestURI == "/updates/":
 			resp, err = json.Marshal(metrics)
 			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
 				return
 			}
 		case r.RequestURI == "/update/":
 			resp, err = json.Marshal(metrics[0])
 			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
 				return
 			}
 		}
 
+		// сохраняем метрики в файл синхронно с запросом
 		if time == 0 {
-			newStorage, err := storage.GetStorage(ctx)
+			metricsMap, err := storage.GetAllMetrics(ctx)
 			if err != nil {
-				http.Error(w, http.StatusText(500), 500)
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
 				return
 			}
-			var metricsMap api.MetricsMap
-			metricsMap.Metrics = make(map[string]api.Metrics)
-			memstorage.MemstoragetoMetricMap(&metricsMap, *newStorage)
 			err = files.SyncSaveMetrics(metricsMap, filename)
 			if err != nil {
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
 				return
 			}
 		}
-		// packing content
+
+		// запоковываем контент
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
-			http.Error(w, http.StatusText(500), 500)
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 			return
 		}
 
+		// добавляем подпись в заголовок
 		if len(signKey) != 0 {
 			sign := security.SignSendData(resp, []byte(signKey))
 			w.Header().Add("HashSHA256", hex.EncodeToString(sign))
@@ -286,9 +294,14 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 	}
 }
 
+// функция для сохраненние метрик в хранилище
 func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 	metric *api.Metrics, storageSelecter, dbconstr, tempfilename string) error {
+
+	// переменная для определения того нужно ли
+	// складывать значение метрики типа counter, используется для файлсторэжа
 	cntSummed := false
+
 	if metric.ID == "" {
 		return fmt.Errorf("%s", "not valid metric name")
 	}
@@ -300,7 +313,6 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 	if metric.MType == "counter" {
 		if metric.Delta == nil {
 			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
-
 		}
 		retrybuilder := func() func() error {
 			return func() error {
@@ -315,12 +327,10 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't update storage counter value %w", err)
 		}
-
 		*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
 		if err != nil {
 			return fmt.Errorf("can't get updated counter value %w", err)
 		}
-		// }
 	} else if metric.MType == "gauge" {
 		if metric.Value == nil {
 			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
@@ -338,18 +348,17 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't update storage gauge value %w", err)
 		}
-
 		*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
 		if err != nil {
 			return fmt.Errorf("can't get updated gauge value %w", err)
 		}
-		// }
 	} else {
 		return fmt.Errorf("%s", "empty metic")
 	}
 	return nil
 }
 
+// функция для получения одного значения из хранилища
 func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter, signkeystr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -368,9 +377,11 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			http.Error(w, http.StatusText(400), 400)
 			return
 		}
+		// зарашиваем метрики
 		if metric.MType == "counter" {
 			var delta int64
 			metric.Delta = &delta
+			// делаем несколько попыток получить метрику
 			retrybuilder := func() func() error {
 				return func() error {
 					var err error
@@ -414,11 +425,14 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
 			return
 		}
+		// сериализуем метрики полученные из хранилища
 		resp, err := json.Marshal(metric)
 		if err != nil {
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
+
+		// добавляем подпись в заголовок
 		if len(signkeystr) != 0 {
 			sign := security.SignSendData(resp, []byte(signkeystr))
 			w.Header().Add("HashSHA256", hex.EncodeToString(sign))
@@ -435,6 +449,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storag
 	}
 }
 
+// функция для проверки подключения к базе данных
 func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -455,6 +470,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 	}
 }
 
+// функция для включения логирования запросов
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sugar := logger.Loger()

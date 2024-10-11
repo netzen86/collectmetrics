@@ -6,13 +6,8 @@
         <h1>Metrics on server</h1>
     </header>
     <body>
-        <h2>Counters</h2>
-        {{- range $key, $value := .Counter}} 
+        {{- range $key, $value := .Metrics}} 
         <p><h3>&nbsp;&nbsp;&nbsp;&nbsp;{{$key}}</h2>
-        {{end}}
-        <h2>Gauges</h2>
-        {{- range $key, $value := .Gauge}} 
-        <p><h3>&nbsp;&nbsp;&nbsp;&nbsp;{{$key}}</h3>
         {{end}}
     </body>
 </html>

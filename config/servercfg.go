@@ -20,16 +20,16 @@ const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
 	// значения store selector
-	ssFile     string = "FILE"
-	ssDataBase string = "DATABASE"
-	ssMemStor  string = "MEMORY"
+	SsFile     string = "FILE"
+	SsDataBase string = "DATABASE"
+	SsMemStor  string = "MEMORY"
 	// имена переменных окружения
-	EnvAdd string = "ADDRESS"
-	EnvSI  string = "STORE_INTERVAL"
-	EnvFSP string = "FILE_STORAGE_PATH"
-	EnvRes string = "RESTORE"
-	EnvKey string = "KEY"
-	EnvDB  string = "DATABASE_DSN"
+	envAdd string = "ADDRESS"
+	envSI  string = "STORE_INTERVAL"
+	envFSP string = "FILE_STORAGE_PATH"
+	envRes string = "RESTORE"
+	envKey string = "KEY"
+	envDB  string = "DATABASE_DSN"
 )
 
 type ServerCfg struct {
@@ -59,7 +59,7 @@ type ServerCfg struct {
 func (serverCfg *ServerCfg) parseSrvFlags() error {
 
 	// значение переменных по умолчанию
-	serverCfg.StorageSelecter = ssMemStor
+	serverCfg.StorageSelecter = SsMemStor
 	serverCfg.FileStoragePathDef = "servermetrics.json"
 
 	// опредаляем флаги
@@ -72,20 +72,23 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 
 	flag.Parse()
 
-	// если серверу преданы параменты а не флаги печатаем какие параметры можно использовать
+	// если серверу преданы параменты, а не флаги
+	// печатаем какие параметры можно использовать
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
 
-	// для земены значения по умолчания имени файла сохранения метрик
+	// для замены имени файла по умолчанию
 	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef && len(serverCfg.FileStoragePath) != 0 {
 		serverCfg.FileStoragePathDef = serverCfg.FileStoragePath
-		serverCfg.StorageSelecter = ssFile
+		serverCfg.StorageSelecter = SsFile
 	}
 
+	// если плучили флаг содержащий строку подключения к БД
+	// установить переменную выбора хранилища в "DATABASE"
 	if len(serverCfg.DBconstring) != 0 {
-		serverCfg.StorageSelecter = ssDataBase
+		serverCfg.StorageSelecter = SsDataBase
 	}
 
 	return nil
@@ -97,38 +100,40 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 
 	// получаем данные для работы програмы из переменных окружения
 	// переменные окружения имеют наивысший приоритет
-	if len(os.Getenv(EnvAdd)) > 0 {
-		serverCfg.Endpoint = os.Getenv(EnvAdd)
+	if len(os.Getenv(envAdd)) > 0 {
+		serverCfg.Endpoint = os.Getenv(envAdd)
 	}
-
-	if len(os.Getenv(EnvSI)) != 0 {
-		serverCfg.StoreInterval, err = strconv.Atoi(os.Getenv(EnvSI))
+	// получаем интервал сохранения метрик в файл
+	if len(os.Getenv(envSI)) != 0 {
+		serverCfg.StoreInterval, err = strconv.Atoi(os.Getenv(envSI))
 		if err != nil {
 			return fmt.Errorf("error atoi poll interval %v ", err)
 		}
 	}
 
-	if len(os.Getenv(EnvFSP)) != 0 {
-		serverCfg.FileStoragePath = os.Getenv(EnvFSP)
-		serverCfg.FileStoragePathDef = os.Getenv(EnvFSP)
-		serverCfg.StorageSelecter = ssFile
+	// получаем имя файла для сохранения метрик
+	if len(os.Getenv(envFSP)) != 0 {
+		serverCfg.FileStoragePath = os.Getenv(envFSP)
+		serverCfg.FileStoragePathDef = os.Getenv(envFSP)
+		serverCfg.StorageSelecter = SsFile
 
 	}
-
-	if len(os.Getenv(EnvRes)) != 0 {
-		serverCfg.Restore, err = strconv.ParseBool(os.Getenv(EnvRes))
+	// получаем параметр восстановления метрик из файла
+	// при false не восстанавливаем, по умолчанию true
+	if len(os.Getenv(envRes)) != 0 {
+		serverCfg.Restore, err = strconv.ParseBool(os.Getenv(envRes))
 		if err != nil {
 			return fmt.Errorf("error parse bool restore %v ", err)
 		}
 	}
-
-	if len(os.Getenv(EnvKey)) != 0 {
-		serverCfg.SignKeyString = os.Getenv(EnvKey)
+	// получаем ключ для создания подписи
+	if len(os.Getenv(envKey)) != 0 {
+		serverCfg.SignKeyString = os.Getenv(envKey)
 	}
-
-	if len(os.Getenv(EnvDB)) != 0 {
-		serverCfg.DBconstring = os.Getenv(EnvDB)
-		serverCfg.StorageSelecter = ssDataBase
+	// получаем параметры подключения к базе данных
+	if len(os.Getenv(envDB)) != 0 {
+		serverCfg.DBconstring = os.Getenv(envDB)
+		serverCfg.StorageSelecter = SsDataBase
 	}
 	return nil
 }
@@ -139,20 +144,20 @@ func (serverCfg *ServerCfg) initSrv() error {
 	ctx := context.Background()
 
 	// созданиe мемсторэжа
-	if serverCfg.StorageSelecter == ssMemStor {
+	if serverCfg.StorageSelecter == SsMemStor {
 		serverCfg.Storage = memstorage.NewMemStorage()
 	}
 
-	if serverCfg.StorageSelecter == ssDataBase {
-		// созданиe базы данных
+	// созданиe базы данных
+	if serverCfg.StorageSelecter == SsDataBase {
 		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
 		}
 	}
 
-	if serverCfg.StorageSelecter == ssFile {
-		// созданиe файлсторэжа
+	// созданиe файлсторэжа
+	if serverCfg.StorageSelecter == SsFile {
 		serverCfg.Storage, err = files.NewFileStorage(ctx, serverCfg.FileStoragePath)
 		if err != nil {
 			return fmt.Errorf("error when get file storage %v ", err)
@@ -165,26 +170,27 @@ func (serverCfg *ServerCfg) initSrv() error {
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
 
-	// создание временого файла
+	// создание временого файла для файлсторож
 	serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return fmt.Errorf("error create temp file %v ", err)
 	}
 
-	// если файл с метриками существует копируем его в файлсторож
-	if utils.ChkFileExist(serverCfg.FileStoragePath) {
-		data, err := os.ReadFile(serverCfg.FileStoragePath) //read the contents of source file
-		if err != nil {
-			return fmt.Errorf("error reading file: %v", err)
-		}
-		err = os.WriteFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), data, 0666) //write the content to destination file
-		if err != nil {
-			return fmt.Errorf("error writing file: %v", err)
-		}
-	}
+	// // если файл с метриками существует копируем его в файлсторож(FileStoragePath + tmp)
+	// if utils.ChkFileExist(serverCfg.FileStoragePath) &&
+	// 	serverCfg.StorageSelecter == SsFile {
+	// 	data, err := os.ReadFile(serverCfg.FileStoragePath)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error reading file: %v", err)
+	// 	}
+	// 	err = os.WriteFile(fmt.Sprintf("%stmp", serverCfg.FileStoragePath), data, 0666)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error writing file: %v", err)
+	// 	}
+	// }
 
 	// если храним метрики в базе данных то создаем таблицы counter и gauge
-	if serverCfg.StorageSelecter == ssDataBase {
+	if serverCfg.StorageSelecter == SsDataBase {
 		retrybuilder := func() func() error {
 			return func() error {
 				err := repositories.Repo.CreateTables(serverCfg.Storage, context.TODO())

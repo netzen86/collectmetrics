@@ -55,7 +55,6 @@ const (
 func CollectMetrics(counter *int64) []api.Metrics {
 	var memStats runtime.MemStats
 	var metrics []api.Metrics
-	// runtime.GC()
 	runtime.ReadMemStats(&memStats)
 
 	// мапа анонимных функций для сбора метрик
@@ -122,6 +121,7 @@ func JSONdecode(resp *http.Response) {
 		log.Print("parse json error ", err)
 		return
 	}
+
 	// типа лог
 	for _, m := range metrics {
 		if m.MType == "counter" {
@@ -157,11 +157,13 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
 		sign = security.SignSendData(data, []byte(signKey))
 	}
 
+	// создаем реквест
 	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
 
+	// добавляем данные в заголовок запроса
 	request.Header.Add("Content-Encoding", api.Gz)
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
@@ -171,6 +173,7 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
 		request.Header.Add("HashSHA256", hex.EncodeToString(sign))
 	}
 
+	// создаем http клиент
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
