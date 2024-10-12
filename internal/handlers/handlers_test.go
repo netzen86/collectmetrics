@@ -10,9 +10,7 @@ import (
 
 func TestUpdateMHandle(t *testing.T) {
 	type args struct {
-		storage  repositories.Repo
-		tempfile string
-		filename string
+		storage repositories.Repo
 	}
 	tests := []struct {
 		name string
@@ -23,7 +21,7 @@ func TestUpdateMHandle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := UpdateMHandle(tt.args.storage, tt.args.tempfile, tt.args.filename, "test", "test"); !reflect.DeepEqual(got, tt.want) {
+			if got := UpdateMHandle(tt.args.storage); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("UpdateMHandle() = %v, want %v", got, tt.want)
 			}
 		})

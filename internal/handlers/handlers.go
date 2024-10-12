@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/repositories"
@@ -25,10 +24,13 @@ import (
 )
 
 // функция для изменения значений метрик с помощью URI
-func UpdateMHandle(storage repositories.Repo,
-	tempfilename, saveMetricsDefaultPath, dbconstr, storageSelecter string) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cntSummed := false
+
+		// если тип хранилища файлсторэж то
+		// необходимо суммировать метрики типа counter
+		_, cntSummed := storage.(*files.Filestorage)
+
 		mType := chi.URLParam(r, "mType")
 		if mType != api.Counter && mType != api.Gauge {
 			http.Error(w, "wrong metric type", http.StatusBadRequest)
@@ -38,9 +40,6 @@ func UpdateMHandle(storage repositories.Repo,
 		mName := chi.URLParam(r, "mName")
 		mValue := chi.URLParam(r, "mValue")
 
-		if storageSelecter == config.SsFile {
-			cntSummed = true
-		}
 		retrybuilder := func() func() error {
 			return func() error {
 				err := storage.UpdateParam(r.Context(), cntSummed, mType, mName, mValue)
@@ -64,16 +63,22 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		if r == nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 			return
 		}
 		ctx := r.Context()
+
+		// получаем корень папки проекта
 		workDir := utils.WorkingDir()
+
+		// проверяем существует ли файл жаблона страшицы
 		if !utils.ChkFileExist(workDir + api.TemplatePath) {
 			http.Error(w, http.StatusText(http.StatusInternalServerError),
 				http.StatusInternalServerError)
 			return
 		}
+		// создаем шаблон
 		t, err := template.ParseFiles(workDir + api.TemplatePath)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n",
@@ -81,15 +86,19 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 				http.StatusInternalServerError)
 			return
 		}
-		storage, err := storage.GetAllMetrics(ctx)
+		// получаем метрики
+		metrics, err := storage.GetAllMetrics(ctx)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 			return
 		}
-		t.Execute(&buf, storage)
+		// генерим шаблон
+		t.Execute(&buf, metrics)
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", api.HTML)
@@ -99,13 +108,13 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 }
 
 // функция для получения значения метрики с помощью URI
-func RetrieveOneMHandle(storage repositories.Repo, filename,
-	dbconstr, storageSelecter string) http.HandlerFunc {
+func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
 		ctx := r.Context()
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
+
 		if metric.MType == api.Counter {
 			var delta int64
 			metric.Delta = &delta
@@ -165,8 +174,7 @@ func RetrieveOneMHandle(storage repositories.Repo, filename,
 }
 
 // Multiple value update handle
-func JSONUpdateMMHandle(storage repositories.Repo,
-	tempfilename, filename, dbconstr, storageSelecter, signKey string, time int) http.HandlerFunc {
+func JSONUpdateMMHandle(storage repositories.Repo, filename, signKey string, time int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics []api.Metrics
@@ -233,7 +241,7 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 		}
 
 		for _, metric := range metrics {
-			err = MetricParseSelecStor(ctx, storage, &metric, storageSelecter, dbconstr, tempfilename)
+			err = MetricParseSelecStor(ctx, storage, &metric)
 			if err != nil {
 				log.Println("ERROR", err)
 				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(http.StatusBadRequest),
@@ -275,7 +283,7 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 			}
 		}
 
-		// запоковываем контент
+		// запаковываем контент
 		resp, err = utils.CoHTTP(resp, r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError),
@@ -297,18 +305,14 @@ func JSONUpdateMMHandle(storage repositories.Repo,
 
 // функция для сохраненние метрик в хранилище
 func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
-	metric *api.Metrics, storageSelecter, dbconstr, tempfilename string) error {
+	metric *api.Metrics) error {
 
 	// переменная для определения того нужно ли
 	// складывать значение метрики типа counter, используется для файлсторэжа
-	cntSummed := false
+	_, cntSummed := storage.(*files.Filestorage)
 
 	if metric.ID == "" {
 		return fmt.Errorf("%s", "not valid metric name")
-	}
-
-	if storageSelecter == config.SsFile {
-		cntSummed = true
 	}
 
 	if metric.MType == api.Counter {
@@ -360,7 +364,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 }
 
 // функция для получения одного значения из хранилища
-func JSONRetrieveOneHandle(storage repositories.Repo, filename, dbconstr, storageSelecter, signkeystr string) http.HandlerFunc {
+func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metric *api.Metrics
