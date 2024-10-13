@@ -19,10 +19,6 @@ import (
 const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
-	// значения store selector
-	SsFile     string = "FILE"
-	SsDataBase string = "DATABASE"
-	SsMemStor  string = "MEMORY"
 	// имена переменных окружения
 	envAdd string = "ADDRESS"
 	envSI  string = "STORE_INTERVAL"
@@ -58,8 +54,7 @@ type ServerCfg struct {
 // метод для получения параметров запуска сервера из флагов
 func (serverCfg *ServerCfg) parseSrvFlags() error {
 
-	// значение переменных по умолчанию
-	serverCfg.StorageSelecter = SsMemStor
+	// имя файла для сохранения метрик по умолчанию
 	serverCfg.FileStoragePathDef = "servermetrics.json"
 
 	// опредаляем флаги
@@ -80,17 +75,9 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	}
 
 	// для замены имени файла по умолчанию
-	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef && len(serverCfg.FileStoragePath) != 0 {
+	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef {
 		serverCfg.FileStoragePathDef = serverCfg.FileStoragePath
-		serverCfg.StorageSelecter = SsFile
 	}
-
-	// если плучили флаг содержащий строку подключения к БД
-	// установить переменную выбора хранилища в "DATABASE"
-	if len(serverCfg.DBconstring) != 0 {
-		serverCfg.StorageSelecter = SsDataBase
-	}
-
 	return nil
 }
 
@@ -115,7 +102,6 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	if len(os.Getenv(envFSP)) != 0 {
 		serverCfg.FileStoragePath = os.Getenv(envFSP)
 		serverCfg.FileStoragePathDef = os.Getenv(envFSP)
-		serverCfg.StorageSelecter = SsFile
 
 	}
 	// получаем параметр восстановления метрик из файла
@@ -133,7 +119,6 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	// получаем параметры подключения к базе данных
 	if len(os.Getenv(envDB)) != 0 {
 		serverCfg.DBconstring = os.Getenv(envDB)
-		serverCfg.StorageSelecter = SsDataBase
 	}
 	return nil
 }
@@ -144,12 +129,13 @@ func (serverCfg *ServerCfg) initSrv() error {
 	ctx := context.Background()
 
 	// созданиe мемсторэжа
-	if serverCfg.StorageSelecter == SsMemStor {
+	if serverCfg.FileStoragePath == serverCfg.FileStoragePathDef &&
+		len(serverCfg.DBconstring) == 0 {
 		serverCfg.Storage = memstorage.NewMemStorage()
 	}
 
 	// созданиe базы данных
-	if serverCfg.StorageSelecter == SsDataBase {
+	if len(serverCfg.DBconstring) != 0 {
 		serverCfg.Storage, err = db.NewDBStorage(ctx, serverCfg.DBconstring)
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
@@ -171,7 +157,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	}
 
 	// созданиe файлсторэжа
-	if serverCfg.StorageSelecter == SsFile {
+	if serverCfg.FileStoragePath != serverCfg.FileStoragePathDef {
 		serverCfg.Storage, err = files.NewFileStorage(ctx, serverCfg.FileStoragePath)
 		if err != nil {
 			return fmt.Errorf("error when get file storage %v ", err)
