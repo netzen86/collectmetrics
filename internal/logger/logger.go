@@ -1,22 +1,24 @@
 package logger
 
 import (
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
 )
 
-func Logger() zap.SugaredLogger {
+func Logger() (zap.SugaredLogger, error) {
 	// создаём предустановленный регистратор zap
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		// вызываем панику, если ошибка
-		panic(err)
+		return zap.SugaredLogger{},
+			fmt.Errorf("error when crating logger %w", err)
 	}
 	defer logger.Sync()
 
 	// делаем регистратор SugaredLogger
-	return *logger.Sugar()
+	return *logger.Sugar(), nil
 }
 
 type (

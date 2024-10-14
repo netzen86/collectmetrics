@@ -478,7 +478,13 @@ func PingDB(dbconstring string) http.HandlerFunc {
 // функция для включения логирования запросов
 func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sugar := logger.Logger()
+		sugar, err := logger.Logger()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v %v\n",
+				http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError), 500)
+			return
+		}
 
 		// функция Now() возвращает текущее время
 		start := time.Now()
