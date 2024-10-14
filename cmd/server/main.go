@@ -30,8 +30,8 @@ func main() {
 	}
 
 	// запуск обработчика http запросов
-	errs := http.ListenAndServe(cfg.Endpoint, gw)
-	if errs != nil {
-		log.Fatalf("error when start server %v ", errs)
+	err = http.ListenAndServe(cfg.Endpoint, gw)
+	if err != nil {
+		log.Fatalf("error when start server %v ", err)
 	}
 }
