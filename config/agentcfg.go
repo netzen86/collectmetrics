@@ -14,6 +14,8 @@ import (
 const (
 	pollInterval   time.Duration = 2
 	reportInterval time.Duration = 10
+	envPI          string        = "POLL_INTERVAL"
+	envRI          string        = "REPORT_INTERVAL"
 	UpdatesAddress string        = "http://%s/updates/"
 	Alloc          string        = "Alloc"
 	BuckHashSys    string        = "BuckHashSys"
@@ -76,28 +78,28 @@ func GetAgentCfg() (AgentCfg, error) {
 	}
 	// получаем данные для работы програмы из переменных окружения
 	// переменные окружения имеют наивысший приоритет
-	if len(os.Getenv("ADDRESS")) != 0 {
-		agentCfg.Endpoint = os.Getenv("ADDRESS")
+	if len(os.Getenv(envAdd)) != 0 {
+		agentCfg.Endpoint = os.Getenv(envAdd)
 	}
 
 	// получение интервала сбора метрик
-	if len(os.Getenv("POLL_INTERVAL")) != 0 {
-		agentCfg.PollInterval, err = strconv.Atoi(os.Getenv("POLL_INTERVAL"))
+	if len(os.Getenv(envPI)) != 0 {
+		agentCfg.PollInterval, err = strconv.Atoi(os.Getenv(envPI))
 		if err != nil {
 			return agentCfg, fmt.Errorf("error atoi poll interval %v ", err)
 		}
 	}
 
 	// получение интервала отправки метрик
-	if len(os.Getenv("REPORT_INTERVAL")) != 0 {
-		agentCfg.Reportinterval, err = strconv.Atoi(os.Getenv("REPORT_INTERVAL"))
+	if len(os.Getenv(envRI)) != 0 {
+		agentCfg.Reportinterval, err = strconv.Atoi(os.Getenv(envRI))
 		if err != nil {
 			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
 		}
 	}
 	// получение ключа для генерации подписи при отправки данных
-	if len(os.Getenv("KEY")) != 0 {
-		agentCfg.SignKeyString = os.Getenv("KEY")
+	if len(os.Getenv(envKey)) != 0 {
+		agentCfg.SignKeyString = os.Getenv(envKey)
 	}
 
 	// установка интервалов получения и отправки метрик
