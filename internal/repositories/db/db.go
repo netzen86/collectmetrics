@@ -13,9 +13,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-const (
-	DataBaseConString string = "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
-)
+// адрес для подключения к базе данных -  "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
 
 type DBStorage struct {
 	DBconstring string
@@ -28,7 +26,11 @@ func NewDBStorage(ctx context.Context, param string) (*DBStorage, error) {
 	var err error
 	dbstorage.DB, err = sql.Open("pgx", param)
 	if err != nil {
-		return &DBStorage{}, fmt.Errorf("cannot connect fo data base %w", err)
+		return nil, fmt.Errorf("cannot connect to data base %w", err)
+	}
+	err = dbstorage.DB.PingContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot ping data base %w", err)
 	}
 	return &dbstorage, nil
 }
