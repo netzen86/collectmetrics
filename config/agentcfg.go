@@ -14,6 +14,36 @@ import (
 const (
 	pollInterval   time.Duration = 2
 	reportInterval time.Duration = 10
+	UpdatesAddress string        = "http://%s/updates/"
+	Alloc          string        = "Alloc"
+	BuckHashSys    string        = "BuckHashSys"
+	Frees          string        = "Frees"
+	GCCPUFraction  string        = "GCCPUFraction"
+	GCSys          string        = "GCSys"
+	HeapAlloc      string        = "HeapAlloc"
+	HeapIdle       string        = "HeapIdle"
+	HeapInuse      string        = "HeapInuse"
+	HeapObjects    string        = "HeapObjects"
+	HeapReleased   string        = "HeapReleased"
+	HeapSys        string        = "HeapSys"
+	LastGC         string        = "LastGC"
+	Lookups        string        = "Lookups"
+	MCacheInuse    string        = "MCacheInuse"
+	MCacheSys      string        = "MCacheSys"
+	MSpanInuse     string        = "MSpanInuse"
+	MSpanSys       string        = "MSpanSys"
+	Mallocs        string        = "Mallocs"
+	NextGC         string        = "NextGC"
+	NumForcedGC    string        = "NumForcedGC"
+	NumGC          string        = "NumGC"
+	OtherSys       string        = "OtherSys"
+	PauseTotalNs   string        = "PauseTotalNs"
+	StackInuse     string        = "StackInuse"
+	StackSys       string        = "StackSys"
+	Sys            string        = "Sys"
+	TotalAlloc     string        = "TotalAlloc"
+	PollCount      string        = "PollCount"
+	RandomValue    string        = "RandomValue"
 )
 
 type AgentCfg struct {
@@ -22,6 +52,8 @@ type AgentCfg struct {
 	SignKeyString   string
 	PollInterval    int
 	Reportinterval  int
+	PollTik         time.Ticker
+	ReportTik       time.Ticker
 }
 
 // функция получения конфигурации сервера
@@ -67,5 +99,10 @@ func GetAgentCfg() (AgentCfg, error) {
 	if len(os.Getenv("KEY")) != 0 {
 		agentCfg.SignKeyString = os.Getenv("KEY")
 	}
+
+	// установка интервалов получения и отправки метрик
+	agentCfg.PollTik = *time.NewTicker(time.Duration(agentCfg.PollInterval) * time.Second)
+	agentCfg.ReportTik = *time.NewTicker(time.Duration(agentCfg.Reportinterval) * time.Second)
+
 	return agentCfg, nil
 }

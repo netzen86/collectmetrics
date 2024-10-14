@@ -11,42 +11,10 @@ import (
 	"net/http"
 	"runtime"
 
+	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
-)
-
-const (
-	updatesAddress string = "http://%s/updates/"
-	alloc          string = "Alloc"
-	buckHashSys    string = "BuckHashSys"
-	frees          string = "Frees"
-	gCCPUFraction  string = "GCCPUFraction"
-	gCSys          string = "GCSys"
-	heapAlloc      string = "HeapAlloc"
-	heapIdle       string = "HeapIdle"
-	heapInuse      string = "HeapInuse"
-	heapObjects    string = "HeapObjects"
-	heapReleased   string = "HeapReleased"
-	heapSys        string = "HeapSys"
-	lastGC         string = "LastGC"
-	lookups        string = "Lookups"
-	mCacheInuse    string = "MCacheInuse"
-	mCacheSys      string = "MCacheSys"
-	mSpanInuse     string = "MSpanInuse"
-	mSpanSys       string = "MSpanSys"
-	mallocs        string = "Mallocs"
-	nextGC         string = "NextGC"
-	numForcedGC    string = "NumForcedGC"
-	numGC          string = "NumGC"
-	otherSys       string = "OtherSys"
-	pauseTotalNs   string = "PauseTotalNs"
-	stackInuse     string = "StackInuse"
-	stackSys       string = "StackSys"
-	sys            string = "Sys"
-	totalAlloc     string = "TotalAlloc"
-	pollCount      string = "PollCount"
-	randomValue    string = "RandomValue"
 )
 
 // функция сбора метрик
@@ -57,41 +25,41 @@ func CollectMetrics(counter *int64) []api.Metrics {
 
 	// мапа анонимных функций для сбора метрик
 	metFunc := map[string]func() float64{
-		alloc:         func() float64 { return float64(memStats.Alloc) },
-		buckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
-		frees:         func() float64 { return float64(memStats.Frees) },
-		gCCPUFraction: func() float64 { return float64(memStats.GCCPUFraction) },
-		gCSys:         func() float64 { return float64(memStats.GCSys) },
-		heapAlloc:     func() float64 { return float64(memStats.HeapAlloc) },
-		heapIdle:      func() float64 { return float64(memStats.HeapIdle) },
-		heapInuse:     func() float64 { return float64(memStats.HeapInuse) },
-		heapObjects:   func() float64 { return float64(memStats.HeapObjects) },
-		heapReleased:  func() float64 { return float64(memStats.HeapReleased) },
-		heapSys:       func() float64 { return float64(memStats.HeapSys) },
-		lastGC:        func() float64 { return float64(memStats.LastGC) },
-		lookups:       func() float64 { return float64(memStats.Lookups) },
-		mCacheInuse:   func() float64 { return float64(memStats.MCacheInuse) },
-		mCacheSys:     func() float64 { return float64(memStats.MCacheSys) },
-		mSpanInuse:    func() float64 { return float64(memStats.MSpanInuse) },
-		mSpanSys:      func() float64 { return float64(memStats.MSpanSys) },
-		mallocs:       func() float64 { return float64(memStats.Mallocs) },
-		nextGC:        func() float64 { return float64(memStats.NextGC) },
-		numForcedGC:   func() float64 { return float64(memStats.NumForcedGC) },
-		numGC:         func() float64 { return float64(memStats.NumGC) },
-		otherSys:      func() float64 { return float64(memStats.OtherSys) },
-		pauseTotalNs:  func() float64 { return float64(memStats.PauseTotalNs) },
-		stackInuse:    func() float64 { return float64(memStats.StackInuse) },
-		stackSys:      func() float64 { return float64(memStats.StackSys) },
-		sys:           func() float64 { return float64(memStats.Sys) },
-		totalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
-		randomValue:   func() float64 { return rand.Float64() }}
+		config.Alloc:         func() float64 { return float64(memStats.Alloc) },
+		config.BuckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
+		config.Frees:         func() float64 { return float64(memStats.Frees) },
+		config.GCCPUFraction: func() float64 { return float64(memStats.GCCPUFraction) },
+		config.GCSys:         func() float64 { return float64(memStats.GCSys) },
+		config.HeapAlloc:     func() float64 { return float64(memStats.HeapAlloc) },
+		config.HeapIdle:      func() float64 { return float64(memStats.HeapIdle) },
+		config.HeapInuse:     func() float64 { return float64(memStats.HeapInuse) },
+		config.HeapObjects:   func() float64 { return float64(memStats.HeapObjects) },
+		config.HeapReleased:  func() float64 { return float64(memStats.HeapReleased) },
+		config.HeapSys:       func() float64 { return float64(memStats.HeapSys) },
+		config.LastGC:        func() float64 { return float64(memStats.LastGC) },
+		config.Lookups:       func() float64 { return float64(memStats.Lookups) },
+		config.MCacheInuse:   func() float64 { return float64(memStats.MCacheInuse) },
+		config.MCacheSys:     func() float64 { return float64(memStats.MCacheSys) },
+		config.MSpanInuse:    func() float64 { return float64(memStats.MSpanInuse) },
+		config.MSpanSys:      func() float64 { return float64(memStats.MSpanSys) },
+		config.Mallocs:       func() float64 { return float64(memStats.Mallocs) },
+		config.NextGC:        func() float64 { return float64(memStats.NextGC) },
+		config.NumForcedGC:   func() float64 { return float64(memStats.NumForcedGC) },
+		config.NumGC:         func() float64 { return float64(memStats.NumGC) },
+		config.OtherSys:      func() float64 { return float64(memStats.OtherSys) },
+		config.PauseTotalNs:  func() float64 { return float64(memStats.PauseTotalNs) },
+		config.StackInuse:    func() float64 { return float64(memStats.StackInuse) },
+		config.StackSys:      func() float64 { return float64(memStats.StackSys) },
+		config.Sys:           func() float64 { return float64(memStats.Sys) },
+		config.TotalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
+		config.RandomValue:   func() float64 { return rand.Float64() }}
 
 	for k, v := range metFunc {
 		value := v()
 		metrics = append(metrics, api.Metrics{ID: k, MType: api.Gauge, Value: &value})
 	}
 	*counter += 1
-	metrics = append(metrics, api.Metrics{ID: pollCount, MType: api.Counter, Delta: counter})
+	metrics = append(metrics, api.Metrics{ID: config.PollCount, MType: api.Counter, Delta: counter})
 	return metrics
 }
 
@@ -188,10 +156,34 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
 // функция для отправки метрик
 func SendMetrics(metrics []api.Metrics, endpoint, signKey string) error {
 	err := JSONSendMetrics(
-		fmt.Sprintf(updatesAddress, endpoint),
+		fmt.Sprintf(config.UpdatesAddress, endpoint),
 		signKey, metrics)
 	if err != nil {
 		return fmt.Errorf("get error when send metric %v", err)
 	}
 	return nil
+}
+
+func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) {
+
+	for {
+		select {
+		case <-agentCfg.PollTik.C:
+			metrics = CollectMetrics(counter)
+		case <-agentCfg.ReportTik.C:
+			retrybuilder := func() func() error {
+				return func() error {
+					err := SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
+					if err != nil {
+						log.Println(err)
+					}
+					return err
+				}
+			}
+			err := utils.RetrayFunc(retrybuilder)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
 }
