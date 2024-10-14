@@ -8,12 +8,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
-	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 const (
@@ -140,20 +138,6 @@ func (serverCfg *ServerCfg) initSrv() error {
 		if err != nil {
 			return fmt.Errorf("error when get mem storage %v ", err)
 		}
-		// создание таблиц counter и gauge
-		retrybuilder := func() func() error {
-			return func() error {
-				err := serverCfg.Storage.CreateTables(ctx)
-				if err != nil {
-					log.Println(err)
-				}
-				return err
-			}
-		}
-		err = utils.RetryFunc(retrybuilder)
-		if err != nil {
-			return fmt.Errorf("tables not created %w", err)
-		}
 	}
 
 	// созданиe файлсторэжа
@@ -176,30 +160,6 @@ func (serverCfg *ServerCfg) initSrv() error {
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
 
-	// копируем метрики из файла в мемсторож
-	if serverCfg.Restore {
-		var metrics api.MetricsMap
-		metrics.Metrics = make(map[string]api.Metrics)
-		log.Println("ENTER IN RESTORE")
-
-		err = files.LoadMetric(&metrics, serverCfg.FileStoragePathDef)
-		if err != nil {
-			return fmt.Errorf("error load metrics fom file %w", err)
-		}
-		for _, metric := range metrics.Metrics {
-			if metric.MType == api.Gauge {
-				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Value)
-				if err != nil {
-					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
-				}
-			} else if metric.MType == api.Counter {
-				err := serverCfg.Storage.UpdateParam(ctx, false, metric.MType, metric.ID, *metric.Delta)
-				if err != nil {
-					return fmt.Errorf("error restore lm %s %s : %w", metric.ID, metric.MType, err)
-				}
-			}
-		}
-	}
 	return nil
 }
 
