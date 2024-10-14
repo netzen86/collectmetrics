@@ -105,7 +105,7 @@ func WorkingDir() string {
 	return wd
 }
 
-func RetrayFunc(retrybuilder func() func() error) error {
+func RetryFunc(retrybuilder func() func() error) error {
 	ExpBackoff := backoff.NewExponentialBackOff()
 	ExpBackoff.InitialInterval = backoffII * time.Second
 	ExpBackoff.RandomizationFactor = backoffRF

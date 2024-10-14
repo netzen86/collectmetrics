@@ -49,7 +49,7 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 				return err
 			}
 		}
-		err := utils.RetrayFunc(retrybuilder)
+		err := utils.RetryFunc(retrybuilder)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), err), 400)
 			return
@@ -128,7 +128,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 					return err
 				}
 			}
-			err := utils.RetrayFunc(retrybuilder)
+			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -153,7 +153,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 					return err
 				}
 			}
-			err := utils.RetrayFunc(retrybuilder)
+			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -328,7 +328,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 				return err
 			}
 		}
-		err := utils.RetrayFunc(retrybuilder)
+		err := utils.RetryFunc(retrybuilder)
 		if err != nil {
 			return fmt.Errorf("can't update storage counter value %w", err)
 		}
@@ -349,7 +349,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 				return err
 			}
 		}
-		err := utils.RetrayFunc(retrybuilder)
+		err := utils.RetryFunc(retrybuilder)
 		if err != nil {
 			return fmt.Errorf("can't update storage gauge value %w", err)
 		}
@@ -397,7 +397,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.Ha
 					return err
 				}
 			}
-			err := utils.RetrayFunc(retrybuilder)
+			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -418,7 +418,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.Ha
 					return err
 				}
 			}
-			err := utils.RetrayFunc(retrybuilder)
+			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",

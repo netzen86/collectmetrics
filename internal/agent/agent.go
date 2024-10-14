@@ -180,7 +180,7 @@ func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) {
 					return err
 				}
 			}
-			err := utils.RetrayFunc(retrybuilder)
+			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
 				log.Fatal(err)
 			}

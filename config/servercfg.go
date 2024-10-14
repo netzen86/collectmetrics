@@ -150,9 +150,9 @@ func (serverCfg *ServerCfg) initSrv() error {
 				return err
 			}
 		}
-		err = utils.RetrayFunc(retrybuilder)
+		err = utils.RetryFunc(retrybuilder)
 		if err != nil {
-			log.Fatal("tables not created ", err)
+			return fmt.Errorf("tables not created %w", err)
 		}
 	}
 
