@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func Loger() zap.SugaredLogger {
+func Logger() zap.SugaredLogger {
 	// создаём предустановленный регистратор zap
 	logger, err := zap.NewDevelopment()
 	if err != nil {
