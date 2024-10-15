@@ -476,8 +476,9 @@ func PingDB(dbconstring string) http.HandlerFunc {
 }
 
 // функция для включения логирования запросов
-func WithLogging(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+
+func WithLogging(h http.Handler) http.Handler {
+	logFn := func(w http.ResponseWriter, r *http.Request) {
 		sugar, err := logger.Logger()
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%v %v\n",
@@ -513,6 +514,7 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 			"size", rd.Size,
 		)
 	}
+	return http.HandlerFunc(logFn)
 }
 
 func BadRequest(w http.ResponseWriter, r *http.Request) {
