@@ -69,7 +69,7 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	// печатаем какие параметры можно использовать
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
-		os.Exit(1)
+		return fmt.Errorf("not args allowed")
 	}
 
 	// для замены имени файла по умолчанию
