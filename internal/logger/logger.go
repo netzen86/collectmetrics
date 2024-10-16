@@ -11,7 +11,6 @@ func Logger() (zap.SugaredLogger, error) {
 	// создаём предустановленный регистратор zap
 	logger, err := zap.NewDevelopment()
 	if err != nil {
-		// вызываем панику, если ошибка
 		return zap.SugaredLogger{},
 			fmt.Errorf("error when crating logger %w", err)
 	}

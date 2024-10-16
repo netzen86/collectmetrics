@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/logger"
 )
 
 const (
@@ -56,12 +58,18 @@ type AgentCfg struct {
 	Reportinterval  int
 	PollTik         time.Ticker
 	ReportTik       time.Ticker
+	Logger          zap.SugaredLogger
 }
 
 // функция получения конфигурации сервера
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error
+
+	agentCfg.Logger, err = logger.Logger()
+	if err != nil {
+		return AgentCfg{}, fmt.Errorf("error when get agent logger %w", err)
+	}
 
 	// опредаляем флаги
 	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")

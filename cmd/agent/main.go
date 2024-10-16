@@ -20,9 +20,9 @@ func main() {
 		log.Fatalf("error on get configuration %v", err)
 	}
 
-	// устанавливаем для отображения даты и времени в логах
-	log.SetFlags(log.Ldate | log.Ltime)
-
 	// запускаем агента
-	agent.RunAgent(metrics, agentCfg, &counter)
+	err = agent.RunAgent(metrics, agentCfg, &counter)
+	if err != nil {
+		agentCfg.Logger.Fatalf("agent don't send metrics %v", err)
+	}
 }

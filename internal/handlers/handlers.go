@@ -6,13 +6,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
@@ -24,7 +24,7 @@ import (
 )
 
 // функция для изменения значений метрик с помощью URI
-func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
+func UpdateMHandle(storage repositories.Repo, logger zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// если тип хранилища файлсторэж то
@@ -44,7 +44,7 @@ func UpdateMHandle(storage repositories.Repo) http.HandlerFunc {
 			return func() error {
 				err := storage.UpdateParam(r.Context(), cntSummed, mType, mName, mValue)
 				if err != nil {
-					log.Println(err)
+					logger.Warnf("error updating from uri %w", err)
 				}
 				return err
 			}
@@ -108,7 +108,7 @@ func RetrieveMHandle(storage repositories.Repo) http.HandlerFunc {
 }
 
 // функция для получения значения метрики с помощью URI
-func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
+func RetrieveOneMHandle(storage repositories.Repo, logger zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
 		ctx := r.Context()
@@ -123,7 +123,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 					var err error
 					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
 					if err != nil {
-						log.Println(err)
+						logger.Infof("error getting metirc %s - %w", metric.ID, err)
 					}
 					return err
 				}
@@ -148,7 +148,7 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 					var err error
 					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
 					if err != nil {
-						log.Println(err)
+						logger.Infof("error getting metirc %s - %w", metric.ID, err)
 					}
 					return err
 				}
@@ -174,7 +174,8 @@ func RetrieveOneMHandle(storage repositories.Repo) http.HandlerFunc {
 }
 
 // Multiple value update handle
-func JSONUpdateMMHandle(storage repositories.Repo, filename, signKey string, time int) http.HandlerFunc {
+func JSONUpdateMMHandle(storage repositories.Repo, filename,
+	signKey string, time int, logger zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics []api.Metrics
@@ -227,7 +228,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename, signKey string, tim
 			}
 		} else if strings.Contains(r.RequestURI, "/update/") {
 			if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
-				log.Println("decode metric error")
+				logger.Warnf("decode metric %s error %w", metric.ID, err)
 				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
 					"decode one metric to json error"), http.StatusBadRequest)
 				return
@@ -241,9 +242,9 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename, signKey string, tim
 		}
 
 		for _, metric := range metrics {
-			err = MetricParseSelecStor(ctx, storage, &metric)
+			err = MetricParseSelecStor(ctx, storage, &metric, logger)
 			if err != nil {
-				log.Println("ERROR", err)
+				logger.Warnf("error parse metric %s error %w", metric.ID, err)
 				http.Error(w, fmt.Sprintf("%s %s %v", http.StatusText(http.StatusBadRequest),
 					"can't select sorage ", err), http.StatusBadRequest)
 				return
@@ -305,7 +306,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename, signKey string, tim
 
 // функция для сохраненние метрик в хранилище
 func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
-	metric *api.Metrics) error {
+	metric *api.Metrics, logger zap.SugaredLogger) error {
 
 	// переменная для определения того нужно ли
 	// складывать значение метрики типа counter, используется для файлсторэжа
@@ -323,7 +324,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 			return func() error {
 				err := storage.UpdateParam(ctx, cntSummed, metric.MType, metric.ID, *metric.Delta)
 				if err != nil {
-					log.Println("retry", err)
+					logger.Warnf("error updating metric %w", err)
 				}
 				return err
 			}
@@ -344,7 +345,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 			return func() error {
 				err := storage.UpdateParam(ctx, cntSummed, metric.MType, metric.ID, *metric.Value)
 				if err != nil {
-					log.Println("retry", err)
+					logger.Warnf("error updating metiric %w", err)
 				}
 				return err
 			}
@@ -364,7 +365,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 }
 
 // функция для получения одного значения из хранилища
-func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.HandlerFunc {
+func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string, logger zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metric *api.Metrics
@@ -392,7 +393,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.Ha
 					var err error
 					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID)
 					if err != nil {
-						log.Println(err)
+						logger.Warnf("error getting metric %w", err)
 					}
 					return err
 				}
@@ -413,7 +414,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string) http.Ha
 					var err error
 					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID)
 					if err != nil {
-						log.Println(err)
+						logger.Warnf("error getting metric %w", err)
 					}
 					return err
 				}

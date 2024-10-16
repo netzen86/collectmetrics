@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"net/http"
 	"runtime"
@@ -15,6 +14,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
+	"go.uber.org/zap"
 )
 
 // функция сбора метрик
@@ -64,51 +64,51 @@ func CollectMetrics(counter *int64) []api.Metrics {
 }
 
 // функция для парсинга ответа на запрос обновления метрик
-func JSONdecode(resp *http.Response) {
+func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	var buf bytes.Buffer
 	var metrics []api.Metrics
 	if resp == nil {
-		log.Print("error nil response")
+		logger.Infoln("error nil response")
 		return
 	}
 	defer resp.Body.Close()
 	_, err := buf.ReadFrom(resp.Body)
 	if err != nil {
-		log.Print("reading body error ", err)
+		logger.Infoln("reading body error ", err)
 		return
 	}
 	// если данные запакованные распаковываем
 	err = utils.SelectDeCoHTTP(&buf, resp)
 	if err != nil {
-		log.Print("unpack data error", err)
+		logger.Infoln("unpack data error", err)
 		return
 	}
 	if err = json.Unmarshal(buf.Bytes(), &metrics); err != nil {
-		log.Print("parse json error ", err)
+		logger.Infoln("parse json error ", err)
 		return
 	}
 
 	// типа лог
 	for _, m := range metrics {
 		if m.MType == api.Counter {
-			log.Printf("%s %v\n", m.ID, *m.Delta)
+			logger.Infof("%s %v\n", m.ID, *m.Delta)
 		}
 		if m.MType == api.Gauge {
-			log.Printf("%s %v\n", m.ID, *m.Value)
+			logger.Infof("%s %v\n", m.ID, *m.Value)
 		}
 	}
 
 }
 
 // функция для отправки метрик
-func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
+func JSONSendMetrics(url, signKey string, metrics []api.Metrics, logger zap.SugaredLogger) error {
 	var data, sign []byte
 	var err error
 
 	// сериализуем данные в JSON
 	data, err = json.Marshal(metrics)
 	if err != nil {
-		log.Printf("serilazing error: %v\n", err)
+		logger.Infof("serilazing error: %v\n", err)
 		return fmt.Errorf("serilazing error: %v", err)
 	}
 
@@ -149,22 +149,22 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics) error {
 		return errors.New(response.Status)
 	}
 	// defer response.Body.Close()
-	JSONdecode(response)
+	JSONdecode(response, logger)
 	return nil
 }
 
 // функция для отправки метрик
-func SendMetrics(metrics []api.Metrics, endpoint, signKey string) error {
+func SendMetrics(metrics []api.Metrics, endpoint, signKey string, logger zap.SugaredLogger) error {
 	err := JSONSendMetrics(
 		fmt.Sprintf(config.UpdatesAddress, endpoint),
-		signKey, metrics)
+		signKey, metrics, logger)
 	if err != nil {
 		return fmt.Errorf("get error when send metric %v", err)
 	}
 	return nil
 }
 
-func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) {
+func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) error {
 
 	for {
 		select {
@@ -173,16 +173,16 @@ func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) {
 		case <-agentCfg.ReportTik.C:
 			retrybuilder := func() func() error {
 				return func() error {
-					err := SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString)
+					err := SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.Logger)
 					if err != nil {
-						log.Println(err)
+						agentCfg.Logger.Infof("error when sm in internal/agent %w", err)
 					}
 					return err
 				}
 			}
 			err := utils.RetryFunc(retrybuilder)
 			if err != nil {
-				log.Fatal(err)
+				return fmt.Errorf("fail when sm in agent %w", err)
 			}
 		}
 	}
