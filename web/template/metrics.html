@@ -1,0 +1,13 @@
+<html>
+    <head>
+        <title>Metrics on server</title>
+    </head>
+    <header>
+        <h1>Metrics on server</h1>
+    </header>
+    <body>
+        {{- range $key, $value := .Metrics}} 
+        <p><h3>&nbsp;&nbsp;&nbsp;&nbsp;{{$key}}</h2>
+        {{end}}
+    </body>
+</html>
