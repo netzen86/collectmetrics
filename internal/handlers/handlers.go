@@ -213,7 +213,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 			}
 		}
 		// распаковываем если контент упакован
-		err = utils.SelectDeCoHTTP(&buf, r)
+		err = utils.SelectDeCoHTTP(&buf, r, srvlog)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
 				"can't unpack data"), http.StatusBadRequest)

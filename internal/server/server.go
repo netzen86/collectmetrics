@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"go.uber.org/zap"
 
@@ -15,12 +14,12 @@ import (
 
 // создание таблиц counter и gauge
 func MakeDBMigrations(ctx context.Context, serverCfg config.ServerCfg,
-	srvlog zap.SugaredLogger) error {
+	logger zap.SugaredLogger) error {
 	retrybuilder := func() func() error {
 		return func() error {
-			err := serverCfg.Storage.CreateTables(ctx, srvlog)
+			err := serverCfg.Storage.CreateTables(ctx, logger)
 			if err != nil {
-				log.Println(err)
+				logger.Infof("error when creating tables %w", err)
 			}
 			return err
 		}

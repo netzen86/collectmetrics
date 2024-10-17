@@ -3,8 +3,9 @@ package repositories
 import (
 	"context"
 
-	"github.com/netzen86/collectmetrics/internal/api"
 	"go.uber.org/zap"
+
+	"github.com/netzen86/collectmetrics/internal/api"
 )
 
 type Repo interface {

@@ -65,7 +65,7 @@ func (dbstorage *DBStorage) insertData(ctx context.Context, stmt, metricType,
 	return nil
 }
 
-func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, srvlog zap.SugaredLogger) (api.MetricsMap, error) {
+func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, logger zap.SugaredLogger) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 	metrics.Metrics = make(map[string]api.Metrics)
 
@@ -115,7 +115,7 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, srvlog zap.Sugare
 	return metrics, nil
 }
 
-func (dbstorage *DBStorage) CreateTables(ctx context.Context, srvlog zap.SugaredLogger) error {
+func (dbstorage *DBStorage) CreateTables(ctx context.Context, logger zap.SugaredLogger) error {
 	var err error
 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -136,7 +136,7 @@ func (dbstorage *DBStorage) CreateTables(ctx context.Context, srvlog zap.Sugared
 }
 
 func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool,
-	metricType, metricName string, metricValue interface{}, srvlog zap.SugaredLogger) error {
+	metricType, metricName string, metricValue interface{}, logger zap.SugaredLogger) error {
 	stmtGauge := `
 	INSERT INTO gauge (name, value) 
 	VALUES ($1, $2)
@@ -167,7 +167,7 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool,
 }
 
 func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID string,
-	srvlog zap.SugaredLogger) (int64, error) {
+	logger zap.SugaredLogger) (int64, error) {
 	var delta int64
 	smtp := `SELECT delta FROM counter WHERE name=$1`
 
@@ -181,7 +181,7 @@ func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID strin
 }
 
 func (dbstorage *DBStorage) GetGaugeMetric(ctx context.Context, metricID string,
-	srvlog zap.SugaredLogger) (float64, error) {
+	logger zap.SugaredLogger) (float64, error) {
 	var value float64
 	smtp := `SELECT value FROM gauge WHERE name=$1`
 

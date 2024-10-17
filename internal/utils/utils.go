@@ -5,13 +5,13 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 )
@@ -40,9 +40,9 @@ func GzipCompress(data []byte) ([]byte, error) {
 	return buf.Bytes(), err
 }
 
-func GzipDecompress(buf *bytes.Buffer) error {
+func GzipDecompress(buf *bytes.Buffer, logger zap.SugaredLogger) error {
 	// переменная buf будет читать входящие данные и распаковывать их
-	log.Println("*** DECOMPRESSING ***")
+	logger.Infoln("*** DECOMPRESSING ***")
 	gz, err := gzip.NewReader(bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("!!!%s!!! unpacking data error", err)
@@ -56,7 +56,8 @@ func GzipDecompress(buf *bytes.Buffer) error {
 	return nil
 }
 
-func SelectDeCoHTTP(buf *bytes.Buffer, r interface{}) error {
+func SelectDeCoHTTP(buf *bytes.Buffer, r interface{},
+	logger zap.SugaredLogger) error {
 	var key string
 	switch value := r.(type) {
 	case *http.Request:
@@ -67,7 +68,7 @@ func SelectDeCoHTTP(buf *bytes.Buffer, r interface{}) error {
 		return errors.New("func get second arg - http.Request/Response")
 	}
 	if strings.Contains(key, "gzip") {
-		err := GzipDecompress(buf)
+		err := GzipDecompress(buf, logger)
 		if err != nil {
 			return fmt.Errorf("!!%s!! unpack data error", err)
 		}

@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/utils"
-	"go.uber.org/zap"
 )
 
 type MemStorage struct {
@@ -21,7 +21,7 @@ func NewMemStorage() *MemStorage {
 }
 
 func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
-	metricType, metricName string, metricValue interface{}, srvlog zap.SugaredLogger) error {
+	metricType, metricName string, metricValue interface{}, logger zap.SugaredLogger) error {
 	if metricType == api.Gauge {
 		value, err := utils.ParseValGag(metricValue)
 		if err != nil {
@@ -44,24 +44,24 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
 	return nil
 }
 
-func (storage *MemStorage) GetAllMetrics(ctx context.Context, srvlog zap.SugaredLogger) (api.MetricsMap, error) {
+func (storage *MemStorage) GetAllMetrics(ctx context.Context, logger zap.SugaredLogger) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 
 	metrics.Metrics = make(map[string]api.Metrics)
 
 	for name, value := range storage.Gauge {
-		log.Println("METRICS GAUGE WRITE")
+		logger.Infoln("METRICS GAUGE WRITE")
 		metrics.Metrics[name] = api.Metrics{MType: api.Gauge, ID: name, Value: &value}
 	}
 	for name, delta := range storage.Counter {
-		log.Println("METRICS COUNTER WRITE")
+		logger.Infoln("METRICS COUNTER WRITE")
 		metrics.Metrics[name] = api.Metrics{MType: api.Counter, ID: name, Delta: &delta}
 	}
 	return metrics, nil
 }
 
 func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string,
-	srvlog zap.SugaredLogger) (int64, error) {
+	logger zap.SugaredLogger) (int64, error) {
 	delta, ok := storage.Counter[metricID]
 	if !ok {
 		return 0, fmt.Errorf("error get counter metric %s", metricID)
@@ -70,7 +70,7 @@ func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string
 }
 
 func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string,
-	srvlog zap.SugaredLogger) (float64, error) {
+	logger zap.SugaredLogger) (float64, error) {
 	value, ok := storage.Gauge[metricID]
 	if !ok {
 		return 0, fmt.Errorf("error get gauge metric %s", metricID)
@@ -78,7 +78,7 @@ func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string,
 	return value, nil
 }
 
-func (storage *MemStorage) CreateTables(ctx context.Context, srvlog zap.SugaredLogger) error {
+func (storage *MemStorage) CreateTables(ctx context.Context, logger zap.SugaredLogger) error {
 	return nil
 }
 

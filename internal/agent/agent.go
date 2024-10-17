@@ -10,11 +10,12 @@ import (
 	"net/http"
 	"runtime"
 
+	"go.uber.org/zap"
+
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
-	"go.uber.org/zap"
 )
 
 // функция сбора метрик
@@ -78,7 +79,7 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 		return
 	}
 	// если данные запакованные распаковываем
-	err = utils.SelectDeCoHTTP(&buf, resp)
+	err = utils.SelectDeCoHTTP(&buf, resp, logger)
 	if err != nil {
 		logger.Infoln("unpack data error", err)
 		return

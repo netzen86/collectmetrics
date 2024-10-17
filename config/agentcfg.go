@@ -14,40 +14,41 @@ import (
 )
 
 const (
-	pollInterval   time.Duration = 2
-	reportInterval time.Duration = 10
-	envPI          string        = "POLL_INTERVAL"
-	envRI          string        = "REPORT_INTERVAL"
-	UpdatesAddress string        = "http://%s/updates/"
-	Alloc          string        = "Alloc"
-	BuckHashSys    string        = "BuckHashSys"
-	Frees          string        = "Frees"
-	GCCPUFraction  string        = "GCCPUFraction"
-	GCSys          string        = "GCSys"
-	HeapAlloc      string        = "HeapAlloc"
-	HeapIdle       string        = "HeapIdle"
-	HeapInuse      string        = "HeapInuse"
-	HeapObjects    string        = "HeapObjects"
-	HeapReleased   string        = "HeapReleased"
-	HeapSys        string        = "HeapSys"
-	LastGC         string        = "LastGC"
-	Lookups        string        = "Lookups"
-	MCacheInuse    string        = "MCacheInuse"
-	MCacheSys      string        = "MCacheSys"
-	MSpanInuse     string        = "MSpanInuse"
-	MSpanSys       string        = "MSpanSys"
-	Mallocs        string        = "Mallocs"
-	NextGC         string        = "NextGC"
-	NumForcedGC    string        = "NumForcedGC"
-	NumGC          string        = "NumGC"
-	OtherSys       string        = "OtherSys"
-	PauseTotalNs   string        = "PauseTotalNs"
-	StackInuse     string        = "StackInuse"
-	StackSys       string        = "StackSys"
-	Sys            string        = "Sys"
-	TotalAlloc     string        = "TotalAlloc"
-	PollCount      string        = "PollCount"
-	RandomValue    string        = "RandomValue"
+	addressServerAgent string        = "localhost:8080"
+	pollInterval       time.Duration = 2
+	reportInterval     time.Duration = 10
+	envPI              string        = "POLL_INTERVAL"
+	envRI              string        = "REPORT_INTERVAL"
+	UpdatesAddress     string        = "http://%s/updates/"
+	Alloc              string        = "Alloc"
+	BuckHashSys        string        = "BuckHashSys"
+	Frees              string        = "Frees"
+	GCCPUFraction      string        = "GCCPUFraction"
+	GCSys              string        = "GCSys"
+	HeapAlloc          string        = "HeapAlloc"
+	HeapIdle           string        = "HeapIdle"
+	HeapInuse          string        = "HeapInuse"
+	HeapObjects        string        = "HeapObjects"
+	HeapReleased       string        = "HeapReleased"
+	HeapSys            string        = "HeapSys"
+	LastGC             string        = "LastGC"
+	Lookups            string        = "Lookups"
+	MCacheInuse        string        = "MCacheInuse"
+	MCacheSys          string        = "MCacheSys"
+	MSpanInuse         string        = "MSpanInuse"
+	MSpanSys           string        = "MSpanSys"
+	Mallocs            string        = "Mallocs"
+	NextGC             string        = "NextGC"
+	NumForcedGC        string        = "NumForcedGC"
+	NumGC              string        = "NumGC"
+	OtherSys           string        = "OtherSys"
+	PauseTotalNs       string        = "PauseTotalNs"
+	StackInuse         string        = "StackInuse"
+	StackSys           string        = "StackSys"
+	Sys                string        = "Sys"
+	TotalAlloc         string        = "TotalAlloc"
+	PollCount          string        = "PollCount"
+	RandomValue        string        = "RandomValue"
 )
 
 type AgentCfg struct {
@@ -72,7 +73,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	}
 
 	// опредаляем флаги
-	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServer, "Used to set the address and port to connect server.")
+	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServerAgent, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&agentCfg.SignKeyString, "signkeystring", "k", "", "Used to set key for calc hash.")
 	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
