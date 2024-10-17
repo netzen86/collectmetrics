@@ -4,6 +4,8 @@ import (
 	"context"
 	"reflect"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestNewMemStorage(t *testing.T) {
@@ -35,6 +37,7 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 		metricType  string
 		metricName  string
 		metricValue interface{}
+		srvlog      zap.SugaredLogger
 	}
 	tests := []struct {
 		name    string
@@ -50,7 +53,8 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 				Gauge:   tt.fields.Gauge,
 				Counter: tt.fields.Counter,
 			}
-			if err := storage.UpdateParam(tt.args.ctx, false, tt.args.metricType, tt.args.metricName, tt.args.metricValue); (err != nil) != tt.wantErr {
+			if err := storage.UpdateParam(tt.args.ctx, false,
+				tt.args.metricType, tt.args.metricName, tt.args.metricValue, tt.args.srvlog); (err != nil) != tt.wantErr {
 				t.Errorf("MemStorage.UpdateParam() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

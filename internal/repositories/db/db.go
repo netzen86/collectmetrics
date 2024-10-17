@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/utils"
@@ -64,7 +65,7 @@ func (dbstorage *DBStorage) insertData(ctx context.Context, stmt, metricType,
 	return nil
 }
 
-func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, srvlog zap.SugaredLogger) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 	metrics.Metrics = make(map[string]api.Metrics)
 
@@ -114,7 +115,7 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, 
 	return metrics, nil
 }
 
-func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
+func (dbstorage *DBStorage) CreateTables(ctx context.Context, srvlog zap.SugaredLogger) error {
 	var err error
 
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
@@ -134,7 +135,8 @@ func (dbstorage *DBStorage) CreateTables(ctx context.Context) error {
 	return nil
 }
 
-func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, metricType, metricName string, metricValue interface{}) error {
+func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool,
+	metricType, metricName string, metricValue interface{}, srvlog zap.SugaredLogger) error {
 	stmtGauge := `
 	INSERT INTO gauge (name, value) 
 	VALUES ($1, $2)
@@ -164,7 +166,8 @@ func (dbstorage *DBStorage) UpdateParam(ctx context.Context, cntSummed bool, met
 	return nil
 }
 
-func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID string,
+	srvlog zap.SugaredLogger) (int64, error) {
 	var delta int64
 	smtp := `SELECT delta FROM counter WHERE name=$1`
 
@@ -177,7 +180,8 @@ func (dbstorage *DBStorage) GetCounterMetric(ctx context.Context, metricID strin
 	return delta, nil
 }
 
-func (dbstorage *DBStorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+func (dbstorage *DBStorage) GetGaugeMetric(ctx context.Context, metricID string,
+	srvlog zap.SugaredLogger) (float64, error) {
 	var value float64
 	smtp := `SELECT value FROM gauge WHERE name=$1`
 

@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/repositories"
@@ -87,14 +88,14 @@ func NewFileStorage(ctx context.Context, param string) (*Filestorage, error) {
 	return &filestorage, nil
 }
 
-func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
+func (c *Consumer) ReadMetric(metrics *api.MetricsMap, srvlog zap.SugaredLogger) error {
 	metric := api.Metrics{}
 	scanner := c.Scanner
 	for scanner.Scan() {
 		// преобразуем данные из JSON-представления в структуру
 		err := json.Unmarshal(scanner.Bytes(), &metric)
 		if err != nil {
-			log.Printf("can't unmarshal string %v", err)
+			srvlog.Infof("can't unmarshal string %v", err)
 			continue
 		}
 		if metric.MType == api.Gauge {
@@ -121,32 +122,33 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap) error {
 
 // функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
-func SaveMetrics(storage repositories.Repo, metricFileName, storageSelecter string, storeInterval int) {
+func SaveMetrics(storage repositories.Repo, metricFileName,
+	storageSelecter string, storeInterval int, srvlog zap.SugaredLogger) {
 
 	for {
 		<-time.After(time.Duration(storeInterval) * time.Second)
-		metrics, err := storage.GetAllMetrics(context.TODO())
+		metrics, err := storage.GetAllMetrics(context.TODO(), srvlog)
 		if err != nil {
-			log.Fatalf("error when getting all metrics %v", err)
+			srvlog.Fatalf("error when getting all metrics %v", err)
 		}
 
-		log.Println("ENTER PRODUCER IN SM")
+		srvlog.Infoln("ENTER PRODUCER IN SM")
 		producer, err := NewProducer(metricFileName)
 		if err != nil {
-			log.Fatal("can't create producer")
+			srvlog.Fatal("can't create producer")
 		}
 		for _, metric := range metrics.Metrics {
-			log.Printf("METRIC %s WRITE IN FILE", metric.MType)
+			srvlog.Debugf("METRIC %s WRITE IN FILE", metric.MType)
 			err := producer.WriteMetric(metric)
 			if err != nil {
-				log.Fatal("can't write metric")
+				srvlog.Fatal("can't write metric")
 			}
 		}
 		producer.file.Close()
 	}
 }
 
-func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) error {
+func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string, srvlog zap.SugaredLogger) error {
 	producer, err := NewProducer(metricFileName)
 	if err != nil {
 		return fmt.Errorf("can't create producer %w", err)
@@ -157,7 +159,7 @@ func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) error {
 		return fmt.Errorf("can't create producer %w", err)
 	}
 	for _, metric := range metrics.Metrics {
-		// log.Panicln("METRIC", metric)
+		srvlog.Debugf("METRIC", metric)
 		err := producer.WriteMetric(metric)
 		if err != nil {
 			return fmt.Errorf("can't write metric %v %v %w", metric.ID, metric.MType, err)
@@ -166,14 +168,14 @@ func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string) error {
 	}
 	return nil
 }
-func LoadMetric(metrics *api.MetricsMap, metricFileName string) error {
+func LoadMetric(metrics *api.MetricsMap, metricFileName string, srvlog zap.SugaredLogger) error {
 	if _, err := os.Stat(metricFileName); err == nil {
 		consumer, err := NewConsumer(metricFileName)
 		if err != nil {
 			return fmt.Errorf("can't create consumer in lm %w", err)
 		}
 		defer consumer.file.Close()
-		err = consumer.ReadMetric(metrics)
+		err = consumer.ReadMetric(metrics, srvlog)
 		if err != nil {
 			return fmt.Errorf("can't read metric in lm %w", err)
 		}
@@ -182,9 +184,10 @@ func LoadMetric(metrics *api.MetricsMap, metricFileName string) error {
 }
 
 // функция для накапливания значений в counter
-func (fs *Filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Metrics) error {
+func (fs *Filestorage) sumPc(ctx context.Context, delta int64,
+	pcMetric *api.Metrics, srvlog zap.SugaredLogger) error {
 
-	getdelta, err := fs.GetCounterMetric(ctx, pcMetric.ID)
+	getdelta, err := fs.GetCounterMetric(ctx, pcMetric.ID, srvlog)
 	pcMetric.Delta = &getdelta
 	if err != nil {
 		if strings.Contains(err.Error(), "not exist") {
@@ -198,7 +201,7 @@ func (fs *Filestorage) sumPc(ctx context.Context, delta int64, pcMetric *api.Met
 }
 
 func (fs *Filestorage) UpdateParam(ctx context.Context, cntSummed bool,
-	metricType, metricName string, metricValue interface{}) error {
+	metricType, metricName string, metricValue interface{}, srvlog zap.SugaredLogger) error {
 	var pcMetric api.Metrics
 	var metrics api.MetricsMap
 	var err error
@@ -215,7 +218,7 @@ func (fs *Filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 		}
 		pcMetric.Delta = &delta
 		if cntSummed {
-			err = fs.sumPc(ctx, delta, &pcMetric)
+			err = fs.sumPc(ctx, delta, &pcMetric, srvlog)
 			if err != nil {
 				return err
 			}
@@ -227,23 +230,23 @@ func (fs *Filestorage) UpdateParam(ctx context.Context, cntSummed bool,
 		}
 		pcMetric.Value = &value
 	}
-	err = LoadMetric(&metrics, fs.FilenameTemp)
+	err = LoadMetric(&metrics, fs.FilenameTemp, srvlog)
 	if err != nil {
 		return fmt.Errorf("updateparam error load metrics from file %w", err)
 	}
 
 	metrics.Metrics[metricName] = pcMetric
 
-	err = SyncSaveMetrics(metrics, fs.FilenameTemp)
+	err = SyncSaveMetrics(metrics, fs.FilenameTemp, srvlog)
 	if err != nil {
 		return fmt.Errorf("updateparam error save metirc to file %w", err)
 
 	}
-
 	return nil
 }
 
-func (fs *Filestorage) GetCounterMetric(ctx context.Context, metricID string) (int64, error) {
+func (fs *Filestorage) GetCounterMetric(ctx context.Context, metricID string,
+	srvlog zap.SugaredLogger) (int64, error) {
 	var scannedMetric api.Metrics
 	consumer, err := NewConsumer(fs.FilenameTemp)
 	if err != nil {
@@ -267,7 +270,8 @@ func (fs *Filestorage) GetCounterMetric(ctx context.Context, metricID string) (i
 	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Counter)
 }
 
-func (fs *Filestorage) GetGaugeMetric(ctx context.Context, metricID string) (float64, error) {
+func (fs *Filestorage) GetGaugeMetric(ctx context.Context, metricID string,
+	srvlog zap.SugaredLogger) (float64, error) {
 	var scannedMetric api.Metrics
 	consumer, err := NewConsumer(fs.FilenameTemp)
 	if err != nil {
@@ -291,7 +295,7 @@ func (fs *Filestorage) GetGaugeMetric(ctx context.Context, metricID string) (flo
 	return 0, fmt.Errorf("metric %s %s not exist ", metricID, api.Gauge)
 }
 
-func (fs *Filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error) {
+func (fs *Filestorage) GetAllMetrics(ctx context.Context, srvlog zap.SugaredLogger) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
 	metrics.Metrics = make(map[string]api.Metrics)
 
@@ -301,7 +305,7 @@ func (fs *Filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error
 			return api.MetricsMap{}, fmt.Errorf("can't create consumer in lm %w", err)
 		}
 		defer consumer.file.Close()
-		err = consumer.ReadMetric(&metrics)
+		err = consumer.ReadMetric(&metrics, srvlog)
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("can't read metric in lm %w", err)
 		}
@@ -309,6 +313,6 @@ func (fs *Filestorage) GetAllMetrics(ctx context.Context) (api.MetricsMap, error
 	return metrics, nil
 }
 
-func (fs *Filestorage) CreateTables(ctx context.Context) error {
+func (fs *Filestorage) CreateTables(ctx context.Context, srvlog zap.SugaredLogger) error {
 	return nil
 }

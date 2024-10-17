@@ -7,12 +7,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/netzen86/collectmetrics/internal/logger"
+	"go.uber.org/zap"
+
 	"github.com/netzen86/collectmetrics/internal/repositories"
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
-	"go.uber.org/zap"
 )
 
 const (
@@ -48,8 +48,6 @@ type ServerCfg struct {
 	Tempfile *os.File `env:"" DefVal:""`
 	// указатель на memstorage
 	Storage repositories.Repo `env:"" DefVal:""`
-	// указатель на логгер
-	Logger zap.SugaredLogger
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -125,7 +123,7 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 }
 
 // метод инициализации сервера
-func (serverCfg *ServerCfg) initSrv() error {
+func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	var err error
 	ctx := context.Background()
 
@@ -158,7 +156,7 @@ func (serverCfg *ServerCfg) initSrv() error {
 	}
 
 	// лог значений полученных из переменных окружения и флагов
-	serverCfg.Logger.Infoln("!!! SERVER CONFIGURED !!!",
+	srvlog.Infoln("!!! SERVER CONFIGURED !!!",
 		serverCfg.Endpoint, serverCfg.FileStoragePathDef,
 		serverCfg.FileStoragePath, serverCfg.DBconstring,
 		len(serverCfg.SignKeyString), serverCfg.Restore, serverCfg.StoreInterval)
@@ -167,13 +165,8 @@ func (serverCfg *ServerCfg) initSrv() error {
 }
 
 // метод для получения конфигурации сервера
-func (serverCfg *ServerCfg) GetServerCfg() error {
+func (serverCfg *ServerCfg) GetServerCfg(srvlog zap.SugaredLogger) error {
 	var err error
-
-	serverCfg.Logger, err = logger.Logger()
-	if err != nil {
-		return fmt.Errorf("error when get logger %w", err)
-	}
 
 	err = serverCfg.parseSrvFlags()
 	if err != nil {
@@ -185,7 +178,7 @@ func (serverCfg *ServerCfg) GetServerCfg() error {
 		return fmt.Errorf("error writing file: %v", err)
 	}
 
-	err = serverCfg.initSrv()
+	err = serverCfg.initSrv(srvlog)
 	if err != nil {
 		return fmt.Errorf("error writing file: %v", err)
 	}

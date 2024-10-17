@@ -91,10 +91,10 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	// типа лог
 	for _, m := range metrics {
 		if m.MType == api.Counter {
-			logger.Infof("%s %v\n", m.ID, *m.Delta)
+			logger.Infof("%s %v", m.ID, *m.Delta)
 		}
 		if m.MType == api.Gauge {
-			logger.Infof("%s %v\n", m.ID, *m.Value)
+			logger.Infof("%s %v", m.ID, *m.Value)
 		}
 	}
 
