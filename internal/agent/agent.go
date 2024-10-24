@@ -18,10 +18,44 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
+type memStatFunc struct {
+	mName    string
+	function func() float64
+}
+
+type counterData struct {
+	mName string
+	delta *int64
+}
+
+func workerGauge(job <-chan memStatFunc, results chan<- api.Metrics) {
+	memStat := <-job
+	value := memStat.function()
+	results <- api.Metrics{ID: memStat.mName, MType: api.Gauge, Value: &value}
+}
+
+func workerCounter(job <-chan counterData, results chan<- api.Metrics) {
+	cntData := <-job
+	*cntData.delta += int64(1)
+	value := *cntData.delta
+	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &value}
+}
+
 // функция сбора метрик
-func CollectMetrics(counter *int64) []api.Metrics {
+func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 	var memStats runtime.MemStats
-	var metrics []api.Metrics
+
+	jobsGauge := make(chan memStatFunc, numJobs)
+	jobsCounter := make(chan counterData, numJobs)
+
+	for w := 1; w <= numJobs; w++ {
+		go workerGauge(jobsGauge, results)
+	}
+
+	for w := 1; w <= numJobs; w++ {
+		go workerCounter(jobsCounter, results)
+	}
+
 	runtime.ReadMemStats(&memStats)
 
 	// мапа анонимных функций для сбора метрик
@@ -55,13 +89,15 @@ func CollectMetrics(counter *int64) []api.Metrics {
 		config.TotalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
 		config.RandomValue:   func() float64 { return rand.Float64() }}
 
+	// в канал задач отправляем какие-то данные
 	for k, v := range metFunc {
-		value := v()
-		metrics = append(metrics, api.Metrics{ID: k, MType: api.Gauge, Value: &value})
+		jobsGauge <- memStatFunc{mName: k, function: v}
 	}
-	*counter += 1
-	metrics = append(metrics, api.Metrics{ID: config.PollCount, MType: api.Counter, Delta: counter})
-	return metrics
+
+	// как вы помните, закрываем канал на стороне отправителя
+	close(jobsGauge)
+
+	jobsCounter <- counterData{mName: config.PollCount, delta: counter}
 }
 
 // функция для парсинга ответа на запрос обновления метрик
@@ -167,10 +203,14 @@ func SendMetrics(metrics []api.Metrics, endpoint, signKey string, logger zap.Sug
 
 func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) error {
 
+	numJobs := 5
+
+	results := make(chan api.Metrics, numJobs)
+
 	for {
 		select {
 		case <-agentCfg.PollTik.C:
-			metrics = CollectMetrics(counter)
+			CollectMetrics(counter, numJobs, results)
 		case <-agentCfg.ReportTik.C:
 			retrybuilder := func() func() error {
 				return func() error {
