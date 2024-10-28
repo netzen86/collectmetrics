@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net/http"
 	"runtime"
@@ -18,48 +19,52 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-type memStatFunc struct {
+type gaugeJobs struct {
 	mName    string
 	function func() float64
 }
 
-type counterData struct {
-	mName string
-	delta *int64
+type counterJobs struct {
+	mName    string
+	counter  *int64
+	function func(counter *int64) int64
 }
 
-func workerGauge(job <-chan memStatFunc, results chan<- api.Metrics) {
+func workerGauge(job <-chan gaugeJobs, results chan<- api.Metrics) {
 	memStat := <-job
 	value := memStat.function()
 	results <- api.Metrics{ID: memStat.mName, MType: api.Gauge, Value: &value}
 }
 
-func workerCounter(job <-chan counterData, results chan<- api.Metrics) {
+func workerCounter(job <-chan counterJobs, results chan<- api.Metrics) {
 	cntData := <-job
-	*cntData.delta += int64(1)
-	value := *cntData.delta
-	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &value}
+	cnt := int64(0)
+	cntData.counter = &cnt
+	delta := cntData.function(cntData.counter)
+	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &delta}
 }
 
 // функция сбора метрик
 func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
+	log.Println("RUN COLLECT METRICS")
+
 	var memStats runtime.MemStats
 
-	jobsGauge := make(chan memStatFunc, numJobs)
-	jobsCounter := make(chan counterData, numJobs)
+	jobsGauge := make(chan gaugeJobs, numJobs)
+	jobsCounter := make(chan counterJobs, numJobs)
 
 	for w := 1; w <= numJobs; w++ {
 		go workerGauge(jobsGauge, results)
 	}
 
-	for w := 1; w <= numJobs; w++ {
+	for w := 1; w <= 1; w++ {
 		go workerCounter(jobsCounter, results)
 	}
 
 	runtime.ReadMemStats(&memStats)
 
 	// мапа анонимных функций для сбора метрик
-	metFunc := map[string]func() float64{
+	gaugeFunc := map[string]func() float64{
 		config.Alloc:         func() float64 { return float64(memStats.Alloc) },
 		config.BuckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
 		config.Frees:         func() float64 { return float64(memStats.Frees) },
@@ -89,15 +94,23 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 		config.TotalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
 		config.RandomValue:   func() float64 { return rand.Float64() }}
 
+	// мапа анонимных функций для сбора метрик
+	counterFunc := map[string]func(coutner *int64) int64{
+		config.PollCount: func(counter *int64) int64 { *counter += 1; return *counter },
+	}
 	// в канал задач отправляем какие-то данные
-	for k, v := range metFunc {
-		jobsGauge <- memStatFunc{mName: k, function: v}
+	for k, v := range gaugeFunc {
+		jobsGauge <- gaugeJobs{mName: k, function: v}
 	}
 
 	// как вы помните, закрываем канал на стороне отправителя
 	close(jobsGauge)
 
-	jobsCounter <- counterData{mName: config.PollCount, delta: counter}
+	for k, v := range counterFunc {
+		jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
+	}
+
+	close(jobsCounter)
 }
 
 // функция для парсинга ответа на запрос обновления метрик
@@ -138,9 +151,15 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 }
 
 // функция для отправки метрик
-func JSONSendMetrics(url, signKey string, metrics []api.Metrics, logger zap.SugaredLogger) error {
+func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger zap.SugaredLogger) error {
+	var metrics []api.Metrics
 	var data, sign []byte
 	var err error
+
+	for metric := range metricsChan {
+		metrics = append(metrics, metric)
+	}
+	log.Println(metrics)
 
 	// сериализуем данные в JSON
 	data, err = json.Marshal(metrics)
@@ -191,7 +210,7 @@ func JSONSendMetrics(url, signKey string, metrics []api.Metrics, logger zap.Suga
 }
 
 // функция для отправки метрик
-func SendMetrics(metrics []api.Metrics, endpoint, signKey string, logger zap.SugaredLogger) error {
+func SendMetrics(metrics chan api.Metrics, endpoint, signKey string, logger zap.SugaredLogger) error {
 	err := JSONSendMetrics(
 		fmt.Sprintf(config.UpdatesAddress, endpoint),
 		signKey, metrics, logger)
@@ -201,16 +220,17 @@ func SendMetrics(metrics []api.Metrics, endpoint, signKey string, logger zap.Sug
 	return nil
 }
 
-func RunAgent(metrics []api.Metrics, agentCfg config.AgentCfg, counter *int64) error {
+func RunAgent(agentCfg config.AgentCfg) error {
 
-	numJobs := 5
+	counter := int64(0)
+	numJobs := 28
 
-	results := make(chan api.Metrics, numJobs)
+	metrics := make(chan api.Metrics)
 
 	for {
 		select {
 		case <-agentCfg.PollTik.C:
-			CollectMetrics(counter, numJobs, results)
+			CollectMetrics(&counter, numJobs, metrics)
 		case <-agentCfg.ReportTik.C:
 			retrybuilder := func() func() error {
 				return func() error {
