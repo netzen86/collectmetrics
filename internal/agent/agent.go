@@ -10,6 +10,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"runtime"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -30,14 +31,22 @@ type counterJobs struct {
 	function func(counter *int64) int64
 }
 
-func workerGauge(job <-chan gaugeJobs, results chan<- api.Metrics) {
-	memStat := <-job
+func workerGauge(job <-chan gaugeJobs, results chan<- api.Metrics, wg *sync.WaitGroup) {
+	defer wg.Done()
+	memStat, ok := <-job
+	if !ok {
+		return
+	}
 	value := memStat.function()
 	results <- api.Metrics{ID: memStat.mName, MType: api.Gauge, Value: &value}
 }
 
-func workerCounter(job <-chan counterJobs, results chan<- api.Metrics) {
-	cntData := <-job
+func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.WaitGroup) {
+	defer wg.Done()
+	cntData, ok := <-job
+	if !ok {
+		return
+	}
 	cnt := int64(0)
 	cntData.counter = &cnt
 	delta := cntData.function(cntData.counter)
@@ -50,15 +59,22 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 
 	var memStats runtime.MemStats
 
+	wg := &sync.WaitGroup{}
 	jobsGauge := make(chan gaugeJobs, numJobs)
 	jobsCounter := make(chan counterJobs, numJobs)
 
 	for w := 1; w <= numJobs; w++ {
-		go workerGauge(jobsGauge, results)
+		wg.Add(1)
+		go workerGauge(jobsGauge, results, wg)
+		log.Println("run gauge worker", w)
+		// wg.add
 	}
 
 	for w := 1; w <= 1; w++ {
-		go workerCounter(jobsCounter, results)
+		wg.Add(1)
+		go workerCounter(jobsCounter, results, wg)
+		log.Println("run counter worker", w)
+
 	}
 
 	runtime.ReadMemStats(&memStats)
@@ -98,19 +114,20 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 	counterFunc := map[string]func(coutner *int64) int64{
 		config.PollCount: func(counter *int64) int64 { *counter += 1; return *counter },
 	}
-	// в канал задач отправляем какие-то данные
+	// в канал задач отправляем задачи
 	for k, v := range gaugeFunc {
 		jobsGauge <- gaugeJobs{mName: k, function: v}
 	}
-
-	// как вы помните, закрываем канал на стороне отправителя
 	close(jobsGauge)
 
 	for k, v := range counterFunc {
 		jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
 	}
-
 	close(jobsCounter)
+
+	wg.Wait()
+	// close(results)
+
 }
 
 // функция для парсинга ответа на запрос обновления метрик
@@ -155,11 +172,12 @@ func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger z
 	var metrics []api.Metrics
 	var data, sign []byte
 	var err error
-
+	var cnt int
 	for metric := range metricsChan {
+		log.Println(cnt, metric)
 		metrics = append(metrics, metric)
+		cnt++
 	}
-	log.Println(metrics)
 
 	// сериализуем данные в JSON
 	data, err = json.Marshal(metrics)
@@ -223,9 +241,9 @@ func SendMetrics(metrics chan api.Metrics, endpoint, signKey string, logger zap.
 func RunAgent(agentCfg config.AgentCfg) error {
 
 	counter := int64(0)
-	numJobs := 28
+	numJobs := 29
 
-	metrics := make(chan api.Metrics)
+	metrics := make(chan api.Metrics, numJobs)
 
 	for {
 		select {
