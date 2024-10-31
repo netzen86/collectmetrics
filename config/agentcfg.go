@@ -49,6 +49,9 @@ const (
 	TotalAlloc         string        = "TotalAlloc"
 	PollCount          string        = "PollCount"
 	RandomValue        string        = "RandomValue"
+	TotalMemory        string        = "TotalMemory"
+	FreeMemory         string        = "FreeMemory"
+	CPUutilization1    string        = "CPUutilization1"
 )
 
 type AgentCfg struct {

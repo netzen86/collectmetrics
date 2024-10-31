@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/config"
@@ -54,10 +56,20 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 }
 
 // функция сбора метрик
-func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
+func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) error {
 	log.Println("RUN COLLECT METRICS")
 
 	var memStats runtime.MemStats
+
+	mem, err := mem.VirtualMemory()
+	if err != nil {
+		return fmt.Errorf("error when getting ext mem stat %w", err)
+	}
+
+	cpuStat, err := cpu.Counts(true)
+	if err != nil {
+		return fmt.Errorf("error when getting cpu stat %w", err)
+	}
 
 	wg := &sync.WaitGroup{}
 	jobsGauge := make(chan gaugeJobs, numJobs)
@@ -77,34 +89,37 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 
 	// мапа анонимных функций для сбора метрик
 	gaugeFunc := map[string]func() float64{
-		config.Alloc:         func() float64 { return float64(memStats.Alloc) },
-		config.BuckHashSys:   func() float64 { return float64(memStats.BuckHashSys) },
-		config.Frees:         func() float64 { return float64(memStats.Frees) },
-		config.GCCPUFraction: func() float64 { return float64(memStats.GCCPUFraction) },
-		config.GCSys:         func() float64 { return float64(memStats.GCSys) },
-		config.HeapAlloc:     func() float64 { return float64(memStats.HeapAlloc) },
-		config.HeapIdle:      func() float64 { return float64(memStats.HeapIdle) },
-		config.HeapInuse:     func() float64 { return float64(memStats.HeapInuse) },
-		config.HeapObjects:   func() float64 { return float64(memStats.HeapObjects) },
-		config.HeapReleased:  func() float64 { return float64(memStats.HeapReleased) },
-		config.HeapSys:       func() float64 { return float64(memStats.HeapSys) },
-		config.LastGC:        func() float64 { return float64(memStats.LastGC) },
-		config.Lookups:       func() float64 { return float64(memStats.Lookups) },
-		config.MCacheInuse:   func() float64 { return float64(memStats.MCacheInuse) },
-		config.MCacheSys:     func() float64 { return float64(memStats.MCacheSys) },
-		config.MSpanInuse:    func() float64 { return float64(memStats.MSpanInuse) },
-		config.MSpanSys:      func() float64 { return float64(memStats.MSpanSys) },
-		config.Mallocs:       func() float64 { return float64(memStats.Mallocs) },
-		config.NextGC:        func() float64 { return float64(memStats.NextGC) },
-		config.NumForcedGC:   func() float64 { return float64(memStats.NumForcedGC) },
-		config.NumGC:         func() float64 { return float64(memStats.NumGC) },
-		config.OtherSys:      func() float64 { return float64(memStats.OtherSys) },
-		config.PauseTotalNs:  func() float64 { return float64(memStats.PauseTotalNs) },
-		config.StackInuse:    func() float64 { return float64(memStats.StackInuse) },
-		config.StackSys:      func() float64 { return float64(memStats.StackSys) },
-		config.Sys:           func() float64 { return float64(memStats.Sys) },
-		config.TotalAlloc:    func() float64 { return float64(memStats.TotalAlloc) },
-		config.RandomValue:   func() float64 { return rand.Float64() }}
+		config.Alloc:           func() float64 { return float64(memStats.Alloc) },
+		config.BuckHashSys:     func() float64 { return float64(memStats.BuckHashSys) },
+		config.Frees:           func() float64 { return float64(memStats.Frees) },
+		config.GCCPUFraction:   func() float64 { return float64(memStats.GCCPUFraction) },
+		config.GCSys:           func() float64 { return float64(memStats.GCSys) },
+		config.HeapAlloc:       func() float64 { return float64(memStats.HeapAlloc) },
+		config.HeapIdle:        func() float64 { return float64(memStats.HeapIdle) },
+		config.HeapInuse:       func() float64 { return float64(memStats.HeapInuse) },
+		config.HeapObjects:     func() float64 { return float64(memStats.HeapObjects) },
+		config.HeapReleased:    func() float64 { return float64(memStats.HeapReleased) },
+		config.HeapSys:         func() float64 { return float64(memStats.HeapSys) },
+		config.LastGC:          func() float64 { return float64(memStats.LastGC) },
+		config.Lookups:         func() float64 { return float64(memStats.Lookups) },
+		config.MCacheInuse:     func() float64 { return float64(memStats.MCacheInuse) },
+		config.MCacheSys:       func() float64 { return float64(memStats.MCacheSys) },
+		config.MSpanInuse:      func() float64 { return float64(memStats.MSpanInuse) },
+		config.MSpanSys:        func() float64 { return float64(memStats.MSpanSys) },
+		config.Mallocs:         func() float64 { return float64(memStats.Mallocs) },
+		config.NextGC:          func() float64 { return float64(memStats.NextGC) },
+		config.NumForcedGC:     func() float64 { return float64(memStats.NumForcedGC) },
+		config.NumGC:           func() float64 { return float64(memStats.NumGC) },
+		config.OtherSys:        func() float64 { return float64(memStats.OtherSys) },
+		config.PauseTotalNs:    func() float64 { return float64(memStats.PauseTotalNs) },
+		config.StackInuse:      func() float64 { return float64(memStats.StackInuse) },
+		config.StackSys:        func() float64 { return float64(memStats.StackSys) },
+		config.Sys:             func() float64 { return float64(memStats.Sys) },
+		config.TotalAlloc:      func() float64 { return float64(memStats.TotalAlloc) },
+		config.RandomValue:     func() float64 { return rand.Float64() },
+		config.TotalMemory:     func() float64 { return float64(mem.Total) },
+		config.FreeMemory:      func() float64 { return float64(mem.Free) },
+		config.CPUutilization1: func() float64 { return float64(cpuStat) }}
 
 	// мапа анонимных функций для сбора метрик
 	counterFunc := map[string]func(coutner *int64) int64{
@@ -123,7 +138,7 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 
 	wg.Wait()
 	close(results)
-
+	return nil
 }
 
 // функция для парсинга ответа на запрос обновления метрик
@@ -239,7 +254,7 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	var metrics chan api.Metrics
 	var errCh chan error
 	counter := int64(0)
-	numJobs := 29
+	numJobs := 32
 
 	for {
 		select {
