@@ -66,15 +66,11 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 	for w := 1; w <= numJobs; w++ {
 		wg.Add(1)
 		go workerGauge(jobsGauge, results, wg)
-		log.Println("run gauge worker", w)
-		// wg.add
 	}
 
 	for w := 1; w <= 1; w++ {
 		wg.Add(1)
 		go workerCounter(jobsCounter, results, wg)
-		log.Println("run counter worker", w)
-
 	}
 
 	runtime.ReadMemStats(&memStats)
@@ -126,7 +122,7 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) {
 	close(jobsCounter)
 
 	wg.Wait()
-	// close(results)
+	close(results)
 
 }
 
@@ -172,11 +168,9 @@ func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger z
 	var metrics []api.Metrics
 	var data, sign []byte
 	var err error
-	var cnt int
+
 	for metric := range metricsChan {
-		log.Println(cnt, metric)
 		metrics = append(metrics, metric)
-		cnt++
 	}
 
 	// сериализуем данные в JSON
@@ -228,35 +222,44 @@ func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger z
 }
 
 // функция для отправки метрик
-func SendMetrics(metrics chan api.Metrics, endpoint, signKey string, logger zap.SugaredLogger) error {
+func SendMetrics(metrics chan api.Metrics, endpoint,
+	signKey string, logger zap.SugaredLogger,
+	errCh chan<- error, wg *sync.WaitGroup) {
+	defer wg.Done()
 	err := JSONSendMetrics(
 		fmt.Sprintf(config.UpdatesAddress, endpoint),
 		signKey, metrics, logger)
 	if err != nil {
-		return fmt.Errorf("get error when send metric %v", err)
+		errCh <- fmt.Errorf("get error when send metric %v", err)
+		return
 	}
-	return nil
 }
 
 func RunAgent(agentCfg config.AgentCfg) error {
-
+	var metrics chan api.Metrics
+	var errCh chan error
 	counter := int64(0)
 	numJobs := 29
-
-	metrics := make(chan api.Metrics, numJobs)
 
 	for {
 		select {
 		case <-agentCfg.PollTik.C:
+			metrics = make(chan api.Metrics, numJobs)
 			CollectMetrics(&counter, numJobs, metrics)
 		case <-agentCfg.ReportTik.C:
+			errCh = make(chan error)
+			wg := &sync.WaitGroup{}
+
 			retrybuilder := func() func() error {
 				return func() error {
-					err := SendMetrics(metrics, agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.Logger)
-					if err != nil {
-						agentCfg.Logger.Infof("error when sm in internal/agent %w", err)
+					wg.Add(1)
+					go SendMetrics(metrics, agentCfg.Endpoint,
+						agentCfg.SignKeyString, agentCfg.Logger, errCh, wg)
+					if len(errCh) > 0 {
+						agentCfg.Logger.Infof("error when sm in internal/agent %w", <-errCh)
 					}
-					return err
+					wg.Wait()
+					return nil
 				}
 			}
 			err := utils.RetryFunc(retrybuilder)
