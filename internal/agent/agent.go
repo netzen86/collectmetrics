@@ -241,11 +241,22 @@ func SendMetrics(metrics chan api.Metrics, endpoint,
 	signKey string, logger zap.SugaredLogger,
 	errCh chan<- error, wg *sync.WaitGroup) {
 	defer wg.Done()
-	err := JSONSendMetrics(
-		fmt.Sprintf(config.UpdatesAddress, endpoint),
-		signKey, metrics, logger)
+
+	retrybuilder := func() func() error {
+		return func() error {
+			err := JSONSendMetrics(
+				fmt.Sprintf(config.UpdatesAddress, endpoint),
+				signKey, metrics, logger)
+
+			if err != nil {
+				logger.Infof("error when sm in internal/agent %w", err)
+			}
+			return nil
+		}
+	}
+	err := utils.RetryFunc(retrybuilder)
 	if err != nil {
-		errCh <- fmt.Errorf("get error when send metric %v", err)
+		errCh <- fmt.Errorf("fail when sm in agent %w", err)
 		return
 	}
 }
@@ -264,22 +275,12 @@ func RunAgent(agentCfg config.AgentCfg) error {
 		case <-agentCfg.ReportTik.C:
 			errCh = make(chan error)
 			wg := &sync.WaitGroup{}
-
-			retrybuilder := func() func() error {
-				return func() error {
-					wg.Add(1)
-					go SendMetrics(metrics, agentCfg.Endpoint,
-						agentCfg.SignKeyString, agentCfg.Logger, errCh, wg)
-					if len(errCh) > 0 {
-						agentCfg.Logger.Infof("error when sm in internal/agent %w", <-errCh)
-					}
-					wg.Wait()
-					return nil
-				}
-			}
-			err := utils.RetryFunc(retrybuilder)
-			if err != nil {
-				return fmt.Errorf("fail when sm in agent %w", err)
+			wg.Add(1)
+			go SendMetrics(metrics, agentCfg.Endpoint,
+				agentCfg.SignKeyString, agentCfg.Logger, errCh, wg)
+			wg.Wait()
+			if len(errCh) > 0 {
+				return fmt.Errorf("fail when sm in agent %w", <-errCh)
 			}
 		}
 	}
