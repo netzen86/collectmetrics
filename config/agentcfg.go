@@ -15,10 +15,13 @@ import (
 
 const (
 	addressServerAgent string        = "localhost:8080"
-	pollInterval       time.Duration = 2
-	reportInterval     time.Duration = 10
+	pollInterval       time.Duration = 5
+	reportInterval     time.Duration = 0
+	ratelimit          int           = 5
 	envPI              string        = "POLL_INTERVAL"
 	envRI              string        = "REPORT_INTERVAL"
+	envRL              string        = "RATE_LIMIT"
+	UpdateAddress      string        = "http://%s/update/"
 	UpdatesAddress     string        = "http://%s/updates/"
 	Alloc              string        = "Alloc"
 	BuckHashSys        string        = "BuckHashSys"
@@ -59,9 +62,10 @@ type AgentCfg struct {
 	ContentEncoding string
 	SignKeyString   string
 	PollInterval    int
-	Reportinterval  int
-	PollTik         time.Ticker
-	ReportTik       time.Ticker
+	ReportInterval  int
+	RateLimit       int
+	PollTik         time.Duration
+	ReportTik       time.Duration
 	Logger          zap.SugaredLogger
 }
 
@@ -80,7 +84,8 @@ func GetAgentCfg() (AgentCfg, error) {
 	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&agentCfg.SignKeyString, "signkeystring", "k", "", "Used to set key for calc hash.")
 	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
-	pflag.IntVarP(&agentCfg.Reportinterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
+	pflag.IntVarP(&agentCfg.ReportInterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
+	pflag.IntVarP(&agentCfg.RateLimit, "ratelimit", "l", ratelimit, "User for set report interval (send to srv) in seconds.")
 	pflag.Parse()
 
 	// если переданы аргументы не флаги печатаем подсказку
@@ -104,19 +109,28 @@ func GetAgentCfg() (AgentCfg, error) {
 
 	// получение интервала отправки метрик
 	if len(os.Getenv(envRI)) != 0 {
-		agentCfg.Reportinterval, err = strconv.Atoi(os.Getenv(envRI))
+		agentCfg.ReportInterval, err = strconv.Atoi(os.Getenv(envRI))
 		if err != nil {
 			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
 		}
 	}
+
+	// получение лимита отправки метрик
+	if len(os.Getenv(envRL)) != 0 {
+		agentCfg.RateLimit, err = strconv.Atoi(os.Getenv(envRI))
+		if err != nil {
+			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
+		}
+	}
+
 	// получение ключа для генерации подписи при отправки данных
 	if len(os.Getenv(envKey)) != 0 {
 		agentCfg.SignKeyString = os.Getenv(envKey)
 	}
 
 	// установка интервалов получения и отправки метрик
-	agentCfg.PollTik = *time.NewTicker(time.Duration(agentCfg.PollInterval) * time.Second)
-	agentCfg.ReportTik = *time.NewTicker(time.Duration(agentCfg.Reportinterval) * time.Second)
+	agentCfg.PollTik = time.Duration(agentCfg.PollInterval) * time.Second
+	agentCfg.ReportTik = time.Duration(agentCfg.ReportInterval) * time.Second
 
 	return agentCfg, nil
 }

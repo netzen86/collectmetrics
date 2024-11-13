@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -12,6 +13,7 @@ import (
 )
 
 type MemStorage struct {
+	mx      sync.RWMutex
 	Gauge   map[string]float64
 	Counter map[string]int64
 }
@@ -27,42 +29,55 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
 		if err != nil {
 			return err
 		}
+		storage.mx.Lock()
 		storage.Gauge[metricName] = value
+		storage.mx.Unlock()
 	} else if metricType == api.Counter {
 		delta, err := utils.ParseValCnt(metricValue)
 		if err != nil {
 			return err
 		}
 		if !cntSummed {
+			storage.mx.Lock()
 			storage.Counter[metricName] += delta
+			storage.mx.Unlock()
 		} else {
+			storage.mx.Lock()
 			storage.Counter[metricName] = delta
+			storage.mx.Unlock()
 		}
 	} else {
 		return errors.New("wrong metric type")
 	}
+
 	return nil
 }
 
 func (storage *MemStorage) GetAllMetrics(ctx context.Context, logger zap.SugaredLogger) (api.MetricsMap, error) {
 	var metrics api.MetricsMap
-
 	metrics.Metrics = make(map[string]api.Metrics)
 
 	for name, value := range storage.Gauge {
 		logger.Infoln("METRICS GAUGE WRITE")
+		storage.mx.RLock()
 		metrics.Metrics[name] = api.Metrics{MType: api.Gauge, ID: name, Value: &value}
+		storage.mx.RUnlock()
 	}
 	for name, delta := range storage.Counter {
 		logger.Infoln("METRICS COUNTER WRITE")
+		storage.mx.RLock()
 		metrics.Metrics[name] = api.Metrics{MType: api.Counter, ID: name, Delta: &delta}
+		storage.mx.RUnlock()
 	}
+
 	return metrics, nil
 }
 
 func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string,
 	logger zap.SugaredLogger) (int64, error) {
+	storage.mx.RLock()
 	delta, ok := storage.Counter[metricID]
+	storage.mx.RUnlock()
 	if !ok {
 		return 0, fmt.Errorf("error get counter metric %s", metricID)
 	}
@@ -71,7 +86,9 @@ func (storage *MemStorage) GetCounterMetric(ctx context.Context, metricID string
 
 func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string,
 	logger zap.SugaredLogger) (float64, error) {
+	storage.mx.RLock()
 	value, ok := storage.Gauge[metricID]
+	storage.mx.RUnlock()
 	if !ok {
 		return 0, fmt.Errorf("error get gauge metric %s", metricID)
 	}
@@ -80,24 +97,4 @@ func (storage *MemStorage) GetGaugeMetric(ctx context.Context, metricID string,
 
 func (storage *MemStorage) CreateTables(ctx context.Context, logger zap.SugaredLogger) error {
 	return nil
-}
-
-func MetricMapToMemstorage(metrics *api.MetricsMap, storage MemStorage) {
-	for _, metric := range metrics.Metrics {
-		if metric.MType == api.Gauge {
-			storage.Gauge[metric.ID] = *metric.Value
-		}
-		if metric.MType == api.Counter {
-			storage.Counter[metric.ID] = *metric.Delta
-		}
-	}
-}
-
-func MemstoragetoMetricMap(metrics *api.MetricsMap, storage MemStorage) {
-	for name, value := range storage.Gauge {
-		metrics.Metrics[name] = api.Metrics{ID: name, MType: api.Gauge, Value: &value}
-	}
-	for name, delta := range storage.Counter {
-		metrics.Metrics[name] = api.Metrics{ID: name, MType: api.Counter, Delta: &delta}
-	}
 }

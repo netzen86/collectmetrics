@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"net/http"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
@@ -56,36 +56,20 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 }
 
 // функция сбора метрик
-func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) error {
-	log.Println("RUN COLLECT METRICS")
-
+func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
+	results chan<- api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
+	defer rwg.Done()
 	var memStats runtime.MemStats
 
 	mem, err := mem.VirtualMemory()
 	if err != nil {
-		return fmt.Errorf("error when getting ext mem stat %w", err)
+		errCh <- fmt.Errorf("error when getting ext mem stat %w", err)
 	}
 
 	cpuStat, err := cpu.Counts(true)
 	if err != nil {
-		return fmt.Errorf("error when getting cpu stat %w", err)
+		errCh <- fmt.Errorf("error when getting cpu stat %w", err)
 	}
-
-	wg := &sync.WaitGroup{}
-	jobsGauge := make(chan gaugeJobs, numJobs)
-	jobsCounter := make(chan counterJobs, numJobs)
-
-	for w := 1; w <= numJobs; w++ {
-		wg.Add(1)
-		go workerGauge(jobsGauge, results, wg)
-	}
-
-	for w := 1; w <= 1; w++ {
-		wg.Add(1)
-		go workerCounter(jobsCounter, results, wg)
-	}
-
-	runtime.ReadMemStats(&memStats)
 
 	// мапа анонимных функций для сбора метрик
 	gaugeFunc := map[string]func() float64{
@@ -125,26 +109,45 @@ func CollectMetrics(counter *int64, numJobs int, results chan api.Metrics) error
 	counterFunc := map[string]func(coutner *int64) int64{
 		config.PollCount: func(counter *int64) int64 { *counter += 1; return *counter },
 	}
-	// в канал задач отправляем задачи
-	for k, v := range gaugeFunc {
-		jobsGauge <- gaugeJobs{mName: k, function: v}
-	}
-	close(jobsGauge)
 
-	for k, v := range counterFunc {
-		jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
-	}
-	close(jobsCounter)
+	for {
+		<-time.After(agentCfg.PollTik)
 
-	wg.Wait()
-	close(results)
-	return nil
+		wg := &sync.WaitGroup{}
+		jobsGauge := make(chan gaugeJobs, len(gaugeFunc))
+		jobsCounter := make(chan counterJobs, len(counterFunc))
+
+		for w := 1; w <= len(gaugeFunc); w++ {
+			wg.Add(1)
+			go workerGauge(jobsGauge, results, wg)
+		}
+
+		for w := 1; w <= len(counterFunc); w++ {
+			wg.Add(1)
+			go workerCounter(jobsCounter, results, wg)
+		}
+
+		runtime.ReadMemStats(&memStats)
+
+		// в канал задач отправляем задачи
+		for k, v := range gaugeFunc {
+			jobsGauge <- gaugeJobs{mName: k, function: v}
+		}
+		close(jobsGauge)
+
+		for k, v := range counterFunc {
+			jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
+		}
+		close(jobsCounter)
+
+		wg.Wait()
+	}
 }
 
 // функция для парсинга ответа на запрос обновления метрик
 func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	var buf bytes.Buffer
-	var metrics []api.Metrics
+	var metrics api.Metrics
 	if resp == nil {
 		logger.Infoln("error nil response")
 		return
@@ -167,26 +170,24 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	}
 
 	// типа лог
-	for _, m := range metrics {
-		if m.MType == api.Counter {
-			logger.Infof("%s %v", m.ID, *m.Delta)
-		}
-		if m.MType == api.Gauge {
-			logger.Infof("%s %v", m.ID, *m.Value)
-		}
-	}
 
+	if metrics.MType == api.Counter {
+		logger.Infof("%s %v", metrics.ID, *metrics.Delta)
+	}
+	if metrics.MType == api.Gauge {
+		logger.Infof("%s %v", metrics.ID, *metrics.Value)
+	}
 }
 
 // функция для отправки метрик
-func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger zap.SugaredLogger) error {
-	var metrics []api.Metrics
+func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.SugaredLogger) error {
+	// var metrics []api.Metrics
 	var data, sign []byte
 	var err error
 
-	for metric := range metricsChan {
-		metrics = append(metrics, metric)
-	}
+	// for metric := range metricsChan {
+	// 	metrics = append(metrics, metric)
+	// }
 
 	// сериализуем данные в JSON
 	data, err = json.Marshal(metrics)
@@ -236,16 +237,12 @@ func JSONSendMetrics(url, signKey string, metricsChan chan api.Metrics, logger z
 	return nil
 }
 
-// функция для отправки метрик
-func SendMetrics(metrics chan api.Metrics, endpoint,
-	signKey string, logger zap.SugaredLogger,
-	errCh chan<- error, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func workerSM(endpoint, signKey string,
+	metrics api.Metrics, logger zap.SugaredLogger, errCh chan<- error) {
 	retrybuilder := func() func() error {
 		return func() error {
 			err := JSONSendMetrics(
-				fmt.Sprintf(config.UpdatesAddress, endpoint),
+				fmt.Sprintf(config.UpdateAddress, endpoint),
 				signKey, metrics, logger)
 
 			if err != nil {
@@ -261,27 +258,40 @@ func SendMetrics(metrics chan api.Metrics, endpoint,
 	}
 }
 
+// функция для отправки метрик
+func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
+	errCh chan<- error, rwg *sync.WaitGroup) {
+	defer rwg.Done()
+	jobs := make(chan api.Metrics, agentCfg.RateLimit)
+	wg := sync.WaitGroup{}
+
+	for metric := range metrics {
+		<-time.After(agentCfg.ReportTik)
+		jobs <- metric
+
+		wg.Add(1)
+		go func(metric api.Metrics) {
+			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString,
+				metric, agentCfg.Logger, errCh)
+			defer wg.Done()
+		}(<-jobs)
+	}
+	wg.Wait()
+}
+
 func RunAgent(agentCfg config.AgentCfg) error {
-	var metrics chan api.Metrics
-	var errCh chan error
 	counter := int64(0)
 	numJobs := 32
+	errCh := make(chan error)
+	metrics := make(chan api.Metrics, numJobs)
+	rwg := &sync.WaitGroup{}
 
-	for {
-		select {
-		case <-agentCfg.PollTik.C:
-			metrics = make(chan api.Metrics, numJobs)
-			CollectMetrics(&counter, numJobs, metrics)
-		case <-agentCfg.ReportTik.C:
-			errCh = make(chan error)
-			wg := &sync.WaitGroup{}
-			wg.Add(1)
-			go SendMetrics(metrics, agentCfg.Endpoint,
-				agentCfg.SignKeyString, agentCfg.Logger, errCh, wg)
-			wg.Wait()
-			if len(errCh) > 0 {
-				return fmt.Errorf("fail when sm in agent %w", <-errCh)
-			}
-		}
-	}
+	rwg.Add(1)
+	go CollectMetrics(&counter, agentCfg, metrics, errCh, rwg)
+
+	rwg.Add(1)
+	go SendMetrics(metrics, agentCfg, errCh, rwg)
+
+	rwg.Wait()
+	return nil
 }
