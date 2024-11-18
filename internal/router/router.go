@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
 	"github.com/netzen86/collectmetrics/config"
@@ -30,6 +31,9 @@ func GetGateway(cfg config.ServerCfg, srvlog zap.SugaredLogger) chi.Router {
 		gw.Get("/value/{mType}/{mName}", handlers.RetrieveOneMHandle(cfg.Storage, srvlog))
 		gw.Get("/", handlers.RetrieveMHandle(cfg.Storage, srvlog))
 		gw.Get("/*", handlers.NotFound)
+
+		// Define the routes for serving profiling data
+		gw.Mount("/debug", middleware.Profiler())
 	},
 	)
 	return gw

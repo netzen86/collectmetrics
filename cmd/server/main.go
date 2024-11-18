@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/logger"

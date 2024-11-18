@@ -23,6 +23,7 @@ const (
 	envRL              string        = "RATE_LIMIT"
 	UpdateAddress      string        = "http://%s/update/"
 	UpdatesAddress     string        = "http://%s/updates/"
+	ProfilerAddr       string        = "localhost:8081"
 	Alloc              string        = "Alloc"
 	BuckHashSys        string        = "BuckHashSys"
 	Frees              string        = "Frees"

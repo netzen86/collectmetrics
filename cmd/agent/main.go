@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"net/http"
+	_ "net/http/pprof" // подключаем пакет pprof
 
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/agent"
@@ -27,5 +29,11 @@ func main() {
 	err = agent.RunAgent(agentCfg)
 	if err != nil {
 		agnlog.Fatalf("agent don't send metrics %v", err)
+	}
+
+	agnlog.Infoln("RUNNIG SRV FOR PROFILING")
+	err = http.ListenAndServe(config.ProfilerAddr, nil)
+	if err != nil {
+		agnlog.Fatalf("error when start server %v ", err)
 	}
 }

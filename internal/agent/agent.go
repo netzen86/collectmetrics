@@ -292,6 +292,6 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	rwg.Add(1)
 	go SendMetrics(metrics, agentCfg, errCh, rwg)
 
-	rwg.Wait()
+	// rwg.Wait()
 	return nil
 }
