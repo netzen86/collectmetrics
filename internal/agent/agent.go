@@ -57,18 +57,25 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 
 // функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
-	results chan<- api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
+	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
+
+	if results == nil {
+		errCh <- fmt.Errorf("channel closed")
+		return
+	}
 
 	mem, err := mem.VirtualMemory()
 	if err != nil {
 		errCh <- fmt.Errorf("error when getting ext mem stat %w", err)
+		close(results)
 	}
 
 	cpuStat, err := cpu.Counts(true)
 	if err != nil {
 		errCh <- fmt.Errorf("error when getting cpu stat %w", err)
+		close(results)
 	}
 
 	// мапа анонимных функций для сбора метрик
@@ -111,36 +118,45 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 	}
 
 	for {
-		<-time.After(agentCfg.PollTik)
+		select {
+		case _, ok := <-results:
+			if !ok {
+				errCh <- fmt.Errorf("channel closed")
+				return
+			}
+		default:
+			<-time.After(agentCfg.PollTik)
 
-		wg := &sync.WaitGroup{}
-		jobsGauge := make(chan gaugeJobs, len(gaugeFunc))
-		jobsCounter := make(chan counterJobs, len(counterFunc))
+			wg := &sync.WaitGroup{}
+			jobsGauge := make(chan gaugeJobs, len(gaugeFunc))
+			jobsCounter := make(chan counterJobs, len(counterFunc))
 
-		for w := 1; w <= len(gaugeFunc); w++ {
-			wg.Add(1)
-			go workerGauge(jobsGauge, results, wg)
+			for range len(gaugeFunc) {
+				wg.Add(1)
+				go workerGauge(jobsGauge, results, wg)
+			}
+
+			for range len(counterFunc) {
+				wg.Add(1)
+				go workerCounter(jobsCounter, results, wg)
+			}
+
+			runtime.ReadMemStats(&memStats)
+
+			// в канал задач отправляем задачи
+			for k, v := range gaugeFunc {
+				jobsGauge <- gaugeJobs{mName: k, function: v}
+			}
+			close(jobsGauge)
+
+			for k, v := range counterFunc {
+				jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
+			}
+			close(jobsCounter)
+			// agentCfg.Logger.Infoln("COUNTER", counter)
+			wg.Wait()
+
 		}
-
-		for w := 1; w <= len(counterFunc); w++ {
-			wg.Add(1)
-			go workerCounter(jobsCounter, results, wg)
-		}
-
-		runtime.ReadMemStats(&memStats)
-
-		// в канал задач отправляем задачи
-		for k, v := range gaugeFunc {
-			jobsGauge <- gaugeJobs{mName: k, function: v}
-		}
-		close(jobsGauge)
-
-		for k, v := range counterFunc {
-			jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
-		}
-		close(jobsCounter)
-
-		wg.Wait()
 	}
 }
 
