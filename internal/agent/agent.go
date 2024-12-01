@@ -49,9 +49,10 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 	if !ok {
 		return
 	}
-	cnt := int64(0)
-	cntData.counter = &cnt
+	// cnt := int64(0)
+	// cntData.counter = &cnt
 	delta := cntData.function(cntData.counter)
+	*cntData.counter = delta
 	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &delta}
 }
 
@@ -126,22 +127,23 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 			}
 		default:
 			<-time.After(agentCfg.PollTik)
+			agentCfg.Logger.Infoln("COLLECTING METRIC")
+
+			runtime.ReadMemStats(&memStats)
 
 			wg := &sync.WaitGroup{}
-			jobsGauge := make(chan gaugeJobs, len(gaugeFunc))
-			jobsCounter := make(chan counterJobs, len(counterFunc))
+			jobsGauge := make(chan gaugeJobs, len(gaugeFunc)+1)
+			jobsCounter := make(chan counterJobs, len(counterFunc)+1)
 
-			for range len(gaugeFunc) {
+			for range len(gaugeFunc) + 1 {
 				wg.Add(1)
 				go workerGauge(jobsGauge, results, wg)
 			}
 
-			for range len(counterFunc) {
+			for range len(counterFunc) + 1 {
 				wg.Add(1)
 				go workerCounter(jobsCounter, results, wg)
 			}
-
-			runtime.ReadMemStats(&memStats)
 
 			// в канал задач отправляем задачи
 			for k, v := range gaugeFunc {
@@ -153,7 +155,6 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 				jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
 			}
 			close(jobsCounter)
-			// agentCfg.Logger.Infoln("COUNTER", counter)
 			wg.Wait()
 
 		}
