@@ -7,9 +7,16 @@ import (
 
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
+	"github.com/netzen86/collectmetrics/internal/logger"
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkSendMetrics(b *testing.B) {
+
+	testLogger, err := logger.Logger()
+	if err != nil {
+		b.Errorf("error when get agent logger %v", err)
+	}
 
 	type args struct {
 		counter   *int64
@@ -23,7 +30,8 @@ func BenchmarkSendMetrics(b *testing.B) {
 	params := args{
 		counter: new(int64),
 		agentCfg: config.AgentCfg{
-			PollTik: 5,
+			PollTik: 1 * time.Millisecond,
+			Logger:  testLogger,
 		},
 		results:   make(chan api.Metrics, 32),
 		chkResult: api.MetricsMap{Metrics: make(map[string]api.Metrics, 32)},
@@ -34,7 +42,7 @@ func BenchmarkSendMetrics(b *testing.B) {
 	b.Run("pool metric bench", func(b *testing.B) {
 		go CollectMetrics(params.counter, params.agentCfg, params.results, params.errCh, params.wg)
 
-		for len(params.chkResult.Metrics) != 32 {
+		for len(params.chkResult.Metrics) < 31 {
 			metric := <-params.results
 			params.chkResult.Metrics[metric.ID] = metric
 		}
@@ -63,6 +71,12 @@ func TestSendMetrics(t *testing.T) {
 }
 
 func TestCollectMetrics(t *testing.T) {
+	testLogger, err := logger.Logger()
+	if err != nil {
+		t.Errorf("error when get agent logger %v", err)
+	}
+	defer testLogger.Sync()
+
 	type args struct {
 		counter    *int64
 		agentCfg   config.AgentCfg
@@ -76,7 +90,8 @@ func TestCollectMetrics(t *testing.T) {
 	params := args{
 		counter: new(int64),
 		agentCfg: config.AgentCfg{
-			PollTik: 1 * time.Microsecond,
+			PollTik: 1 * time.Millisecond,
+			Logger:  testLogger,
 		},
 		results:    make(chan api.Metrics, 32),
 		chkResult1: api.MetricsMap{Metrics: make(map[string]api.Metrics, 32)},
@@ -85,31 +100,30 @@ func TestCollectMetrics(t *testing.T) {
 		wg:         new(sync.WaitGroup),
 	}
 
-	t.Run("Change metric test", func(t *testing.T) {
-		go CollectMetrics(params.counter, params.agentCfg, params.results, params.errCh, params.wg)
+	go CollectMetrics(params.counter, params.agentCfg, params.results, params.errCh, params.wg)
 
-		for len(params.chkResult1.Metrics) != 32 {
-			metric := <-params.results
-			params.chkResult1.Metrics[metric.ID] = <-params.results
-		}
+	for len(params.chkResult1.Metrics) < 32 {
+		metric := <-params.results
+		params.chkResult1.Metrics[metric.ID] = metric
+	}
 
-		for len(params.chkResult2.Metrics) != 32 {
-			metric := <-params.results
-			params.chkResult2.Metrics[metric.ID] = metric
-		}
+	for len(params.chkResult2.Metrics) < 32 {
+		metric := <-params.results
+		params.chkResult2.Metrics[metric.ID] = metric
+	}
 
-		for nameMetric, metric := range params.chkResult1.Metrics {
-			if nameMetric == api.Counter {
-				if *metric.Delta == *params.chkResult2.Metrics[nameMetric].Delta {
-					t.Errorf("metric %v %v %v is not changed",
-						metric.ID, *metric.Delta, *params.chkResult2.Metrics[metric.ID].Delta)
-				}
-			} else if nameMetric == api.Gauge {
-				if *metric.Value == *params.chkResult2.Metrics[metric.ID].Value {
-					t.Errorf("metric %v %v %v is not changed",
-						metric.ID, *metric.Value, *params.chkResult2.Metrics[metric.ID].Value)
-				}
-			}
-		}
+	t.Run("Changed metric PollCount ", func(t *testing.T) {
+		assert.NotEqual(t,
+			*params.chkResult1.Metrics[config.PollCount].Delta,
+			*params.chkResult2.Metrics[config.PollCount].Delta,
+			"PoolCount not changed")
 	})
+
+	t.Run("Changed metric RandomValue ", func(t *testing.T) {
+		assert.NotEqual(t,
+			*params.chkResult1.Metrics[config.RandomValue].Value,
+			*params.chkResult2.Metrics[config.RandomValue].Value,
+			"RandomValue not changed")
+	})
+
 }
