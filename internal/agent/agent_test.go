@@ -127,3 +127,22 @@ func TestCollectMetrics(t *testing.T) {
 	})
 
 }
+
+func ExampleCollectMetrics() {
+	// инициализация логгера
+	testLogger, err := logger.Logger()
+	if err != nil {
+		panic(err)
+	}
+	defer testLogger.Sync()
+	// оъявляем структуру с полями необходимыми для работы функции CollectMetrics
+	agentCfg := config.AgentCfg{
+		PollTik: 1 * time.Millisecond,
+		Logger:  testLogger,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// запускаем функцию CollectMetrics
+	go CollectMetrics(new(int64), agentCfg, make(chan api.Metrics, 32), make(chan error), &wg)
+}
