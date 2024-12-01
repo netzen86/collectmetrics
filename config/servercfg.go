@@ -1,3 +1,6 @@
+// Пакет для конфигурации приложения Сервер.
+// Получает флаги и переменные окружения.
+// Инициализирует некоторые функции.
 package config
 
 import (
@@ -15,6 +18,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
+// константы используещиеся для работы Сервера.
 const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
@@ -27,6 +31,7 @@ const (
 	envDB  string = "DATABASE_DSN"
 )
 
+// структура для конфигурации Сервера.
 type ServerCfg struct {
 	// адрес и порт на котором запуститься сервер
 	Endpoint string `env:"ADDRESS" DefVal:"localhost:8080"`
