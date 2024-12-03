@@ -17,8 +17,8 @@ import (
 // адрес для подключения к базе данных -  "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
 
 type DBStorage struct {
-	DBconstring string
 	DB          *sql.DB
+	DBconstring string
 }
 
 // функция подключения к базе данных, param = строка для подключения к БД

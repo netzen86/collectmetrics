@@ -10,8 +10,8 @@ import (
 
 func TestNewMemStorage(t *testing.T) {
 	tests := []struct {
-		name    string
 		want    *MemStorage
+		name    string
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -34,15 +34,15 @@ func TestMemStorage_UpdateParam(t *testing.T) {
 	}
 	type args struct {
 		ctx         context.Context
-		metricType  string
-		metricName  string
 		metricValue interface{}
 		srvlog      zap.SugaredLogger
+		metricType  string
+		metricName  string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
 		args    args
+		fields  fields
+		name    string
 		wantErr bool
 	}{
 		// TODO: Add test cases.

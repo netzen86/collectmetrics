@@ -22,9 +22,8 @@ type Filestorage struct {
 
 type Producer struct {
 	file     *os.File
+	writer   *bufio.Writer
 	Filename string
-	// добавляем Writer в Producer
-	writer *bufio.Writer
 }
 
 type Consumer struct {

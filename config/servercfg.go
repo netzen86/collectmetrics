@@ -33,6 +33,10 @@ const (
 
 // структура для конфигурации Сервера.
 type ServerCfg struct {
+	// указатель на memstorage
+	Storage repositories.Repo `env:"" DefVal:""`
+	// указатель на временный файл хранения метрик
+	Tempfile *os.File `env:"" DefVal:""`
 	// адрес и порт на котором запуститься сервер
 	Endpoint string `env:"ADDRESS" DefVal:"localhost:8080"`
 	// имя и путь к файлу для хранения метрик
@@ -49,10 +53,6 @@ type ServerCfg struct {
 	StoreInterval int `env:"STORE_INTERVAL" DefVal:"300s"`
 	// ключ для определения восстановления метрик из файла
 	Restore bool `env:"RESTORE" DefVal:"true"`
-	// указатель на временный файл хранения метрик
-	Tempfile *os.File `env:"" DefVal:""`
-	// указатель на memstorage
-	Storage repositories.Repo `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов

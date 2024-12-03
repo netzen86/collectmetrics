@@ -20,11 +20,11 @@ func BenchmarkSendMetrics(b *testing.B) {
 
 	type args struct {
 		counter   *int64
-		agentCfg  config.AgentCfg
 		results   chan api.Metrics
 		chkResult api.MetricsMap
 		errCh     chan error
 		wg        *sync.WaitGroup
+		agentCfg  config.AgentCfg
 	}
 
 	params := args{
@@ -53,9 +53,9 @@ func BenchmarkSendMetrics(b *testing.B) {
 func TestSendMetrics(t *testing.T) {
 	type args struct {
 		metrics  <-chan api.Metrics
-		agentCfg config.AgentCfg
 		errCh    chan<- error
 		rwg      *sync.WaitGroup
+		agentCfg config.AgentCfg
 	}
 	tests := []struct {
 		name string
@@ -79,12 +79,12 @@ func TestCollectMetrics(t *testing.T) {
 
 	type args struct {
 		counter    *int64
-		agentCfg   config.AgentCfg
 		results    chan api.Metrics
 		chkResult1 api.MetricsMap
 		chkResult2 api.MetricsMap
 		errCh      chan error
 		wg         *sync.WaitGroup
+		agentCfg   config.AgentCfg
 	}
 
 	params := args{

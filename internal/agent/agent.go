@@ -23,14 +23,14 @@ import (
 )
 
 type gaugeJobs struct {
-	mName    string
 	function func() float64
+	mName    string
 }
 
 type counterJobs struct {
-	mName    string
 	counter  *int64
 	function func(counter *int64) int64
+	mName    string
 }
 
 func workerGauge(job <-chan gaugeJobs, results chan<- api.Metrics, wg *sync.WaitGroup) {

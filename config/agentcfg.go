@@ -64,15 +64,15 @@ const (
 
 // структура для конфигурации Агента
 type AgentCfg struct {
+	Logger          zap.SugaredLogger `env:"" DefVal:""`
 	Endpoint        string            `env:"ADDRESS" DefVal:"localhost:8080"`
 	SignKeyString   string            `env:"KEY" DefVal:""`
+	ContentEncoding string            `env:"" DefVal:""`
 	PollInterval    int               `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval  int               `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit       int               `env:"RATE_LIMIT" DefVal:"5"`
-	ContentEncoding string            `env:"" DefVal:""`
 	PollTik         time.Duration     `env:"" DefVal:""`
 	ReportTik       time.Duration     `env:"" DefVal:""`
-	Logger          zap.SugaredLogger `env:"" DefVal:""`
 }
 
 // функция получения конфигурации агента.

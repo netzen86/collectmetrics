@@ -13,9 +13,9 @@ import (
 )
 
 type MemStorage struct {
-	mx      sync.RWMutex
 	Gauge   map[string]float64
 	Counter map[string]int64
+	mx      sync.RWMutex
 }
 
 func NewMemStorage() *MemStorage {
