@@ -1,8 +1,9 @@
+// Пакет для статической проверки кода
 package main
 
 import (
-	"strings"
-
+	"github.com/go-critic/go-critic/checkers/analyzer"
+	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/appends"
@@ -53,7 +54,9 @@ import (
 	"golang.org/x/tools/go/analysis/passes/unusedresult"
 	"golang.org/x/tools/go/analysis/passes/unusedwrite"
 	"golang.org/x/tools/go/analysis/passes/usesgenerics"
+	"honnef.co/go/tools/simple"
 	"honnef.co/go/tools/staticcheck"
+	"honnef.co/go/tools/stylecheck"
 )
 
 func main() {
@@ -107,13 +110,23 @@ func main() {
 		unusedresult.Analyzer,
 		unusedwrite.Analyzer,
 		usesgenerics.Analyzer,
+		// https://github.com/go-critic/go-critic
+		analyzer.Analyzer,
+		// https://github.com/kisielk/errcheck
+		errcheck.Analyzer,
 	}
 
 	for _, v := range staticcheck.Analyzers {
-		// добавляем в массив нужные проверки
-		if strings.Contains(v.Analyzer.Name, "SA") {
-			staticChk = append(staticChk, v.Analyzer)
-		}
+		// добавляем в массив проверки
+		staticChk = append(staticChk, v.Analyzer)
+	}
+
+	for _, v := range stylecheck.Analyzers {
+		staticChk = append(staticChk, v.Analyzer)
+	}
+
+	for _, v := range simple.Analyzers {
+		staticChk = append(staticChk, v.Analyzer)
 	}
 
 	multichecker.Main(
