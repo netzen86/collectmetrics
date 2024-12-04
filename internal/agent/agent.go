@@ -1,3 +1,4 @@
+// Package agent - пакет содержит функции для работы агента
 package agent
 
 import (
@@ -56,7 +57,7 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &delta}
 }
 
-// функция сбора метрик
+// CollectMetrics функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
@@ -161,7 +162,7 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 	}
 }
 
-// функция для парсинга ответа на запрос обновления метрик
+// JSONdecode функция для парсинга ответа на запрос обновления метрик
 func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	var buf bytes.Buffer
 	var metrics api.Metrics
@@ -205,7 +206,7 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	}
 }
 
-// функция для отправки метрик
+// JSONSendMetrics функция для отправки метрик
 func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.SugaredLogger) error {
 	// var metrics []api.Metrics
 	var data, sign []byte
@@ -284,7 +285,7 @@ func workerSM(endpoint, signKey string,
 	}
 }
 
-// функция для отправки метрик
+// SendMetrics функция для отправки метрик
 func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 	errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()

@@ -1,3 +1,4 @@
+// Package server - пакет содержит функции для работы сервера
 package server
 
 import (
@@ -12,7 +13,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-// создание таблиц counter и gauge
+// MakeDBMigrations создание таблиц counter и gauge
 func MakeDBMigrations(ctx context.Context, serverCfg config.ServerCfg,
 	logger zap.SugaredLogger) error {
 	retrybuilder := func() func() error {

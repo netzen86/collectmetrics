@@ -1,3 +1,4 @@
+// Package config
 // Пакет для конфигурации приложения Агент.
 // Получает флаги и переменные окружения.
 // Инициализирует некоторые функции.
@@ -62,7 +63,7 @@ const (
 	CPUutilization1    string        = "CPUutilization1"
 )
 
-// структура для конфигурации Агента
+// AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
 	Logger          zap.SugaredLogger `env:"" DefVal:""`
 	Endpoint        string            `env:"ADDRESS" DefVal:"localhost:8080"`
@@ -75,7 +76,7 @@ type AgentCfg struct {
 	ReportTik       time.Duration     `env:"" DefVal:""`
 }
 
-// функция получения конфигурации агента.
+// GetAgentCfg функция получения конфигурации агента.
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error

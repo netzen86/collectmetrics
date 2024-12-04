@@ -1,3 +1,4 @@
+// Package utils - пакет содержит вспомогательные функции
 package utils
 
 import (
@@ -83,7 +84,7 @@ func SelectDeCoHTTP(buf *bytes.Buffer, r interface{},
 	return nil
 }
 
-// функция определяем нужно ли сжимать контент если нужно сжимает Gzip'ом
+// CoHTTP функция определяем нужно ли сжимать контент если нужно сжимает Gzip'ом
 func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
 	var err error
 	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) &&

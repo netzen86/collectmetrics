@@ -1,3 +1,4 @@
+// Package api - пакет содержит общие константы и структуры общие для сервера и агента
 package api
 
 // константы с типом контернта, и типом метрик
@@ -11,7 +12,7 @@ const (
 	Counter      string = "counter"
 )
 
-// структура для передачи метрик
+// Metrics структура для передачи метрик
 type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 	Delta *int64   `json:"delta,omitempty"`
@@ -19,12 +20,12 @@ type Metrics struct {
 	MType string   `json:"type"`
 }
 
-// структура для передачи метрик между функциями
+// MetricsMap структура для передачи метрик между функциями
 type MetricsMap struct {
 	Metrics map[string]Metrics
 }
 
-// метод для удаления указателей в структуре Metrisc
+// Clean метод для удаления указателей в структуре Metrisc
 func (metrics *Metrics) Clean() {
 
 	if metrics.Delta != nil {

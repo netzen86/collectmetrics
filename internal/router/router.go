@@ -1,3 +1,4 @@
+// Package router - пакет в котором описаны endpoints
 package router
 
 import (

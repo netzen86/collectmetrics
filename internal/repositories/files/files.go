@@ -1,3 +1,4 @@
+// Package files - пакет для работы с хранилищем типа файл
 package files
 
 import (
@@ -79,7 +80,7 @@ func NewConsumer(filename string) (*Consumer, error) {
 	}, nil
 }
 
-// функция подключения к базе данных, param = строка для подключения к БД
+// NewFileStorage функция подключения к базе данных, param = строка для подключения к БД
 func NewFileStorage(ctx context.Context, param string) (*Filestorage, error) {
 	var filestorage Filestorage
 	filestorage.Filename = param
@@ -120,7 +121,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 	return nil
 }
 
-// функция для сохранения метрик в файл
+// SaveMetrics функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
 func SaveMetrics(storage repositories.Repo, metricFileName,
 	storageSelecter string, storeInterval int, logger zap.SugaredLogger) {

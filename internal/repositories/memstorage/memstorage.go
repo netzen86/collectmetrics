@@ -1,3 +1,4 @@
+// Package memstorage - пакет для работы с хранилищем типа мемсторож
 package memstorage
 
 import (

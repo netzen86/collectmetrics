@@ -1,3 +1,4 @@
+// Package custlinter - пакет содержит кастомный линтер
 package custlinter
 
 import (

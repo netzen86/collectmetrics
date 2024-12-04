@@ -1,3 +1,4 @@
+// Package config
 // Пакет для конфигурации приложения Сервер.
 // Получает флаги и переменные окружения.
 // Инициализирует некоторые функции.
@@ -31,7 +32,7 @@ const (
 	envDB  string = "DATABASE_DSN"
 )
 
-// структура для конфигурации Сервера.
+// ServerCfg структура для конфигурации Сервера.
 type ServerCfg struct {
 	// указатель на memstorage
 	Storage repositories.Repo `env:"" DefVal:""`
@@ -169,7 +170,7 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	return nil
 }
 
-// метод для получения конфигурации сервера
+// GetServerCfg метод для получения конфигурации сервера
 func (serverCfg *ServerCfg) GetServerCfg(srvlog zap.SugaredLogger) error {
 	var err error
 

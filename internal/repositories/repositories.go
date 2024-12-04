@@ -1,3 +1,4 @@
+// Package repositories - пакет содержит интерфейс для работы с хранилищами
 package repositories
 
 import (

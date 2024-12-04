@@ -1,3 +1,4 @@
+// Package handlers - пакет содержит функции для обработки http запросов
 package handlers
 
 import (
@@ -23,7 +24,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-// функция для изменения значений метрик с помощью URI
+// UpdateMHandle функция для изменения значений метрик с помощью URI
 func UpdateMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -59,7 +60,7 @@ func UpdateMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.Han
 	}
 }
 
-// функция выводит имена метрик хранящихся в хранилище
+// RetrieveMHandle функция выводит имена метрик хранящихся в хранилище
 func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
@@ -118,7 +119,7 @@ func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.H
 	}
 }
 
-// функция для получения значения метрики с помощью URI
+// RetrieveOneMHandle функция для получения значения метрики с помощью URI
 func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
@@ -196,7 +197,7 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 	}
 }
 
-// Multiple value update handle
+// JSONUpdateMMHandle хэндлер для обработки нескольких запросов
 func JSONUpdateMMHandle(storage repositories.Repo, filename,
 	signKey string, time int, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -336,7 +337,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 	}
 }
 
-// функция для сохраненние метрик в хранилище
+// MetricParseSelecStor функция для сохраненние метрик в хранилище
 func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 	metric *api.Metrics, srvlog zap.SugaredLogger) error {
 
@@ -399,7 +400,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 	return nil
 }
 
-// функция для получения одного значения из хранилища
+// JSONRetrieveOneHandle функция для получения одного значения из хранилища
 func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 	srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -497,7 +498,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 	}
 }
 
-// функция для проверки подключения к базе данных
+// PingDB функция для проверки подключения к базе данных
 func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -525,8 +526,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 	}
 }
 
-// функция для включения логирования запросов
-
+// WithLogging функция для включения логирования запросов
 func WithLogging(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		sugar, err := logger.Logger()
