@@ -44,7 +44,7 @@ func main() {
 
 	// восстанавливаем метрики из файла
 	if cfg.Restore {
-		err := server.RestoreM(ctx, cfg, srvlog)
+		err = server.RestoreM(ctx, cfg, srvlog)
 		if err != nil {
 			srvlog.Fatalf("error when restoring metircs from file %v ", err)
 		}

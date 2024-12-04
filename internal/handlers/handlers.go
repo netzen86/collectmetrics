@@ -180,8 +180,10 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics []api.Metrics
+		var metricsMap api.MetricsMap
 		var metric api.Metrics
 		var buf bytes.Buffer
+		var recivedSign []byte
 		var resp []byte
 		var err error
 
@@ -201,14 +203,16 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 		// проверяем подпись в заголовке
 		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
 			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
-			recivedSign, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+			recivedSign, err = hex.DecodeString(r.Header.Get("HashSHA256"))
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sign str to []byte"), 500)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusInternalServerError), "can't decode sign str to []byte"),
+					http.StatusInternalServerError)
 				return
 			}
 			comp := security.CompareSign(calcSign, recivedSign)
 			if !comp {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), "signature discrepancy"), http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), "signature discrepancy"),
+					http.StatusBadRequest)
 				return
 			}
 		}
@@ -271,7 +275,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 
 		// сохраняем метрики в файл синхронно с запросом
 		if time == 0 {
-			metricsMap, err := storage.GetAllMetrics(ctx, srvlog)
+			metricsMap, err = storage.GetAllMetrics(ctx, srvlog)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError),
 					http.StatusInternalServerError)
@@ -394,7 +398,6 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 			// делаем несколько попыток получить метрику
 			retrybuilder := func() func() error {
 				return func() error {
-					var err error
 					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID,
 						srvlog)
 					if err != nil {
@@ -403,7 +406,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					return err
 				}
 			}
-			err := utils.RetryFunc(retrybuilder)
+			err = utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -416,7 +419,6 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 			metric.Value = &value
 			retrybuilder := func() func() error {
 				return func() error {
-					var err error
 					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID,
 						srvlog)
 					if err != nil {
@@ -425,7 +427,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					return err
 				}
 			}
-			err := utils.RetryFunc(retrybuilder)
+			err = utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
