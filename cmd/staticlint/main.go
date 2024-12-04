@@ -57,6 +57,8 @@ import (
 	"honnef.co/go/tools/simple"
 	"honnef.co/go/tools/staticcheck"
 	"honnef.co/go/tools/stylecheck"
+
+	custlinter "github.com/netzen86/collectmetrics/internal/staticlint"
 )
 
 func main() {
@@ -114,6 +116,8 @@ func main() {
 		analyzer.Analyzer,
 		// https://github.com/kisielk/errcheck
 		errcheck.Analyzer,
+		// custom liniter
+		custlinter.Analyzer,
 	}
 
 	for _, v := range staticcheck.Analyzers {
