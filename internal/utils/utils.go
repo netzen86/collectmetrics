@@ -47,12 +47,19 @@ func GzipDecompress(buf *bytes.Buffer, logger zap.SugaredLogger) error {
 	if err != nil {
 		return fmt.Errorf("!!!%s!!! unpacking data error", err)
 	}
-	defer gz.Close()
+	defer func() {
+		err = gz.Close()
+		if err != nil {
+			logger.Errorf("error when clogse gz %w", err)
+		}
+	}()
 
 	// в отчищенную переменную buf записываются распакованные данные
 	buf.Reset()
-	buf.ReadFrom(gz)
-
+	_, err = buf.ReadFrom(gz)
+	if err != nil {
+		return fmt.Errorf("error when read from gz %w", err)
+	}
 	return nil
 }
 

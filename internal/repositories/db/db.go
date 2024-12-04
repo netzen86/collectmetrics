@@ -80,7 +80,12 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, logger zap.Sugare
 	if err != nil {
 		return api.MetricsMap{}, fmt.Errorf("error when execute select %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+		if err != nil {
+			logger.Errorf("error when close rows %w", err)
+		}
+	}()
 
 	for rows.Next() {
 		var name string

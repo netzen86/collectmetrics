@@ -165,12 +165,21 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	var buf bytes.Buffer
 	var metrics api.Metrics
+	var err error
+
 	if resp == nil {
 		logger.Infoln("error nil response")
 		return
 	}
-	defer resp.Body.Close()
-	_, err := buf.ReadFrom(resp.Body)
+
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			logger.Errorf("error when closing body %v", err)
+		}
+	}()
+
+	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
 		logger.Infoln("reading body error ", err)
 		return

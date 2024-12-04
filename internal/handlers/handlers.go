@@ -95,7 +95,12 @@ func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.H
 			return
 		}
 		// генерим шаблон
-		t.Execute(&buf, metrics)
+		err = t.Execute(&buf, metrics)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError),
@@ -104,7 +109,12 @@ func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.H
 		}
 		w.Header().Set("Content-Type", api.HTML)
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -140,8 +150,14 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			}
 			w.WriteHeader(http.StatusOK)
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
-			w.Write([]byte(deltaStr))
+			_, err = w.Write([]byte(deltaStr))
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
 			return
+
 		case metric.MType == api.Gauge:
 			var value float64
 			metric.Value = &value
@@ -165,7 +181,12 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			}
 			w.WriteHeader(http.StatusOK)
 			valueStr := fmt.Sprintf("%g", *metric.Value)
-			w.Write([]byte(valueStr))
+			_, err = w.Write([]byte(valueStr))
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
 			return
 		default:
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(http.StatusBadRequest)),
@@ -306,7 +327,12 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		_, err = w.Write(resp)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -462,7 +488,12 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		_, err = w.Write(resp)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -475,7 +506,14 @@ func PingDB(dbconstring string) http.HandlerFunc {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
 			return
 		}
-		defer dbstorage.DB.Close()
+		defer func() {
+			err = dbstorage.DB.Close()
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
+		}()
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()

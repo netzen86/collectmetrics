@@ -14,7 +14,9 @@ func Logger() (zap.SugaredLogger, error) {
 		return zap.SugaredLogger{},
 			fmt.Errorf("error when crating logger %w", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		err = logger.Sync()
+	}()
 
 	// делаем регистратор SugaredLogger
 	return *logger.Sugar(), nil

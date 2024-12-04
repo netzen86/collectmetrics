@@ -139,12 +139,15 @@ func SaveMetrics(storage repositories.Repo, metricFileName,
 		}
 		for _, metric := range metrics.Metrics {
 			logger.Debugf("METRIC %s WRITE IN FILE", metric.MType)
-			err := producer.WriteMetric(metric)
+			err = producer.WriteMetric(metric)
 			if err != nil {
 				logger.Fatal("can't write metric")
 			}
 		}
-		producer.file.Close()
+		err = producer.file.Close()
+		if err != nil {
+			logger.Fatal("can't close file")
+		}
 	}
 }
 
@@ -154,7 +157,13 @@ func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string,
 	if err != nil {
 		return fmt.Errorf("can't create producer %w", err)
 	}
-	defer producer.file.Close()
+	defer func() {
+		err = producer.file.Close()
+		if err != nil {
+			logger.Errorf("can't close file %v", err)
+		}
+	}()
+
 	err = producer.file.Truncate(0)
 	if err != nil {
 		return fmt.Errorf("can't create producer %w", err)
@@ -176,7 +185,13 @@ func LoadMetric(metrics *api.MetricsMap, metricFileName string,
 		if err != nil {
 			return fmt.Errorf("can't create consumer in lm %w", err)
 		}
-		defer consumer.file.Close()
+		defer func() {
+			err = consumer.file.Close()
+			if err != nil {
+				logger.Errorf("error when closing consumer %v", err)
+			}
+		}()
+
 		err = consumer.ReadMetric(metrics, logger)
 		if err != nil {
 			return fmt.Errorf("can't read metric in lm %w", err)
@@ -307,7 +322,13 @@ func (fs *Filestorage) GetAllMetrics(ctx context.Context, logger zap.SugaredLogg
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("can't create consumer in lm %w", err)
 		}
-		defer consumer.file.Close()
+		defer func() {
+			err = consumer.file.Close()
+			if err != nil {
+				logger.Errorf("error when closing consumer %v", err)
+			}
+		}()
+
 		err = consumer.ReadMetric(&metrics, logger)
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("can't read metric in lm %w", err)

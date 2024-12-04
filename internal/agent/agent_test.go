@@ -75,7 +75,12 @@ func TestCollectMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("error when get agent logger %v", err)
 	}
-	defer testLogger.Sync()
+	defer func() {
+		err = testLogger.Sync()
+		if err != nil {
+			t.Errorf("error when sync logger %v", err)
+		}
+	}()
 
 	type args struct {
 		counter    *int64
@@ -134,7 +139,10 @@ func ExampleCollectMetrics() {
 	if err != nil {
 		panic(err)
 	}
-	defer testLogger.Sync()
+	defer func() {
+		err = testLogger.Sync()
+	}()
+
 	// оъявляем структуру с полями необходимыми для работы функции CollectMetrics
 	agentCfg := config.AgentCfg{
 		PollTik: 1 * time.Millisecond,
