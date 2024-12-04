@@ -24,7 +24,8 @@ func NewMemStorage() *MemStorage {
 
 func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
 	metricType, metricName string, metricValue interface{}, logger zap.SugaredLogger) error {
-	if metricType == api.Gauge {
+	switch {
+	case metricType == api.Gauge:
 		value, err := utils.ParseValGag(metricValue)
 		if err != nil {
 			return err
@@ -32,7 +33,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
 		storage.mx.Lock()
 		storage.Gauge[metricName] = value
 		storage.mx.Unlock()
-	} else if metricType == api.Counter {
+	case metricType == api.Counter:
 		delta, err := utils.ParseValCnt(metricValue)
 		if err != nil {
 			return err
@@ -46,7 +47,7 @@ func (storage *MemStorage) UpdateParam(ctx context.Context, cntSummed bool,
 			storage.Counter[metricName] = delta
 			storage.mx.Unlock()
 		}
-	} else {
+	default:
 		return errors.New("wrong metric type")
 	}
 

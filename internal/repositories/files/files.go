@@ -97,21 +97,22 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 			logger.Infof("can't unmarshal string %v", err)
 			continue
 		}
-		if metric.MType == api.Gauge {
+		switch {
+		case metric.MType == api.Gauge:
 			if metric.Value == nil {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
 			value := float64(*metric.Value)
 			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Value: &value}
-		} else if metric.MType == api.Counter {
+		case metric.MType == api.Counter:
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
 			delta := int64(*metric.Delta)
 			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Delta: &delta}
-		} else {
+		default:
 			return fmt.Errorf("rm func - wrong metric type")
 		}
 		metric.Clean()

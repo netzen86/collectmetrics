@@ -116,7 +116,8 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
 
-		if metric.MType == api.Counter {
+		switch {
+		case metric.MType == api.Counter:
 			var delta int64
 			metric.Delta = &delta
 			retrybuilder := func() func() error {
@@ -141,7 +142,7 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
 			w.Write([]byte(deltaStr))
 			return
-		} else if metric.MType == api.Gauge {
+		case metric.MType == api.Gauge:
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
@@ -166,7 +167,7 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			valueStr := fmt.Sprintf("%g", *metric.Value)
 			w.Write([]byte(valueStr))
 			return
-		} else {
+		default:
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(http.StatusBadRequest)),
 				http.StatusBadRequest)
 			return
@@ -321,7 +322,8 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		return fmt.Errorf("%s", "not valid metric name")
 	}
 
-	if metric.MType == api.Counter {
+	switch {
+	case metric.MType == api.Counter:
 		if metric.Delta == nil {
 			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
 		}
@@ -343,7 +345,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't get updated counter value %w", err)
 		}
-	} else if metric.MType == api.Gauge {
+	case metric.MType == api.Gauge:
 		if metric.Value == nil {
 			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
 		}
@@ -365,7 +367,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't get updated gauge value %w", err)
 		}
-	} else {
+	default:
 		return fmt.Errorf("%s", "empty metic")
 	}
 	return nil
@@ -392,7 +394,8 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 			return
 		}
 		// зарашиваем метрики
-		if metric.MType == api.Counter {
+		switch {
+		case metric.MType == api.Counter:
 			var delta int64
 			metric.Delta = &delta
 			// делаем несколько попыток получить метрику
@@ -414,7 +417,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					metric.ID, metric.MType, err), http.StatusNotFound)
 				return
 			}
-		} else if metric.MType == api.Gauge {
+		case metric.MType == api.Gauge:
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
@@ -435,7 +438,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					metric.ID, metric.MType, err), http.StatusNotFound)
 				return
 			}
-		} else {
+		default:
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
 			return
 		}
