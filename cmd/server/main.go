@@ -15,10 +15,14 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/router"
 	"github.com/netzen86/collectmetrics/internal/server"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 func main() {
 	var cfg config.ServerCfg
+
+	utils.PrintBuildInfos()
+
 	ctx := context.Background()
 
 	srvlog, err := logger.Logger()

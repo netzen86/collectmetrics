@@ -256,7 +256,13 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	defer response.Body.Close()
+	defer func() {
+		err = response.Body.Close()
+		if err != nil {
+			logger.Infof("error when body closing %v", err)
+		}
+	}()
+
 	if response.StatusCode != 200 {
 		return errors.New(response.Status)
 	}

@@ -9,11 +9,14 @@ import (
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/agent"
 	"github.com/netzen86/collectmetrics/internal/logger"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 func main() {
 	var agentCfg config.AgentCfg
 	var err error
+
+	utils.PrintBuildInfos()
 
 	agnlog, err := logger.Logger()
 	if err != nil {
