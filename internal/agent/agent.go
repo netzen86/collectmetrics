@@ -256,10 +256,10 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
+	defer response.Body.Close()
 	if response.StatusCode != 200 {
 		return errors.New(response.Status)
 	}
-	// defer response.Body.Close()
 	JSONdecode(response, logger)
 	return nil
 }
