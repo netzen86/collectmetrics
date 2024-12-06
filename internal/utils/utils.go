@@ -26,9 +26,9 @@ const (
 )
 
 var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	buildVersion string = NotAval
+	buildDate    string = NotAval
+	buildCommit  string = NotAval
 )
 
 func GzipCompress(data []byte) ([]byte, error) {
@@ -140,22 +140,7 @@ func PrintBuildInfos() {
 	// для того что бы понять importpath, собираем бинарь и выполняем команду - go tool nm agent | grep utils
 	// -ldflags="-X 'github.com/netzen86/collectmetrics/internal/utils.buildVersion=0.0.1' -X 'github.com/netzen86/collectmetrics/internal/utils.buildDate=$(date +'%d/%m/%y')' -X 'github.com/netzen86/collectmetrics/internal/utils.buildCommit=$(git rev-parse --short HEAD)'"
 
-	if buildVersion != "" {
-		fmt.Printf("\nBuild version: %s\n", buildVersion)
-	}
-	if buildVersion == "" {
-		fmt.Printf("\nBuild version: %s %s\n", NotAval, buildVersion)
-	}
-	if buildDate != "" {
-		fmt.Printf("Build date: %s\n", buildDate)
-	}
-	if buildDate == "" {
-		fmt.Printf("Build date: %s\n", NotAval)
-	}
-	if buildCommit != "" {
-		fmt.Printf("Build commit: %s\n\n", buildCommit)
-	}
-	if buildCommit == "" {
-		fmt.Printf("Build commit: %s\n\n", NotAval)
-	}
+	fmt.Printf("\nBuild version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n\n", buildCommit)
 }
