@@ -208,13 +208,8 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 
 // JSONSendMetrics функция для отправки метрик
 func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.SugaredLogger) error {
-	// var metrics []api.Metrics
 	var data, sign []byte
 	var err error
-
-	// for metric := range metricsChan {
-	// 	metrics = append(metrics, metric)
-	// }
 
 	// сериализуем данные в JSON
 	data, err = json.Marshal(metrics)
