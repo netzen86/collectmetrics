@@ -26,13 +26,13 @@ const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
 	// имена переменных окружения
-	envAdd string = "ADDRESS"
-	envSI  string = "STORE_INTERVAL"
-	envFSP string = "FILE_STORAGE_PATH"
-	envRes string = "RESTORE"
-	envKey string = "KEY"
-	envCK  string = "CRYPTO_KEY"
-	envDB  string = "DATABASE_DSN"
+	envAdd     string = "ADDRESS"
+	envSI      string = "STORE_INTERVAL"
+	envFSP     string = "FILE_STORAGE_PATH"
+	envRes     string = "RESTORE"
+	envKey     string = "KEY"
+	envPRIVKEY string = "CRYPTO_KEY"
+	envDB      string = "DATABASE_DSN"
 )
 
 // ServerCfg структура для конфигурации Сервера.
@@ -76,7 +76,7 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	flag.StringVar(&serverCfg.FileStoragePath, "f", serverCfg.FileStoragePathDef, "Used to set file path to save metrics.")
 	flag.StringVar(&serverCfg.DBconstring, "d", "", "Used to set db connet string.")
 	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
-	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Used to set private key for encrypting.")
+	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Load private key for decrypting.")
 	flag.BoolVar(&serverCfg.KeyGenerate, "g", false, "Used to generate private and public keys.")
 	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
@@ -134,8 +134,8 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	}
 
 	// получаем имя файла ключа для ассемитричного шифрования
-	if len(os.Getenv(envCK)) > 0 {
-		serverCfg.PrivKeyFileName = os.Getenv(envCK)
+	if len(os.Getenv(envPRIVKEY)) > 0 {
+		serverCfg.PrivKeyFileName = os.Getenv(envPRIVKEY)
 	}
 
 	// получаем параметры подключения к базе данных

@@ -3,6 +3,7 @@ package agent
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -207,7 +208,7 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 }
 
 // JSONSendMetrics функция для отправки метрик
-func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.SugaredLogger) error {
+func JSONSendMetrics(url, signKey string, metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger) error {
 	var data, sign []byte
 	var err error
 
@@ -218,10 +219,18 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 		return fmt.Errorf("serilazing error: %v", err)
 	}
 
+	// если перадан публичнный ключ - шифруем контент
+	if pubKey.Size() != 0 {
+		data, err = security.EncryptMetic(data, pubKey)
+		if err != nil {
+			return fmt.Errorf("cannot encrypt metric %w", err)
+		}
+	}
+
 	// сжимаем данные
 	data, err = utils.GzipCompress(data)
 	if err != nil {
-		return fmt.Errorf("cannot compress data %v", err)
+		return fmt.Errorf("cannot compress metirc %w", err)
 	}
 
 	// если передан ключ создаем подпись
@@ -239,6 +248,10 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 	request.Header.Add("Content-Encoding", api.Gz)
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
+	// если передан публичный ключ добавляем к заголовку парамер что контент зашифрован
+	if pubKey.Size() != 0 {
+		request.Header.Add("CryptRSA", api.CryptRSA)
+	}
 
 	// если передан ключ добавляем подпись к заголовку
 	if len(signKey) != 0 {
@@ -266,12 +279,12 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 }
 
 func workerSM(endpoint, signKey string,
-	metrics api.Metrics, logger zap.SugaredLogger, errCh chan<- error) {
+	metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger, errCh chan<- error) {
 	retrybuilder := func() func() error {
 		return func() error {
 			err := JSONSendMetrics(
 				fmt.Sprintf(config.UpdateAddress, endpoint),
-				signKey, metrics, logger)
+				signKey, metrics, pubKey, logger)
 
 			if err != nil {
 				logger.Infof("error when sm in internal/agent %w", err)
@@ -300,7 +313,7 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 		wg.Add(1)
 		go func(metric api.Metrics) {
 			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString,
-				metric, agentCfg.Logger, errCh)
+				metric, agentCfg.PubKey, agentCfg.Logger, errCh)
 			defer wg.Done()
 		}(<-jobs)
 	}
