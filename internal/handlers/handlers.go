@@ -4,6 +4,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -199,7 +200,7 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 
 // JSONUpdateMMHandle хэндлер для обработки нескольких запросов
 func JSONUpdateMMHandle(storage repositories.Repo, filename,
-	signKey string, time int, srvlog zap.SugaredLogger) http.HandlerFunc {
+	signKey string, time int, privKey *rsa.PrivateKey, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics []api.Metrics
@@ -239,12 +240,23 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 				return
 			}
 		}
+
 		// распаковываем если контент упакован
 		err = utils.SelectDeCoHTTP(&buf, r, srvlog)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest),
 				"can't unpack data"), http.StatusBadRequest)
 			return
+		}
+
+		// расшифровываем если контент зашифрован
+		if len(r.Header.Get("CryptRSA")) != 0 {
+			err = security.DecryptMetric(&buf, privKey)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusInternalServerError),
+					"can't decrypt data"), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		// десериализуем JSON в metrics

@@ -5,7 +5,9 @@
 package config
 
 import (
+	"crypto/rsa"
 	"fmt"
+	"math/big"
 	"os"
 	"strconv"
 	"time"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
+	"github.com/netzen86/collectmetrics/internal/security"
 )
 
 // константы используещиеся для работы Агента
@@ -26,6 +29,7 @@ const (
 	envPI              string        = "POLL_INTERVAL"
 	envRI              string        = "REPORT_INTERVAL"
 	envRL              string        = "RATE_LIMIT"
+	envPUBKEY          string        = "CRYPTO_KEY"
 	UpdateAddress      string        = "http://%s/update/"
 	UpdatesAddress     string        = "http://%s/updates/"
 	ProfilerAddr       string        = "localhost:8081"
@@ -65,15 +69,17 @@ const (
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
-	Logger          zap.SugaredLogger `env:"" DefVal:""`
-	Endpoint        string            `env:"ADDRESS" DefVal:"localhost:8080"`
-	SignKeyString   string            `env:"KEY" DefVal:""`
-	ContentEncoding string            `env:"" DefVal:""`
-	PollInterval    int               `env:"POLL_INTERVAL" DefVal:"5"`
-	ReportInterval  int               `env:"REPORT_INTERVAL" DefVal:"0"`
-	RateLimit       int               `env:"RATE_LIMIT" DefVal:"5"`
-	PollTik         time.Duration     `env:"" DefVal:""`
-	ReportTik       time.Duration     `env:"" DefVal:""`
+	Logger            zap.SugaredLogger `env:"" DefVal:""`
+	Endpoint          string            `env:"ADDRESS" DefVal:"localhost:8080"`
+	SignKeyString     string            `env:"KEY" DefVal:""`
+	ContentEncoding   string            `env:"" DefVal:""`
+	PollInterval      int               `env:"POLL_INTERVAL" DefVal:"5"`
+	ReportInterval    int               `env:"REPORT_INTERVAL" DefVal:"0"`
+	RateLimit         int               `env:"RATE_LIMIT" DefVal:"5"`
+	PollTik           time.Duration     `env:"" DefVal:""`
+	ReportTik         time.Duration     `env:"" DefVal:""`
+	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
+	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
 }
 
 // GetAgentCfg функция получения конфигурации агента.
@@ -90,6 +96,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServerAgent, "Used to set the address and port to connect server.")
 	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&agentCfg.SignKeyString, "signkeystring", "k", "", "Used to set key for calc hash.")
+	pflag.StringVarP(&agentCfg.PublicKeyFilename, "crypto-key", "s", "", "Load public key for encrypting.")
 	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
 	pflag.IntVarP(&agentCfg.ReportInterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
 	pflag.IntVarP(&agentCfg.RateLimit, "ratelimit", "l", ratelimit, "User for set report interval (send to srv) in seconds.")
@@ -98,7 +105,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	// если переданы аргументы не флаги печатаем подсказку
 	if len(pflag.Args()) != 0 {
 		pflag.PrintDefaults()
-		return agentCfg, fmt.Errorf("accept only dash flags")
+		return AgentCfg{}, fmt.Errorf("accept only dash flags")
 	}
 	// получаем данные для работы програмы из переменных окружения
 	// переменные окружения имеют наивысший приоритет
@@ -110,7 +117,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	if len(os.Getenv(envPI)) != 0 {
 		agentCfg.PollInterval, err = strconv.Atoi(os.Getenv(envPI))
 		if err != nil {
-			return agentCfg, fmt.Errorf("error atoi poll interval %v ", err)
+			return AgentCfg{}, fmt.Errorf("error atoi poll interval %v ", err)
 		}
 	}
 
@@ -118,7 +125,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	if len(os.Getenv(envRI)) != 0 {
 		agentCfg.ReportInterval, err = strconv.Atoi(os.Getenv(envRI))
 		if err != nil {
-			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
+			return AgentCfg{}, fmt.Errorf("error atoi report interval %v ", err)
 		}
 	}
 
@@ -126,13 +133,27 @@ func GetAgentCfg() (AgentCfg, error) {
 	if len(os.Getenv(envRL)) != 0 {
 		agentCfg.RateLimit, err = strconv.Atoi(os.Getenv(envRI))
 		if err != nil {
-			return agentCfg, fmt.Errorf("error atoi report interval %v ", err)
+			return AgentCfg{}, fmt.Errorf("error atoi report interval %w ", err)
 		}
 	}
 
 	// получение ключа для генерации подписи при отправки данных
 	if len(os.Getenv(envKey)) != 0 {
 		agentCfg.SignKeyString = os.Getenv(envKey)
+	}
+
+	// получение публичого ключа для шифрованния
+	if len(os.Getenv(envPUBKEY)) != 0 {
+		agentCfg.PublicKeyFilename = os.Getenv(envPUBKEY)
+	}
+
+	if len(agentCfg.PublicKeyFilename) != 0 {
+		agentCfg.PubKey, err = security.ReadPublicKey(agentCfg.PublicKeyFilename)
+		if err != nil {
+			return AgentCfg{}, fmt.Errorf("error reading public key %w ", err)
+		}
+	} else {
+		agentCfg.PubKey = &rsa.PublicKey{N: big.NewInt(0), E: 0}
 	}
 
 	// установка интервалов получения и отправки метрик
