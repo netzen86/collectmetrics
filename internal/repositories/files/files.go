@@ -1,3 +1,4 @@
+// Package files - пакет для работы с хранилищем типа файл
 package files
 
 import (
@@ -22,9 +23,8 @@ type Filestorage struct {
 
 type Producer struct {
 	file     *os.File
+	writer   *bufio.Writer
 	Filename string
-	// добавляем Writer в Producer
-	writer *bufio.Writer
 }
 
 type Consumer struct {
@@ -80,7 +80,7 @@ func NewConsumer(filename string) (*Consumer, error) {
 	}, nil
 }
 
-// функция подключения к базе данных, param = строка для подключения к БД
+// NewFileStorage функция подключения к базе данных, param = строка для подключения к БД
 func NewFileStorage(ctx context.Context, param string) (*Filestorage, error) {
 	var filestorage Filestorage
 	filestorage.Filename = param
@@ -98,21 +98,22 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 			logger.Infof("can't unmarshal string %v", err)
 			continue
 		}
-		if metric.MType == api.Gauge {
+		switch {
+		case metric.MType == api.Gauge:
 			if metric.Value == nil {
 				return fmt.Errorf(" gauge value is nil %v", err)
 
 			}
 			value := float64(*metric.Value)
 			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Value: &value}
-		} else if metric.MType == api.Counter {
+		case metric.MType == api.Counter:
 			if metric.Delta == nil {
 				return fmt.Errorf(" counter delta is nil %v", err)
 
 			}
 			delta := int64(*metric.Delta)
 			metrics.Metrics[metric.ID] = api.Metrics{ID: metric.ID, MType: metric.MType, Delta: &delta}
-		} else {
+		default:
 			return fmt.Errorf("rm func - wrong metric type")
 		}
 		metric.Clean()
@@ -120,7 +121,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 	return nil
 }
 
-// функция для сохранения метрик в файл
+// SaveMetrics функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
 func SaveMetrics(storage repositories.Repo, metricFileName,
 	storageSelecter string, storeInterval int, logger zap.SugaredLogger) {
@@ -139,12 +140,15 @@ func SaveMetrics(storage repositories.Repo, metricFileName,
 		}
 		for _, metric := range metrics.Metrics {
 			logger.Debugf("METRIC %s WRITE IN FILE", metric.MType)
-			err := producer.WriteMetric(metric)
+			err = producer.WriteMetric(metric)
 			if err != nil {
 				logger.Fatal("can't write metric")
 			}
 		}
-		producer.file.Close()
+		err = producer.file.Close()
+		if err != nil {
+			logger.Fatal("can't close file")
+		}
 	}
 }
 
@@ -154,7 +158,13 @@ func SyncSaveMetrics(metrics api.MetricsMap, metricFileName string,
 	if err != nil {
 		return fmt.Errorf("can't create producer %w", err)
 	}
-	defer producer.file.Close()
+	defer func() {
+		err = producer.file.Close()
+		if err != nil {
+			logger.Errorf("can't close file %v", err)
+		}
+	}()
+
 	err = producer.file.Truncate(0)
 	if err != nil {
 		return fmt.Errorf("can't create producer %w", err)
@@ -176,7 +186,13 @@ func LoadMetric(metrics *api.MetricsMap, metricFileName string,
 		if err != nil {
 			return fmt.Errorf("can't create consumer in lm %w", err)
 		}
-		defer consumer.file.Close()
+		defer func() {
+			err = consumer.file.Close()
+			if err != nil {
+				logger.Errorf("error when closing consumer %v", err)
+			}
+		}()
+
 		err = consumer.ReadMetric(metrics, logger)
 		if err != nil {
 			return fmt.Errorf("can't read metric in lm %w", err)
@@ -307,7 +323,13 @@ func (fs *Filestorage) GetAllMetrics(ctx context.Context, logger zap.SugaredLogg
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("can't create consumer in lm %w", err)
 		}
-		defer consumer.file.Close()
+		defer func() {
+			err = consumer.file.Close()
+			if err != nil {
+				logger.Errorf("error when closing consumer %v", err)
+			}
+		}()
+
 		err = consumer.ReadMetric(&metrics, logger)
 		if err != nil {
 			return api.MetricsMap{}, fmt.Errorf("can't read metric in lm %w", err)

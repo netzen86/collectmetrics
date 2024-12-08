@@ -1,3 +1,4 @@
+// Package utils - пакет содержит вспомогательные функции
 package utils
 
 import (
@@ -21,6 +22,13 @@ const (
 	backoffRF       float64       = 0.5
 	backoffMult     float64       = 2
 	backoffMaxETime time.Duration = 9
+	NotAval         string        = "N/A"
+)
+
+var (
+	buildVersion string = NotAval
+	buildDate    string = NotAval
+	buildCommit  string = NotAval
 )
 
 func GzipCompress(data []byte) ([]byte, error) {
@@ -47,12 +55,19 @@ func GzipDecompress(buf *bytes.Buffer, logger zap.SugaredLogger) error {
 	if err != nil {
 		return fmt.Errorf("!!!%s!!! unpacking data error", err)
 	}
-	defer gz.Close()
+	defer func() {
+		err = gz.Close()
+		if err != nil {
+			logger.Errorf("error when clogse gz %w", err)
+		}
+	}()
 
 	// в отчищенную переменную buf записываются распакованные данные
 	buf.Reset()
-	buf.ReadFrom(gz)
-
+	_, err = buf.ReadFrom(gz)
+	if err != nil {
+		return fmt.Errorf("error when read from gz %w", err)
+	}
 	return nil
 }
 
@@ -76,7 +91,7 @@ func SelectDeCoHTTP(buf *bytes.Buffer, r interface{},
 	return nil
 }
 
-// функция определяем нужно ли сжимать контент если нужно сжимает Gzip'ом
+// CoHTTP функция определяем нужно ли сжимать контент если нужно сжимает Gzip'ом
 func CoHTTP(data []byte, r *http.Request, w http.ResponseWriter) ([]byte, error) {
 	var err error
 	if strings.Contains(r.Header.Get("Accept-Encoding"), api.Gz) &&
@@ -118,4 +133,14 @@ func RetryFunc(retrybuilder func() func() error) error {
 		return err
 	}
 	return nil
+}
+
+// PrintBuildInfos функция печатает параметны билда
+func PrintBuildInfos() {
+	// для того что бы понять importpath, собираем бинарь и выполняем команду - go tool nm agent | grep utils
+	// -ldflags="-X 'github.com/netzen86/collectmetrics/internal/utils.buildVersion=0.0.1' -X 'github.com/netzen86/collectmetrics/internal/utils.buildDate=$(date +'%d/%m/%y')' -X 'github.com/netzen86/collectmetrics/internal/utils.buildCommit=$(git rev-parse --short HEAD)'"
+
+	fmt.Printf("\nBuild version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n\n", buildCommit)
 }

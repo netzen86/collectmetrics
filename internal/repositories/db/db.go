@@ -1,3 +1,4 @@
+// Package db - пакет для работы с хранилищем типа база данных
 package db
 
 import (
@@ -14,14 +15,13 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-// адрес для подключения к базе данных -  "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
-
+// DBStorage адрес для подключения к базе данных -  "postgres://postgres:collectmetrics@localhost/collectmetrics?sslmode=disable"
 type DBStorage struct {
-	DBconstring string
 	DB          *sql.DB
+	DBconstring string
 }
 
-// функция подключения к базе данных, param = строка для подключения к БД
+// NewDBStorage функция подключения к базе данных, param = строка для подключения к БД
 func NewDBStorage(ctx context.Context, param string) (*DBStorage, error) {
 	var dbstorage DBStorage
 	var err error
@@ -80,7 +80,12 @@ func (dbstorage *DBStorage) GetAllMetrics(ctx context.Context, logger zap.Sugare
 	if err != nil {
 		return api.MetricsMap{}, fmt.Errorf("error when execute select %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+		if err != nil {
+			logger.Errorf("error when close rows %w", err)
+		}
+	}()
 
 	for rows.Next() {
 		var name string

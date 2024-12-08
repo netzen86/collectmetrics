@@ -1,3 +1,4 @@
+// Package security - пакет для генерации ключей
 package security
 
 import (

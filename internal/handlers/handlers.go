@@ -1,3 +1,4 @@
+// Package handlers - пакет содержит функции для обработки http запросов
 package handlers
 
 import (
@@ -23,7 +24,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
-// функция для изменения значений метрик с помощью URI
+// UpdateMHandle функция для изменения значений метрик с помощью URI
 func UpdateMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -59,7 +60,7 @@ func UpdateMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.Han
 	}
 }
 
-// функция выводит имена метрик хранящихся в хранилище
+// RetrieveMHandle функция выводит имена метрик хранящихся в хранилище
 func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
@@ -95,7 +96,12 @@ func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.H
 			return
 		}
 		// генерим шаблон
-		t.Execute(&buf, metrics)
+		err = t.Execute(&buf, metrics)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 		data, err := utils.CoHTTP(buf.Bytes(), r, w)
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError),
@@ -104,11 +110,16 @@ func RetrieveMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.H
 		}
 		w.Header().Set("Content-Type", api.HTML)
 		w.WriteHeader(http.StatusOK)
-		w.Write(data)
+		_, err = w.Write(data)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-// функция для получения значения метрики с помощью URI
+// RetrieveOneMHandle функция для получения значения метрики с помощью URI
 func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metric api.Metrics
@@ -116,7 +127,8 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 		metric.MType = chi.URLParam(r, "mType")
 		metric.ID = chi.URLParam(r, "mName")
 
-		if metric.MType == api.Counter {
+		switch {
+		case metric.MType == api.Counter:
 			var delta int64
 			metric.Delta = &delta
 			retrybuilder := func() func() error {
@@ -139,9 +151,15 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			}
 			w.WriteHeader(http.StatusOK)
 			deltaStr := fmt.Sprintf("%d", *metric.Delta)
-			w.Write([]byte(deltaStr))
+			_, err = w.Write([]byte(deltaStr))
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
 			return
-		} else if metric.MType == api.Gauge {
+
+		case metric.MType == api.Gauge:
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
@@ -164,9 +182,14 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 			}
 			w.WriteHeader(http.StatusOK)
 			valueStr := fmt.Sprintf("%g", *metric.Value)
-			w.Write([]byte(valueStr))
+			_, err = w.Write([]byte(valueStr))
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
 			return
-		} else {
+		default:
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(http.StatusBadRequest)),
 				http.StatusBadRequest)
 			return
@@ -174,14 +197,16 @@ func RetrieveOneMHandle(storage repositories.Repo, srvlog zap.SugaredLogger) htt
 	}
 }
 
-// Multiple value update handle
+// JSONUpdateMMHandle хэндлер для обработки нескольких запросов
 func JSONUpdateMMHandle(storage repositories.Repo, filename,
 	signKey string, time int, srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		var metrics []api.Metrics
+		var metricsMap api.MetricsMap
 		var metric api.Metrics
 		var buf bytes.Buffer
+		var recivedSign []byte
 		var resp []byte
 		var err error
 
@@ -201,14 +226,16 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 		// проверяем подпись в заголовке
 		if len(signKey) != 0 && len(r.Header.Get("HashSHA256")) != 0 {
 			calcSign := security.SignSendData(buf.Bytes(), []byte(signKey))
-			recivedSign, err := hex.DecodeString(r.Header.Get("HashSHA256"))
+			recivedSign, err = hex.DecodeString(r.Header.Get("HashSHA256"))
 			if err != nil {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(500), "can't decode sign str to []byte"), 500)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusInternalServerError), "can't decode sign str to []byte"),
+					http.StatusInternalServerError)
 				return
 			}
 			comp := security.CompareSign(calcSign, recivedSign)
 			if !comp {
-				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), "signature discrepancy"), http.StatusBadRequest)
+				http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(http.StatusBadRequest), "signature discrepancy"),
+					http.StatusBadRequest)
 				return
 			}
 		}
@@ -271,7 +298,7 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 
 		// сохраняем метрики в файл синхронно с запросом
 		if time == 0 {
-			metricsMap, err := storage.GetAllMetrics(ctx, srvlog)
+			metricsMap, err = storage.GetAllMetrics(ctx, srvlog)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError),
 					http.StatusInternalServerError)
@@ -301,11 +328,16 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		_, err = w.Write(resp)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-// функция для сохраненние метрик в хранилище
+// MetricParseSelecStor функция для сохраненние метрик в хранилище
 func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 	metric *api.Metrics, srvlog zap.SugaredLogger) error {
 
@@ -317,7 +349,8 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		return fmt.Errorf("%s", "not valid metric name")
 	}
 
-	if metric.MType == api.Counter {
+	switch {
+	case metric.MType == api.Counter:
 		if metric.Delta == nil {
 			return fmt.Errorf("delta nil %s %s", metric.ID, metric.MType)
 		}
@@ -339,7 +372,7 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't get updated counter value %w", err)
 		}
-	} else if metric.MType == api.Gauge {
+	case metric.MType == api.Gauge:
 		if metric.Value == nil {
 			return fmt.Errorf("value nil %s %s", metric.ID, metric.MType)
 		}
@@ -361,13 +394,13 @@ func MetricParseSelecStor(ctx context.Context, storage repositories.Repo,
 		if err != nil {
 			return fmt.Errorf("can't get updated gauge value %w", err)
 		}
-	} else {
+	default:
 		return fmt.Errorf("%s", "empty metic")
 	}
 	return nil
 }
 
-// функция для получения одного значения из хранилища
+// JSONRetrieveOneHandle функция для получения одного значения из хранилища
 func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 	srvlog zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -388,13 +421,13 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 			return
 		}
 		// зарашиваем метрики
-		if metric.MType == api.Counter {
+		switch {
+		case metric.MType == api.Counter:
 			var delta int64
 			metric.Delta = &delta
 			// делаем несколько попыток получить метрику
 			retrybuilder := func() func() error {
 				return func() error {
-					var err error
 					*metric.Delta, err = storage.GetCounterMetric(ctx, metric.ID,
 						srvlog)
 					if err != nil {
@@ -403,7 +436,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					return err
 				}
 			}
-			err := utils.RetryFunc(retrybuilder)
+			err = utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -411,12 +444,11 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					metric.ID, metric.MType, err), http.StatusNotFound)
 				return
 			}
-		} else if metric.MType == api.Gauge {
+		case metric.MType == api.Gauge:
 			var value float64
 			metric.Value = &value
 			retrybuilder := func() func() error {
 				return func() error {
-					var err error
 					*metric.Value, err = storage.GetGaugeMetric(ctx, metric.ID,
 						srvlog)
 					if err != nil {
@@ -425,7 +457,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					return err
 				}
 			}
-			err := utils.RetryFunc(retrybuilder)
+			err = utils.RetryFunc(retrybuilder)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(
 					"%s - metric %s not exist in %s with error %v\n",
@@ -433,7 +465,7 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 					metric.ID, metric.MType, err), http.StatusNotFound)
 				return
 			}
-		} else {
+		default:
 			http.Error(w, fmt.Sprintf("%s wrong type metric\n", http.StatusText(400)), 400)
 			return
 		}
@@ -457,11 +489,16 @@ func JSONRetrieveOneHandle(storage repositories.Repo, signkeystr string,
 
 		w.Header().Set("Content-Type", api.Js)
 		w.WriteHeader(http.StatusOK)
-		w.Write(resp)
+		_, err = w.Write(resp)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
-// функция для проверки подключения к базе данных
+// PingDB функция для проверки подключения к базе данных
 func PingDB(dbconstring string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -470,7 +507,14 @@ func PingDB(dbconstring string) http.HandlerFunc {
 			http.Error(w, fmt.Sprintf("%v %v\n", http.StatusText(500), err), 500)
 			return
 		}
-		defer dbstorage.DB.Close()
+		defer func() {
+			err = dbstorage.DB.Close()
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError)
+				return
+			}
+		}()
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
@@ -482,8 +526,7 @@ func PingDB(dbconstring string) http.HandlerFunc {
 	}
 }
 
-// функция для включения логирования запросов
-
+// WithLogging функция для включения логирования запросов
 func WithLogging(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		sugar, err := logger.Logger()

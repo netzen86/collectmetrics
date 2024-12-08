@@ -1,3 +1,7 @@
+// Package config
+// Пакет для конфигурации приложения Сервер.
+// Получает флаги и переменные окружения.
+// Инициализирует некоторые функции.
 package config
 
 import (
@@ -15,6 +19,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
 )
 
+// константы используещиеся для работы Сервера.
 const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
@@ -27,7 +32,12 @@ const (
 	envDB  string = "DATABASE_DSN"
 )
 
+// ServerCfg структура для конфигурации Сервера.
 type ServerCfg struct {
+	// указатель на memstorage
+	Storage repositories.Repo `env:"" DefVal:""`
+	// указатель на временный файл хранения метрик
+	Tempfile *os.File `env:"" DefVal:""`
 	// адрес и порт на котором запуститься сервер
 	Endpoint string `env:"ADDRESS" DefVal:"localhost:8080"`
 	// имя и путь к файлу для хранения метрик
@@ -44,10 +54,6 @@ type ServerCfg struct {
 	StoreInterval int `env:"STORE_INTERVAL" DefVal:"300s"`
 	// ключ для определения восстановления метрик из файла
 	Restore bool `env:"RESTORE" DefVal:"true"`
-	// указатель на временный файл хранения метрик
-	Tempfile *os.File `env:"" DefVal:""`
-	// указатель на memstorage
-	Storage repositories.Repo `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -164,7 +170,7 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	return nil
 }
 
-// метод для получения конфигурации сервера
+// GetServerCfg метод для получения конфигурации сервера
 func (serverCfg *ServerCfg) GetServerCfg(srvlog zap.SugaredLogger) error {
 	var err error
 

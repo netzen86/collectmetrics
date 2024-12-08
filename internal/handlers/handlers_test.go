@@ -15,9 +15,9 @@ func TestUpdateMHandle(t *testing.T) {
 		logger  zap.SugaredLogger
 	}
 	tests := []struct {
-		name string
 		args args
 		want http.HandlerFunc
+		name string
 	}{
 		// TODO: Add test cases.
 	}

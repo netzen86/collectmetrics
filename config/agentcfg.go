@@ -1,3 +1,7 @@
+// Package config
+// Пакет для конфигурации приложения Агент.
+// Получает флаги и переменные окружения.
+// Инициализирует некоторые функции.
 package config
 
 import (
@@ -13,6 +17,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/logger"
 )
 
+// константы используещиеся для работы Агента
 const (
 	addressServerAgent string        = "localhost:8080"
 	pollInterval       time.Duration = 5
@@ -23,6 +28,7 @@ const (
 	envRL              string        = "RATE_LIMIT"
 	UpdateAddress      string        = "http://%s/update/"
 	UpdatesAddress     string        = "http://%s/updates/"
+	ProfilerAddr       string        = "localhost:8081"
 	Alloc              string        = "Alloc"
 	BuckHashSys        string        = "BuckHashSys"
 	Frees              string        = "Frees"
@@ -57,19 +63,20 @@ const (
 	CPUutilization1    string        = "CPUutilization1"
 )
 
+// AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
-	Endpoint        string
-	ContentEncoding string
-	SignKeyString   string
-	PollInterval    int
-	ReportInterval  int
-	RateLimit       int
-	PollTik         time.Duration
-	ReportTik       time.Duration
-	Logger          zap.SugaredLogger
+	Logger          zap.SugaredLogger `env:"" DefVal:""`
+	Endpoint        string            `env:"ADDRESS" DefVal:"localhost:8080"`
+	SignKeyString   string            `env:"KEY" DefVal:""`
+	ContentEncoding string            `env:"" DefVal:""`
+	PollInterval    int               `env:"POLL_INTERVAL" DefVal:"5"`
+	ReportInterval  int               `env:"REPORT_INTERVAL" DefVal:"0"`
+	RateLimit       int               `env:"RATE_LIMIT" DefVal:"5"`
+	PollTik         time.Duration     `env:"" DefVal:""`
+	ReportTik       time.Duration     `env:"" DefVal:""`
 }
 
-// функция получения конфигурации сервера
+// GetAgentCfg функция получения конфигурации агента.
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error

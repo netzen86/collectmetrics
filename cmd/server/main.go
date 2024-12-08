@@ -1,9 +1,13 @@
+// Package main - пакет сервера
+// Приложение для получения и храненния метрик.
+// Приложение позволяет хранить метрики в текстовом файле, ОЗУ и в базе данных.
 package main
 
 import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/logger"
@@ -11,10 +15,14 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/router"
 	"github.com/netzen86/collectmetrics/internal/server"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 func main() {
 	var cfg config.ServerCfg
+
+	utils.PrintBuildInfos()
+
 	ctx := context.Background()
 
 	srvlog, err := logger.Logger()
@@ -41,7 +49,7 @@ func main() {
 
 	// восстанавливаем метрики из файла
 	if cfg.Restore {
-		err := server.RestoreM(ctx, cfg, srvlog)
+		err = server.RestoreM(ctx, cfg, srvlog)
 		if err != nil {
 			srvlog.Fatalf("error when restoring metircs from file %v ", err)
 		}

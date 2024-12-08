@@ -1,3 +1,4 @@
+// Package agent - пакет содержит функции для работы агента
 package agent
 
 import (
@@ -23,14 +24,14 @@ import (
 )
 
 type gaugeJobs struct {
-	mName    string
 	function func() float64
+	mName    string
 }
 
 type counterJobs struct {
-	mName    string
 	counter  *int64
 	function func(counter *int64) int64
+	mName    string
 }
 
 func workerGauge(job <-chan gaugeJobs, results chan<- api.Metrics, wg *sync.WaitGroup) {
@@ -49,26 +50,34 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 	if !ok {
 		return
 	}
-	cnt := int64(0)
-	cntData.counter = &cnt
+	// cnt := int64(0)
+	// cntData.counter = &cnt
 	delta := cntData.function(cntData.counter)
+	*cntData.counter = delta
 	results <- api.Metrics{ID: cntData.mName, MType: api.Counter, Delta: &delta}
 }
 
-// функция сбора метрик
+// CollectMetrics функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
-	results chan<- api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
+	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
+
+	if results == nil {
+		errCh <- fmt.Errorf("channel closed")
+		return
+	}
 
 	mem, err := mem.VirtualMemory()
 	if err != nil {
 		errCh <- fmt.Errorf("error when getting ext mem stat %w", err)
+		close(results)
 	}
 
 	cpuStat, err := cpu.Counts(true)
 	if err != nil {
 		errCh <- fmt.Errorf("error when getting cpu stat %w", err)
+		close(results)
 	}
 
 	// мапа анонимных функций для сбора метрик
@@ -111,49 +120,67 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 	}
 
 	for {
-		<-time.After(agentCfg.PollTik)
+		select {
+		case _, ok := <-results:
+			if !ok {
+				errCh <- fmt.Errorf("channel closed")
+				return
+			}
+		default:
+			<-time.After(agentCfg.PollTik)
+			agentCfg.Logger.Infoln("COLLECTING METRIC")
 
-		wg := &sync.WaitGroup{}
-		jobsGauge := make(chan gaugeJobs, len(gaugeFunc))
-		jobsCounter := make(chan counterJobs, len(counterFunc))
+			runtime.ReadMemStats(&memStats)
 
-		for w := 1; w <= len(gaugeFunc); w++ {
-			wg.Add(1)
-			go workerGauge(jobsGauge, results, wg)
+			wg := &sync.WaitGroup{}
+			jobsGauge := make(chan gaugeJobs, len(gaugeFunc)+1)
+			jobsCounter := make(chan counterJobs, len(counterFunc)+1)
+
+			for range len(gaugeFunc) + 1 {
+				wg.Add(1)
+				go workerGauge(jobsGauge, results, wg)
+			}
+
+			for range len(counterFunc) + 1 {
+				wg.Add(1)
+				go workerCounter(jobsCounter, results, wg)
+			}
+
+			// в канал задач отправляем задачи
+			for k, v := range gaugeFunc {
+				jobsGauge <- gaugeJobs{mName: k, function: v}
+			}
+			close(jobsGauge)
+
+			for k, v := range counterFunc {
+				jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
+			}
+			close(jobsCounter)
+			wg.Wait()
+
 		}
-
-		for w := 1; w <= len(counterFunc); w++ {
-			wg.Add(1)
-			go workerCounter(jobsCounter, results, wg)
-		}
-
-		runtime.ReadMemStats(&memStats)
-
-		// в канал задач отправляем задачи
-		for k, v := range gaugeFunc {
-			jobsGauge <- gaugeJobs{mName: k, function: v}
-		}
-		close(jobsGauge)
-
-		for k, v := range counterFunc {
-			jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
-		}
-		close(jobsCounter)
-
-		wg.Wait()
 	}
 }
 
-// функция для парсинга ответа на запрос обновления метрик
+// JSONdecode функция для парсинга ответа на запрос обновления метрик
 func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	var buf bytes.Buffer
 	var metrics api.Metrics
+	var err error
+
 	if resp == nil {
 		logger.Infoln("error nil response")
 		return
 	}
-	defer resp.Body.Close()
-	_, err := buf.ReadFrom(resp.Body)
+
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			logger.Errorf("error when closing body %v", err)
+		}
+	}()
+
+	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
 		logger.Infoln("reading body error ", err)
 		return
@@ -179,7 +206,7 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 	}
 }
 
-// функция для отправки метрик
+// JSONSendMetrics функция для отправки метрик
 func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.SugaredLogger) error {
 	// var metrics []api.Metrics
 	var data, sign []byte
@@ -229,10 +256,16 @@ func JSONSendMetrics(url, signKey string, metrics api.Metrics, logger zap.Sugare
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
+	defer func() {
+		err = response.Body.Close()
+		if err != nil {
+			logger.Infof("error when body closing %v", err)
+		}
+	}()
+
 	if response.StatusCode != 200 {
 		return errors.New(response.Status)
 	}
-	// defer response.Body.Close()
 	JSONdecode(response, logger)
 	return nil
 }
@@ -258,7 +291,7 @@ func workerSM(endpoint, signKey string,
 	}
 }
 
-// функция для отправки метрик
+// SendMetrics функция для отправки метрик
 func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 	errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
@@ -292,6 +325,6 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	rwg.Add(1)
 	go SendMetrics(metrics, agentCfg, errCh, rwg)
 
-	rwg.Wait()
+	// rwg.Wait()
 	return nil
 }
