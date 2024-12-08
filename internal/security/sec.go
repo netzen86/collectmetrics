@@ -3,6 +3,7 @@ package security
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
@@ -144,11 +145,18 @@ func EncryptMetic(Metric []byte, pubKey *rsa.PublicKey) ([]byte, error) {
 	return encMetric, nil
 }
 
-func DecryptMetric(encMetric []byte, privKey *rsa.PrivateKey) ([]byte, error) {
+func DecryptMetric(buf *bytes.Buffer, privKey *rsa.PrivateKey) error {
 
-	Metric, err := rsa.DecryptOAEP(sha256.New(), nil, privKey, encMetric, []byte(label))
+	metric, err := rsa.DecryptOAEP(sha256.New(), nil, privKey, buf.Bytes(), []byte(label))
 	if err != nil {
-		return nil, fmt.Errorf("error from decryption: %w", err)
+		return fmt.Errorf("error from decryption: %w", err)
 	}
-	return Metric, nil
+
+	// в отчищенную переменную buf записываются распакованные данные
+	buf.Reset()
+	_, err = buf.ReadFrom(bytes.NewReader(metric))
+	if err != nil {
+		return fmt.Errorf("error when read decrypt metric %w", err)
+	}
+	return nil
 }
