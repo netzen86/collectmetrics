@@ -5,8 +5,11 @@
 package config
 
 import (
+	"bufio"
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -67,6 +70,13 @@ const (
 	CPUutilization1    string        = "CPUutilization1"
 )
 
+type configAgnFile struct {
+	Adderss string `json:"address,omitempty"`         // аналог переменной окружения ADDRESS или флага -a
+	Ri      int    `json:"report_interval,omitempty"` // аналог переменной окружения REPORT_INTERVAL или флага -r
+	Pi      int    `json:"poll_interval,omitempty"`   // аналог переменной окружения POLL_INTERVAL или флага -p
+	Ck      string `json:"crypto_key,omitempty"`      // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+}
+
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
 	Logger            zap.SugaredLogger `env:"" DefVal:""`
@@ -80,6 +90,43 @@ type AgentCfg struct {
 	ReportTik         time.Duration     `env:"" DefVal:""`
 	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
 	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
+	AgnFileCfg        string            `env:"" DefVal:""`
+}
+
+// функция для получения параметров запуска агента из файла формата json
+func getSrvCfgFile(agentCfg *AgentCfg) error {
+	var agnCfg configAgnFile
+	config, err := os.Open(agentCfg.AgnFileCfg)
+	if err != nil {
+		return fmt.Errorf("error when read server config file %w", err)
+	}
+	defer config.Close()
+
+	fileinfo, _ := config.Stat()
+	cfgBytes := make([]byte, fileinfo.Size())
+	buffer := bufio.NewReader(config)
+	_, err = buffer.Read(cfgBytes)
+	if err != nil {
+		return fmt.Errorf("error when read config file %w", err)
+	}
+	err = json.Unmarshal(cfgBytes, &agnCfg)
+	if err != nil {
+		return fmt.Errorf("error when unmarshal config %w", err)
+	}
+	switch {
+	case agentCfg.Endpoint == addressServerAgent:
+		agentCfg.Endpoint = agnCfg.Adderss
+		fallthrough
+	case agentCfg.ReportInterval == int(reportInterval):
+		agentCfg.ReportInterval = agnCfg.Ri
+		fallthrough
+	case agentCfg.PollInterval == int(pollInterval):
+		agentCfg.PollInterval = agnCfg.Pi
+		fallthrough
+	case len(agentCfg.PublicKeyFilename) == 0:
+		agentCfg.PublicKeyFilename = agnCfg.Ck
+	}
+	return nil
 }
 
 // GetAgentCfg функция получения конфигурации агента.
@@ -94,13 +141,22 @@ func GetAgentCfg() (AgentCfg, error) {
 
 	// опредаляем флаги
 	pflag.StringVarP(&agentCfg.Endpoint, "endpoint", "a", addressServerAgent, "Used to set the address and port to connect server.")
-	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "c", api.Gz, "Used to set content encoding to connect server.")
+	pflag.StringVarP(&agentCfg.ContentEncoding, "contentenc", "e", api.Gz, "Used to set content encoding to connect server.")
 	pflag.StringVarP(&agentCfg.SignKeyString, "signkeystring", "k", "", "Used to set key for calc hash.")
 	pflag.StringVarP(&agentCfg.PublicKeyFilename, "crypto-key", "s", "", "Load public key for encrypting.")
+	pflag.StringVarP(&agentCfg.AgnFileCfg, "config", "c", "", "Load configuration from file.")
 	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
 	pflag.IntVarP(&agentCfg.ReportInterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
 	pflag.IntVarP(&agentCfg.RateLimit, "ratelimit", "l", ratelimit, "User for set report interval (send to srv) in seconds.")
 	pflag.Parse()
+
+	if len(agentCfg.AgnFileCfg) != 0 {
+		err = getSrvCfgFile(&agentCfg)
+		if err != nil {
+			return AgentCfg{}, fmt.Errorf("when get gonfig from file %w", err)
+		}
+	}
+	log.Println(agentCfg.Endpoint)
 
 	// если переданы аргументы не флаги печатаем подсказку
 	if len(pflag.Args()) != 0 {
@@ -112,7 +168,6 @@ func GetAgentCfg() (AgentCfg, error) {
 	if len(os.Getenv(envAdd)) != 0 {
 		agentCfg.Endpoint = os.Getenv(envAdd)
 	}
-
 	// получение интервала сбора метрик
 	if len(os.Getenv(envPI)) != 0 {
 		agentCfg.PollInterval, err = strconv.Atoi(os.Getenv(envPI))
