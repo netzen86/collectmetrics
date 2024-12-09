@@ -19,9 +19,11 @@ func GetGateway(cfg config.ServerCfg, srvlog zap.SugaredLogger) chi.Router {
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.BadRequest)
 		gw.Post("/update/", handlers.JSONUpdateMMHandle(
-			cfg.Storage, cfg.FileStoragePathDef, cfg.SignKeyString, cfg.StoreInterval, srvlog))
+			cfg.Storage, cfg.FileStoragePathDef, cfg.SignKeyString,
+			cfg.StoreInterval, cfg.PrivKey, srvlog))
 		gw.Post("/updates/", handlers.JSONUpdateMMHandle(
-			cfg.Storage, cfg.FileStoragePathDef, cfg.SignKeyString, cfg.StoreInterval, srvlog))
+			cfg.Storage, cfg.FileStoragePathDef, cfg.SignKeyString,
+			cfg.StoreInterval, cfg.PrivKey, srvlog))
 		gw.Post("/value/", handlers.JSONRetrieveOneHandle(cfg.Storage, cfg.SignKeyString, srvlog))
 		gw.Post("/update/{mType}/{mName}", handlers.BadRequest)
 		gw.Post("/update/{mType}/{mName}/", handlers.BadRequest)

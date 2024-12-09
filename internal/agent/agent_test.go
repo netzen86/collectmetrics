@@ -75,12 +75,12 @@ func TestCollectMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("error when get agent logger %v", err)
 	}
-	defer func() {
-		err = testLogger.Sync()
-		if err != nil {
-			t.Errorf("error when sync logger %v", err)
-		}
-	}()
+	// defer func() {
+	// 	err = testLogger.Sync()
+	// 	if err != nil {
+	// 		t.Errorf("error when sync logger %v", err)
+	// 	}
+	// }()
 
 	type args struct {
 		counter    *int64

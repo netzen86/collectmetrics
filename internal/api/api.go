@@ -7,6 +7,7 @@ const (
 	HTML         string = "text/html"
 	Js           string = "application/json"
 	Gz           string = "gzip"
+	CryptRSA     string = "CryptRSA"
 	TemplatePath string = "/web/template/metrics.html"
 	Gauge        string = "gauge"
 	Counter      string = "counter"

@@ -6,6 +6,7 @@ package config
 
 import (
 	"context"
+	"crypto/rsa"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/repositories/db"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	"github.com/netzen86/collectmetrics/internal/repositories/memstorage"
+	"github.com/netzen86/collectmetrics/internal/security"
 )
 
 // константы используещиеся для работы Сервера.
@@ -24,12 +26,13 @@ const (
 	addressServer    string = "localhost:8080"
 	storeIntervalDef int    = 300
 	// имена переменных окружения
-	envAdd string = "ADDRESS"
-	envSI  string = "STORE_INTERVAL"
-	envFSP string = "FILE_STORAGE_PATH"
-	envRes string = "RESTORE"
-	envKey string = "KEY"
-	envDB  string = "DATABASE_DSN"
+	envAdd     string = "ADDRESS"
+	envSI      string = "STORE_INTERVAL"
+	envFSP     string = "FILE_STORAGE_PATH"
+	envRes     string = "RESTORE"
+	envKey     string = "KEY"
+	envPRIVKEY string = "CRYPTO_KEY"
+	envDB      string = "DATABASE_DSN"
 )
 
 // ServerCfg структура для конфигурации Сервера.
@@ -46,6 +49,12 @@ type ServerCfg struct {
 	FileStoragePathDef string `env:"" DefVal:"FileStoragePath"`
 	// ключ для создания подписи данных
 	SignKeyString string `env:"KEY" DefVal:""`
+	// путь к файлу приватного ключа
+	PrivKeyFileName string `env:"CRYPTO_KEY" DefVal:""`
+	// приватный ключ для ассиметричного шифрования
+	PrivKey *rsa.PrivateKey `env:"" DefVal:""`
+	// если значенние флага true генерируем приватный и публичнные ключи
+	KeyGenerate bool `env:"" DefVal:"false"`
 	// строка для подключения к базе данных
 	DBconstring string `env:"DATABASE_DSN" DefVal:""`
 	// ключ для выбора текущего хранилища (мемстораж, файл, база данных)
@@ -67,6 +76,8 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	flag.StringVar(&serverCfg.FileStoragePath, "f", serverCfg.FileStoragePathDef, "Used to set file path to save metrics.")
 	flag.StringVar(&serverCfg.DBconstring, "d", "", "Used to set db connet string.")
 	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
+	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Load private key for decrypting.")
+	flag.BoolVar(&serverCfg.KeyGenerate, "g", false, "Used to generate private and public keys.")
 	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
 
@@ -121,6 +132,12 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	if len(os.Getenv(envKey)) != 0 {
 		serverCfg.SignKeyString = os.Getenv(envKey)
 	}
+
+	// получаем имя файла ключа для ассемитричного шифрования
+	if len(os.Getenv(envPRIVKEY)) > 0 {
+		serverCfg.PrivKeyFileName = os.Getenv(envPRIVKEY)
+	}
+
 	// получаем параметры подключения к базе данных
 	if len(os.Getenv(envDB)) != 0 {
 		serverCfg.DBconstring = os.Getenv(envDB)
@@ -157,7 +174,23 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 		serverCfg.Tempfile, err = os.OpenFile(fmt.Sprintf("%stmp",
 			serverCfg.FileStoragePath), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {
-			return fmt.Errorf("error create temp file %v ", err)
+			return fmt.Errorf("error create temp file %w ", err)
+		}
+	}
+
+	// создание приватного и публичного ключа
+	if serverCfg.KeyGenerate {
+		err = security.GenerateKeys()
+		if err != nil {
+			return fmt.Errorf("error generate rsa keys %w ", err)
+		}
+	}
+
+	// считываем приваиный ключ
+	if len(serverCfg.PrivKeyFileName) > 0 {
+		serverCfg.PrivKey, err = security.ReadPrivedKey(security.PrivKeyFileName)
+		if err != nil {
+			return fmt.Errorf("error reading priv key file %w ", err)
 		}
 	}
 
