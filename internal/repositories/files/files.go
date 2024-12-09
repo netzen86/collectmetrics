@@ -123,10 +123,11 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 
 // SaveMetrics функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
-func SaveMetrics(storage repositories.Repo, metricFileName,
-	storageSelecter string, storeInterval int, logger zap.SugaredLogger) {
+func SaveMetrics(storage repositories.Repo, metricFileName string,
+	storeInterval int, sigs chan os.Signal, logger zap.SugaredLogger) {
+	var shutdown bool = false
 
-	for {
+	for !shutdown {
 		<-time.After(time.Duration(storeInterval) * time.Second)
 		metrics, err := storage.GetAllMetrics(context.TODO(), logger)
 		if err != nil {
@@ -148,6 +149,12 @@ func SaveMetrics(storage repositories.Repo, metricFileName,
 		err = producer.file.Close()
 		if err != nil {
 			logger.Fatal("can't close file")
+		}
+		select {
+		case sig := <-sigs:
+			logger.Infof("resived signal %s", sig)
+			shutdown = true
+		default:
 		}
 	}
 }

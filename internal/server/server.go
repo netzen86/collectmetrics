@@ -4,6 +4,9 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -61,4 +64,26 @@ func RestoreM(ctx context.Context, serverCfg config.ServerCfg,
 		}
 	}
 	return nil
+}
+
+func GracefulSrv(sig chan os.Signal, serverCtx context.Context,
+	serverStopCtx context.CancelFunc, httpSrv *http.Server, srvlog zap.SugaredLogger) {
+	<-sig
+	// Shutdown signal with grace period of 30 seconds
+	shutdownCtx, _ := context.WithTimeout(serverCtx, 30*time.Second)
+
+	go func() {
+		<-shutdownCtx.Done()
+
+		if shutdownCtx.Err() == context.DeadlineExceeded {
+			srvlog.Infof("graceful shutdown timed out.. forcing exit.")
+		}
+	}()
+
+	// Trigger graceful shutdown
+	err := httpSrv.Shutdown(shutdownCtx)
+	if err != nil {
+		srvlog.Infof("error when graceful shutdown %w", err)
+	}
+	serverStopCtx()
 }

@@ -25,6 +25,7 @@ func main() {
 
 	ctx := context.Background()
 
+	// инициализируем логер
 	srvlog, err := logger.Logger()
 	if err != nil {
 		log.Fatalf("error when get logger %v", err)
@@ -35,8 +36,6 @@ func main() {
 	if err != nil {
 		srvlog.Fatalf("error when getting config %v ", err)
 	}
-
-	srvlog.Infoln("!!! SERVER START !!!")
 
 	// если хранилище база данных то создаем необходимые таблицы
 	_, dbstor := cfg.Storage.(*db.DBStorage)
@@ -55,18 +54,24 @@ func main() {
 		}
 	}
 
-	// получаем роутер
-	gw := router.GetGateway(cfg, srvlog)
-
 	// сохраняем метрики в файл
 	if cfg.StoreInterval != 0 {
 		go files.SaveMetrics(cfg.Storage, cfg.FileStoragePathDef,
-			cfg.StorageSelecter, cfg.StoreInterval, srvlog)
+			cfg.StoreInterval, cfg.Sig, srvlog)
 	}
 
+	srvlog.Infoln("!!! SERVER START !!!")
+
+	// получаем роутер
+	gw := router.GetGateway(cfg, srvlog)
+	httpServer := &http.Server{Addr: cfg.Endpoint, Handler: gw}
+
+	go server.GracefulSrv(cfg.Sig, cfg.ServerCtx, cfg.ServerStopCtx, httpServer, srvlog)
+
 	// запуск обработчика http запросов
-	err = http.ListenAndServe(cfg.Endpoint, gw)
-	if err != nil {
+	err = httpServer.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
 		srvlog.Fatalf("error when start server %v ", err)
 	}
+	<-cfg.ServerCtx.Done()
 }

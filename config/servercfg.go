@@ -12,7 +12,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
 	"go.uber.org/zap"
 
@@ -71,12 +73,18 @@ type ServerCfg struct {
 	KeyGenerate bool `env:"" DefVal:"false"`
 	// строка для подключения к базе данных
 	DBconstring string `env:"DATABASE_DSN" DefVal:""`
-	// ключ для выбора текущего хранилища (мемстораж, файл, база данных)
-	StorageSelecter string `env:"" DefVal:"MEMORY"`
+	// // ключ для выбора текущего хранилища (мемстораж, файл, база данных)
+	// StorageSelecter string `env:"" DefVal:"MEMORY"`
 	// интервал сохранения метрик в файл
 	StoreInterval int `env:"STORE_INTERVAL" DefVal:"300s"`
 	// ключ для определения восстановления метрик из файла
 	Restore bool `env:"RESTORE" DefVal:"true"`
+	// контекст для HTTP сервера
+	ServerCtx context.Context `env:"" DefVal:""`
+	// функция отмены для HTTP сервера
+	ServerStopCtx context.CancelFunc `env:"" DefVal:""`
+	// канал для os.Signal
+	Sig chan os.Signal `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -253,6 +261,16 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 			return fmt.Errorf("error reading priv key file %w ", err)
 		}
 	}
+
+	// создание контекста для graceful shutdown сервера
+	serverCtx, serverStopCtx := context.WithCancel(context.Background())
+	serverCfg.ServerCtx = serverCtx
+	serverCfg.ServerStopCtx = serverStopCtx
+
+	// Listen for syscall signals for process to interrupt/quit
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	serverCfg.Sig = sig
 
 	// лог значений полученных из переменных окружения и флагов
 	srvlog.Infoln("!!! SERVER CONFIGURED !!!",
