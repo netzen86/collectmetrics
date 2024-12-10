@@ -189,25 +189,23 @@ func (serverCfg *ServerCfg) getSrvCfgFile() error {
 	if err != nil {
 		return fmt.Errorf("error when unmarshal config %w", err)
 	}
-	switch {
-	case serverCfg.Endpoint == addressServer:
+
+	if serverCfg.Endpoint == addressServer && len(srvCfg.Adderss) != 0 {
 		serverCfg.Endpoint = srvCfg.Adderss
-		fallthrough
-	case serverCfg.Restore:
+	}
+	if serverCfg.Restore {
 		serverCfg.Restore = srvCfg.Restore
-		fallthrough
-	case serverCfg.StoreInterval == 300:
+	}
+	if serverCfg.StoreInterval == 300 {
 		serverCfg.StoreInterval = srvCfg.StorInter
-		fallthrough
-	case serverCfg.FileStoragePath == serverCfg.FileStoragePathDef:
-		if len(srvCfg.StoreFile) != 0 {
-			serverCfg.FileStoragePath = srvCfg.StoreFile
-		}
-		fallthrough
-	case len(serverCfg.DBconstring) == 0:
+	}
+	if serverCfg.FileStoragePath == serverCfg.FileStoragePathDef && len(srvCfg.StoreFile) != 0 {
+		serverCfg.FileStoragePath = srvCfg.StoreFile
+	}
+	if len(serverCfg.DBconstring) == 0 {
 		serverCfg.DBconstring = srvCfg.Dsn
-		fallthrough
-	case len(serverCfg.PrivKeyFileName) == 0:
+	}
+	if len(serverCfg.PrivKeyFileName) == 0 {
 		serverCfg.PrivKeyFileName = srvCfg.CryptoKey
 	}
 	return nil

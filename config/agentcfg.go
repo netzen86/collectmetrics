@@ -71,10 +71,10 @@ const (
 )
 
 type configAgnFile struct {
-	Adderss string `json:"address,omitempty"`         // аналог переменной окружения ADDRESS или флага -a
-	Ri      int    `json:"report_interval,omitempty"` // аналог переменной окружения REPORT_INTERVAL или флага -r
-	Pi      int    `json:"poll_interval,omitempty"`   // аналог переменной окружения POLL_INTERVAL или флага -p
-	Ck      string `json:"crypto_key,omitempty"`      // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+	Adderss    string `json:"address,omitempty"`         // аналог переменной окружения ADDRESS или флага -a
+	RepInterv  int    `json:"report_interval,omitempty"` // аналог переменной окружения REPORT_INTERVAL или флага -r
+	PolIntervv int    `json:"poll_interval,omitempty"`   // аналог переменной окружения POLL_INTERVAL или флага -p
+	CryKey     string `json:"crypto_key,omitempty"`      // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
 }
 
 // AgentCfg структура для конфигурации Агента
@@ -113,18 +113,18 @@ func getSrvCfgFile(agentCfg *AgentCfg) error {
 	if err != nil {
 		return fmt.Errorf("error when unmarshal config %w", err)
 	}
-	switch {
-	case agentCfg.Endpoint == addressServerAgent:
+
+	if agentCfg.Endpoint == addressServerAgent && len(agnCfg.Adderss) != 0 {
 		agentCfg.Endpoint = agnCfg.Adderss
-		fallthrough
-	case agentCfg.ReportInterval == int(reportInterval):
-		agentCfg.ReportInterval = agnCfg.Ri
-		fallthrough
-	case agentCfg.PollInterval == int(pollInterval):
-		agentCfg.PollInterval = agnCfg.Pi
-		fallthrough
-	case len(agentCfg.PublicKeyFilename) == 0:
-		agentCfg.PublicKeyFilename = agnCfg.Ck
+	}
+	if agentCfg.ReportInterval == int(reportInterval) {
+		agentCfg.ReportInterval = agnCfg.RepInterv
+	}
+	if agentCfg.PollInterval == int(pollInterval) {
+		agentCfg.PollInterval = agnCfg.PolIntervv
+	}
+	if len(agentCfg.PublicKeyFilename) == 0 && len(agnCfg.CryKey) != 0 {
+		agentCfg.PublicKeyFilename = agnCfg.CryKey
 	}
 	return nil
 }
