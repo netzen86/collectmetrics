@@ -25,6 +25,7 @@ func custLinter(pass *analysis.Pass) (interface{}, error) {
 							pass.Reportf(node.Pos(), "os.Exit in main")
 						}
 					}
+				default:
 				}
 				return true
 			})
