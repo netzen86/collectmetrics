@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 
 	"go.uber.org/zap"
@@ -84,7 +85,8 @@ type ServerCfg struct {
 	// функция отмены для HTTP сервера
 	ServerStopCtx context.CancelFunc `env:"" DefVal:""`
 	// канал для os.Signal
-	Sig chan os.Signal `env:"" DefVal:""`
+	Sig chan os.Signal  `env:"" DefVal:""`
+	Wg  *sync.WaitGroup `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -271,6 +273,8 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	serverCfg.Sig = sig
+
+	serverCfg.Wg = &sync.WaitGroup{}
 
 	// лог значений полученных из переменных окружения и флагов
 	srvlog.Infoln("!!! SERVER CONFIGURED !!!",

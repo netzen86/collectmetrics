@@ -56,8 +56,9 @@ func main() {
 
 	// сохраняем метрики в файл
 	if cfg.StoreInterval != 0 {
+		cfg.Wg.Add(1)
 		go files.SaveMetrics(cfg.Storage, cfg.FileStoragePathDef,
-			cfg.StoreInterval, cfg.Sig, srvlog)
+			cfg.StoreInterval, cfg.ServerCtx, cfg.Wg, srvlog)
 	}
 
 	srvlog.Infoln("!!! SERVER START !!!")
@@ -74,4 +75,5 @@ func main() {
 		srvlog.Fatalf("error when start server %v ", err)
 	}
 	<-cfg.ServerCtx.Done()
+	cfg.Wg.Wait()
 }
