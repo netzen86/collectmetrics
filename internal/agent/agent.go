@@ -3,6 +3,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -60,9 +62,10 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 
 // CollectMetrics функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
-	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
+	results chan api.Metrics, errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
+	var shutdown bool = false
 
 	if results == nil {
 		errCh <- fmt.Errorf("channel closed")
@@ -120,45 +123,42 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 		config.PollCount: func(counter *int64) int64 { *counter += 1; return *counter },
 	}
 
-	for {
+	for !shutdown {
+		<-time.After(agentCfg.PollTik)
+		agentCfg.Logger.Infoln("COLLECTING METRIC")
+
+		runtime.ReadMemStats(&memStats)
+
+		wg := &sync.WaitGroup{}
+		jobsGauge := make(chan gaugeJobs, len(gaugeFunc)+1)
+		jobsCounter := make(chan counterJobs, len(counterFunc)+1)
+
+		for range len(gaugeFunc) + 1 {
+			wg.Add(1)
+			go workerGauge(jobsGauge, results, wg)
+		}
+
+		for range len(counterFunc) + 1 {
+			wg.Add(1)
+			go workerCounter(jobsCounter, results, wg)
+		}
+
+		// в канал задач отправляем задачи
+		for k, v := range gaugeFunc {
+			jobsGauge <- gaugeJobs{mName: k, function: v}
+		}
+		close(jobsGauge)
+
+		for k, v := range counterFunc {
+			jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
+		}
+		close(jobsCounter)
+		wg.Wait()
 		select {
-		case _, ok := <-results:
-			if !ok {
-				errCh <- fmt.Errorf("channel closed")
-				return
-			}
+		case <-agentCtx.Done():
+			agentCfg.Logger.Info("stop saving metrics")
+			shutdown = true
 		default:
-			<-time.After(agentCfg.PollTik)
-			agentCfg.Logger.Infoln("COLLECTING METRIC")
-
-			runtime.ReadMemStats(&memStats)
-
-			wg := &sync.WaitGroup{}
-			jobsGauge := make(chan gaugeJobs, len(gaugeFunc)+1)
-			jobsCounter := make(chan counterJobs, len(counterFunc)+1)
-
-			for range len(gaugeFunc) + 1 {
-				wg.Add(1)
-				go workerGauge(jobsGauge, results, wg)
-			}
-
-			for range len(counterFunc) + 1 {
-				wg.Add(1)
-				go workerCounter(jobsCounter, results, wg)
-			}
-
-			// в канал задач отправляем задачи
-			for k, v := range gaugeFunc {
-				jobsGauge <- gaugeJobs{mName: k, function: v}
-			}
-			close(jobsGauge)
-
-			for k, v := range counterFunc {
-				jobsCounter <- counterJobs{mName: k, counter: counter, function: v}
-			}
-			close(jobsCounter)
-			wg.Wait()
-
 		}
 	}
 }
@@ -301,12 +301,16 @@ func workerSM(endpoint, signKey string,
 
 // SendMetrics функция для отправки метрик
 func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
-	errCh chan<- error, rwg *sync.WaitGroup) {
+	errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	jobs := make(chan api.Metrics, agentCfg.RateLimit)
 	wg := sync.WaitGroup{}
+	var shutdown bool = false
 
 	for metric := range metrics {
+		if shutdown {
+			break
+		}
 		<-time.After(agentCfg.ReportTik)
 		jobs <- metric
 
@@ -316,8 +320,32 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 				metric, agentCfg.PubKey, agentCfg.Logger, errCh)
 			defer wg.Done()
 		}(<-jobs)
+		select {
+		case <-agentCtx.Done():
+			agentCfg.Logger.Info("stop sending metrics")
+			shutdown = true
+		default:
+		}
 	}
 	wg.Wait()
+}
+
+func SigMon(sig chan os.Signal, agentCtx context.Context,
+	agentStopCtx context.CancelFunc, logger zap.SugaredLogger) {
+	<-sig
+	// Shutdown signal with grace period of 30 seconds
+	shutdownCtx, cancel := context.WithTimeout(agentCtx, 30*time.Second)
+	defer cancel()
+
+	go func() {
+		<-shutdownCtx.Done()
+
+		if shutdownCtx.Err() == context.DeadlineExceeded {
+			logger.Infof("graceful shutdown timed out.. forcing exit.")
+
+		}
+	}()
+	agentStopCtx()
 }
 
 func RunAgent(agentCfg config.AgentCfg) error {
@@ -327,12 +355,14 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	metrics := make(chan api.Metrics, numJobs)
 	rwg := &sync.WaitGroup{}
 
-	rwg.Add(1)
-	go CollectMetrics(&counter, agentCfg, metrics, errCh, rwg)
+	go SigMon(agentCfg.Sig, agentCfg.AgentCtx, agentCfg.AgentStopCtx, agentCfg.Logger)
 
 	rwg.Add(1)
-	go SendMetrics(metrics, agentCfg, errCh, rwg)
+	go CollectMetrics(&counter, agentCfg, metrics, errCh, agentCfg.AgentCtx, rwg)
 
-	// rwg.Wait()
+	rwg.Add(1)
+	go SendMetrics(metrics, agentCfg, errCh, agentCfg.AgentCtx, rwg)
+
+	rwg.Wait()
 	return nil
 }

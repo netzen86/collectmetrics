@@ -6,13 +6,15 @@ package config
 
 import (
 	"bufio"
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -79,18 +81,21 @@ type configAgnFile struct {
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
-	Logger            zap.SugaredLogger `env:"" DefVal:""`
-	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
-	Endpoint          string            `env:"ADDRESS" DefVal:"localhost:8080"`
-	SignKeyString     string            `env:"KEY" DefVal:""`
-	ContentEncoding   string            `env:"" DefVal:""`
-	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
-	AgnFileCfg        string            `env:"" DefVal:""`
-	PollInterval      int               `env:"POLL_INTERVAL" DefVal:"5"`
-	ReportInterval    int               `env:"REPORT_INTERVAL" DefVal:"0"`
-	RateLimit         int               `env:"RATE_LIMIT" DefVal:"5"`
-	PollTik           time.Duration     `env:"" DefVal:""`
-	ReportTik         time.Duration     `env:"" DefVal:""`
+	Logger            zap.SugaredLogger  `env:"" DefVal:""`
+	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
+	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	SignKeyString     string             `env:"KEY" DefVal:""`
+	ContentEncoding   string             `env:"" DefVal:""`
+	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
+	AgnFileCfg        string             `env:"" DefVal:""`
+	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
+	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
+	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
+	PollTik           time.Duration      `env:"" DefVal:""`
+	ReportTik         time.Duration      `env:"" DefVal:""`
+	AgentCtx          context.Context    `env:"" DefVal:""`
+	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
+	Sig               chan os.Signal     `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
@@ -129,10 +134,22 @@ func getSrvCfgFile(agentCfg *AgentCfg) error {
 	return nil
 }
 
+func GracefulShutAgent(agentCfg *AgentCfg) {
+	agentCtx, agentStopCtx := context.WithCancel(context.Background())
+	agentCfg.AgentCtx = agentCtx
+	agentCfg.AgentStopCtx = agentStopCtx
+
+	// Listen for syscall signals for process to interrupt/quit
+	agentCfg.Sig = make(chan os.Signal, 1)
+	signal.Notify(agentCfg.Sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+}
+
 // GetAgentCfg функция получения конфигурации агента.
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error
+
+	GracefulShutAgent(&agentCfg)
 
 	agentCfg.Logger, err = logger.Logger()
 	if err != nil {
@@ -156,7 +173,6 @@ func GetAgentCfg() (AgentCfg, error) {
 			return AgentCfg{}, fmt.Errorf("when get gonfig from file %w", err)
 		}
 	}
-	log.Println(agentCfg.Endpoint)
 
 	// если переданы аргументы не флаги печатаем подсказку
 	if len(pflag.Args()) != 0 {
