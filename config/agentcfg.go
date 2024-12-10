@@ -81,21 +81,21 @@ type configAgnFile struct {
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
+	AgentCtx          context.Context    `env:"" DefVal:""`
 	Logger            zap.SugaredLogger  `env:"" DefVal:""`
 	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
-	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
-	SignKeyString     string             `env:"KEY" DefVal:""`
-	ContentEncoding   string             `env:"" DefVal:""`
-	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
+	Sig               chan os.Signal     `env:"" DefVal:""`
+	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
 	AgnFileCfg        string             `env:"" DefVal:""`
+	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
+	ContentEncoding   string             `env:"" DefVal:""`
+	SignKeyString     string             `env:"KEY" DefVal:""`
+	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
 	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration      `env:"" DefVal:""`
 	ReportTik         time.Duration      `env:"" DefVal:""`
-	AgentCtx          context.Context    `env:"" DefVal:""`
-	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
-	Sig               chan os.Signal     `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
