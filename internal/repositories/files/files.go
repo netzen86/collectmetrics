@@ -126,7 +126,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
 func SaveMetrics(storage repositories.Repo, metricFileName string,
 	storeInterval int, serverCtx context.Context, wg *sync.WaitGroup, logger zap.SugaredLogger) {
-	var shutdown bool = false
+	shutdown := false
 
 	for !shutdown {
 		<-time.After(time.Duration(storeInterval) * time.Second)

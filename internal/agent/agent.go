@@ -65,7 +65,7 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 	results chan api.Metrics, errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
-	var shutdown bool = false
+	shutdown := false
 
 	if results == nil {
 		errCh <- fmt.Errorf("channel closed")
@@ -305,7 +305,7 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 	defer rwg.Done()
 	jobs := make(chan api.Metrics, agentCfg.RateLimit)
 	wg := sync.WaitGroup{}
-	var shutdown bool = false
+	shutdown := false
 
 	for metric := range metrics {
 		if shutdown {
