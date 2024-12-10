@@ -19,15 +19,15 @@ func TestDBStorage_insertData(t *testing.T) {
 	}
 	type args struct {
 		ctx         context.Context
+		metricValue interface{}
 		stmt        string
 		metricType  string
 		metricName  string
-		metricValue interface{}
 	}
 	tests := []struct {
-		name    string
-		fields  fields
 		args    args
+		fields  fields
+		name    string
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -55,10 +55,10 @@ func TestDBStorage_GetAllMetrics(t *testing.T) {
 		logger zap.SugaredLogger
 	}
 	tests := []struct {
-		name    string
-		fields  fields
 		args    args
 		want    api.MetricsMap
+		fields  fields
+		name    string
 		wantErr bool
 	}{
 		// TODO: Add test cases.

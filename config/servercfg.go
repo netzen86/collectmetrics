@@ -42,51 +42,33 @@ const (
 )
 
 type configSrvFile struct {
-	Adderss   string `json:"address,omitempty"`        // аналог переменной окружения ADDRESS или флага -a
-	Restore   bool   `json:"restore,omitempty"`        // аналог переменной окружения RESTORE или флага -r
-	StorInter int    `json:"store_interval,omitempty"` // аналог переменной окружения STORE_INTERVAL или флага -i
-	StoreFile string `json:"store_file,omitempty"`     // аналог переменной окружения STORE_FILE или -f
-	Dsn       string `json:"database_dsn,omitempty"`   // аналог переменной окружения DATABASE_DSN или флага -d
-	CryptoKey string `json:"crypto_key,omitempty"`     // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+	Adderss   string `json:"address,omitempty"`
+	StoreFile string `json:"store_file,omitempty"`
+	Dsn       string `json:"database_dsn,omitempty"`
+	CryptoKey string `json:"crypto_key,omitempty"`
+	StorInter int    `json:"store_interval,omitempty"`
+	Restore   bool   `json:"restore,omitempty"`
 }
 
 // ServerCfg структура для конфигурации Сервера.
 type ServerCfg struct {
-	// указатель на memstorage
-	Storage repositories.Repo `env:"" DefVal:""`
-	// указатель на временный файл хранения метрик
-	Tempfile *os.File `env:"" DefVal:""`
-	// адрес и порт на котором запуститься сервер
-	Endpoint string `env:"ADDRESS" DefVal:"localhost:8080"`
-	// имя и путь к файлу для хранения метрик
-	FileStoragePath string `env:"FILE_STORAGE_PATH" DefVal:""`
-	// имя и путь к файлу для хранения метрик для значения по умолчанию
-	FileStoragePathDef string `env:"" DefVal:"FileStoragePath"`
-	// имя файла для получения конфигурации
-	SrvFileCfg string `env:"" DefVal:""`
-	// ключ для создания подписи данных
-	SignKeyString string `env:"KEY" DefVal:""`
-	// путь к файлу приватного ключа
-	PrivKeyFileName string `env:"CRYPTO_KEY" DefVal:""`
-	// приватный ключ для ассиметричного шифрования
-	PrivKey *rsa.PrivateKey `env:"" DefVal:""`
-	// если значенние флага true генерируем приватный и публичнные ключи
-	KeyGenerate bool `env:"" DefVal:"false"`
-	// строка для подключения к базе данных
-	DBconstring string `env:"DATABASE_DSN" DefVal:""`
-	// // ключ для выбора текущего хранилища (мемстораж, файл, база данных)
-	// StorageSelecter string `env:"" DefVal:"MEMORY"`
-	// интервал сохранения метрик в файл
-	StoreInterval int `env:"STORE_INTERVAL" DefVal:"300s"`
-	// ключ для определения восстановления метрик из файла
-	Restore bool `env:"RESTORE" DefVal:"true"`
-	// контекст для HTTP сервера
-	ServerCtx context.Context `env:"" DefVal:""`
-	// функция отмены для HTTP сервера
-	ServerStopCtx context.CancelFunc `env:"" DefVal:""`
-	// канал для os.Signal
-	Sig chan os.Signal  `env:"" DefVal:""`
-	Wg  *sync.WaitGroup `env:"" DefVal:""`
+	Storage            repositories.Repo  `env:"" DefVal:""`
+	ServerCtx          context.Context    `env:"" DefVal:""`
+	PrivKey            *rsa.PrivateKey    `env:"" DefVal:""`
+	Tempfile           *os.File           `env:"" DefVal:""`
+	Wg                 *sync.WaitGroup    `env:"" DefVal:""`
+	Sig                chan os.Signal     `env:"" DefVal:""`
+	ServerStopCtx      context.CancelFunc `env:"" DefVal:""`
+	FileStoragePathDef string             `env:"" DefVal:"FileStoragePath"`
+	PrivKeyFileName    string             `env:"CRYPTO_KEY" DefVal:""`
+	DBconstring        string             `env:"DATABASE_DSN" DefVal:""`
+	SignKeyString      string             `env:"KEY" DefVal:""`
+	SrvFileCfg         string             `env:"" DefVal:""`
+	FileStoragePath    string             `env:"FILE_STORAGE_PATH" DefVal:""`
+	Endpoint           string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	StoreInterval      int                `env:"STORE_INTERVAL" DefVal:"300s"`
+	KeyGenerate        bool               `env:"" DefVal:"false"`
+	Restore            bool               `env:"RESTORE" DefVal:"true"`
 }
 
 // метод для получения параметров запуска сервера из флагов

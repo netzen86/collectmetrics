@@ -71,26 +71,26 @@ const (
 )
 
 type configAgnFile struct {
-	Adderss    string `json:"address,omitempty"`         // аналог переменной окружения ADDRESS или флага -a
-	RepInterv  int    `json:"report_interval,omitempty"` // аналог переменной окружения REPORT_INTERVAL или флага -r
-	PolIntervv int    `json:"poll_interval,omitempty"`   // аналог переменной окружения POLL_INTERVAL или флага -p
-	CryKey     string `json:"crypto_key,omitempty"`      // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+	Adderss    string `json:"address,omitempty"`
+	CryKey     string `json:"crypto_key,omitempty"`
+	RepInterv  int    `json:"report_interval,omitempty"`
+	PolIntervv int    `json:"poll_interval,omitempty"`
 }
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
 	Logger            zap.SugaredLogger `env:"" DefVal:""`
+	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
 	Endpoint          string            `env:"ADDRESS" DefVal:"localhost:8080"`
 	SignKeyString     string            `env:"KEY" DefVal:""`
 	ContentEncoding   string            `env:"" DefVal:""`
+	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
+	AgnFileCfg        string            `env:"" DefVal:""`
 	PollInterval      int               `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int               `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int               `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration     `env:"" DefVal:""`
 	ReportTik         time.Duration     `env:"" DefVal:""`
-	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
-	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
-	AgnFileCfg        string            `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
