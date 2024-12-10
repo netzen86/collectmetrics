@@ -30,3 +30,26 @@ git fetch template && git checkout template/main .github
 При мёрже ветки с инкрементом в основную ветку `main` будут запускаться все автотесты.
 
 Подробнее про локальный и автоматический запуск читайте в [README автотестов](https://github.com/mipt-golang-course/go-autotests).
+
+
+* Формат файла конфигурации для сервера:
+```
+{
+    "address": "localhost:8080", // аналог переменной окружения ADDRESS или флага -a
+    "restore": true, // аналог переменной окружения RESTORE или флага -r
+    "store_interval": "1s", // аналог переменной окружения STORE_INTERVAL или флага -i
+    "store_file": "/path/to/file.db", // аналог переменной окружения STORE_FILE или -f
+    "database_dsn": "", // аналог переменной окружения DATABASE_DSN или флага -d
+    "crypto_key": "/path/to/key.pem" // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+}
+```
+* Формат файла конфигурации для агента:
+
+```
+{
+    "address": "localhost:8080", // аналог переменной окружения ADDRESS или флага -a
+    "report_interval": "1s", // аналог переменной окружения REPORT_INTERVAL или флага -r
+    "poll_interval": "1s", // аналог переменной окружения POLL_INTERVAL или флага -p
+    "crypto_key": "/path/to/key.pem" // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+}
+```

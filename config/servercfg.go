@@ -5,8 +5,10 @@
 package config
 
 import (
+	"bufio"
 	"context"
 	"crypto/rsa"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -29,11 +31,21 @@ const (
 	envAdd     string = "ADDRESS"
 	envSI      string = "STORE_INTERVAL"
 	envFSP     string = "FILE_STORAGE_PATH"
+	envCFG     string = "CONFIG"
 	envRes     string = "RESTORE"
 	envKey     string = "KEY"
 	envPRIVKEY string = "CRYPTO_KEY"
 	envDB      string = "DATABASE_DSN"
 )
+
+type configSrvFile struct {
+	Adderss   string `json:"address,omitempty"`        // аналог переменной окружения ADDRESS или флага -a
+	Restore   bool   `json:"restore,omitempty"`        // аналог переменной окружения RESTORE или флага -r
+	StorInter int    `json:"store_interval,omitempty"` // аналог переменной окружения STORE_INTERVAL или флага -i
+	StoreFile string `json:"store_file,omitempty"`     // аналог переменной окружения STORE_FILE или -f
+	Dsn       string `json:"database_dsn,omitempty"`   // аналог переменной окружения DATABASE_DSN или флага -d
+	CryptoKey string `json:"crypto_key,omitempty"`     // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+}
 
 // ServerCfg структура для конфигурации Сервера.
 type ServerCfg struct {
@@ -47,6 +59,8 @@ type ServerCfg struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH" DefVal:""`
 	// имя и путь к файлу для хранения метрик для значения по умолчанию
 	FileStoragePathDef string `env:"" DefVal:"FileStoragePath"`
+	// имя файла для получения конфигурации
+	SrvFileCfg string `env:"" DefVal:""`
 	// ключ для создания подписи данных
 	SignKeyString string `env:"KEY" DefVal:""`
 	// путь к файлу приватного ключа
@@ -77,6 +91,8 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	flag.StringVar(&serverCfg.DBconstring, "d", "", "Used to set db connet string.")
 	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
 	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Load private key for decrypting.")
+	flag.StringVar(&serverCfg.SrvFileCfg, "config", "", "Load configuration from file.")
+
 	flag.BoolVar(&serverCfg.KeyGenerate, "g", false, "Used to generate private and public keys.")
 	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
@@ -145,6 +161,48 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	return nil
 }
 
+// метод для получения параметров запуска сервера из файла формата json
+func (serverCfg *ServerCfg) getSrvCfgFile() error {
+	var srvCfg configSrvFile
+	config, err := os.Open(serverCfg.SrvFileCfg)
+	if err != nil {
+		return fmt.Errorf("error when read server config file %w", err)
+	}
+	defer config.Close()
+
+	fileinfo, _ := config.Stat()
+	cfgBytes := make([]byte, fileinfo.Size())
+	buffer := bufio.NewReader(config)
+	_, err = buffer.Read(cfgBytes)
+	if err != nil {
+		return fmt.Errorf("error when read config file %w", err)
+	}
+	err = json.Unmarshal(cfgBytes, &srvCfg)
+	if err != nil {
+		return fmt.Errorf("error when unmarshal config %w", err)
+	}
+
+	if serverCfg.Endpoint == addressServer && len(srvCfg.Adderss) != 0 {
+		serverCfg.Endpoint = srvCfg.Adderss
+	}
+	if serverCfg.Restore {
+		serverCfg.Restore = srvCfg.Restore
+	}
+	if serverCfg.StoreInterval == 300 {
+		serverCfg.StoreInterval = srvCfg.StorInter
+	}
+	if serverCfg.FileStoragePath == serverCfg.FileStoragePathDef && len(srvCfg.StoreFile) != 0 {
+		serverCfg.FileStoragePath = srvCfg.StoreFile
+	}
+	if len(serverCfg.DBconstring) == 0 {
+		serverCfg.DBconstring = srvCfg.Dsn
+	}
+	if len(serverCfg.PrivKeyFileName) == 0 {
+		serverCfg.PrivKeyFileName = srvCfg.CryptoKey
+	}
+	return nil
+}
+
 // метод инициализации сервера
 func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	var err error
@@ -209,17 +267,24 @@ func (serverCfg *ServerCfg) GetServerCfg(srvlog zap.SugaredLogger) error {
 
 	err = serverCfg.parseSrvFlags()
 	if err != nil {
-		return fmt.Errorf("error writing file: %v", err)
+		return fmt.Errorf("error parse flags: %w", err)
+	}
+
+	if len(serverCfg.SrvFileCfg) != 0 {
+		err = serverCfg.getSrvCfgFile()
+		if err != nil {
+			return fmt.Errorf("error get config from file: %w", err)
+		}
 	}
 
 	err = serverCfg.getSrvEnv()
 	if err != nil {
-		return fmt.Errorf("error writing file: %v", err)
+		return fmt.Errorf("error get env var: %w", err)
 	}
 
 	err = serverCfg.initSrv(srvlog)
 	if err != nil {
-		return fmt.Errorf("error writing file: %v", err)
+		return fmt.Errorf("error server init: %w", err)
 	}
 	return nil
 }
