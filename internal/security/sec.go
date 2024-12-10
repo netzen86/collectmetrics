@@ -134,11 +134,11 @@ func ReadPublicKey(filename string) (*rsa.PublicKey, error) {
 	return key, nil
 }
 
-func EncryptMetic(Metric []byte, pubKey *rsa.PublicKey) ([]byte, error) {
+func EncryptMetic(metric []byte, pubKey *rsa.PublicKey) ([]byte, error) {
 
 	rng := rand.Reader
 
-	encMetric, err := rsa.EncryptOAEP(sha256.New(), rng, pubKey, Metric, []byte(label))
+	encMetric, err := rsa.EncryptOAEP(sha256.New(), rng, pubKey, metric, []byte(label))
 	if err != nil {
 		return nil, fmt.Errorf("error from encryption: %w", err)
 	}
