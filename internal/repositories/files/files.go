@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -124,7 +125,7 @@ func (c *Consumer) ReadMetric(metrics *api.MetricsMap, logger zap.SugaredLogger)
 // SaveMetrics функция для сохранения метрик в файл
 // использую log.Fatal а не возврат ошибки потому что эта функция будет запускаться в горутине
 func SaveMetrics(storage repositories.Repo, metricFileName string,
-	storeInterval int, sigs chan os.Signal, logger zap.SugaredLogger) {
+	storeInterval int, serverCtx context.Context, wg *sync.WaitGroup, logger zap.SugaredLogger) {
 	var shutdown bool = false
 
 	for !shutdown {
@@ -151,9 +152,10 @@ func SaveMetrics(storage repositories.Repo, metricFileName string,
 			logger.Fatal("can't close file")
 		}
 		select {
-		case sig := <-sigs:
-			logger.Infof("resived signal %s", sig)
+		case <-serverCtx.Done():
+			logger.Info("stop saving metrics")
 			shutdown = true
+			wg.Done()
 		default:
 		}
 	}
