@@ -99,13 +99,18 @@ type AgentCfg struct {
 }
 
 // функция для получения параметров запуска агента из файла формата json
-func getSrvCfgFile(agentCfg *AgentCfg) error {
+func getAgnCfgFile(agentCfg *AgentCfg) error {
 	var agnCfg configAgnFile
 	config, err := os.Open(agentCfg.AgnFileCfg)
 	if err != nil {
 		return fmt.Errorf("error when read server config file %w", err)
 	}
-	defer config.Close()
+	defer func() {
+		err = config.Close()
+		if err != nil {
+			agentCfg.Logger.Infof("error when close agent cfg %v", err)
+		}
+	}()
 
 	fileinfo, _ := config.Stat()
 	cfgBytes := make([]byte, fileinfo.Size())
@@ -168,7 +173,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	pflag.Parse()
 
 	if len(agentCfg.AgnFileCfg) != 0 {
-		err = getSrvCfgFile(&agentCfg)
+		err = getAgnCfgFile(&agentCfg)
 		if err != nil {
 			return AgentCfg{}, fmt.Errorf("when get gonfig from file %w", err)
 		}
@@ -219,7 +224,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	}
 
 	if len(agentCfg.PublicKeyFilename) != 0 {
-		agentCfg.PubKey, err = security.ReadPublicKey(agentCfg.PublicKeyFilename)
+		agentCfg.PubKey, err = security.ReadPublicKey(agentCfg.PublicKeyFilename, agentCfg.Logger)
 		if err != nil {
 			return AgentCfg{}, fmt.Errorf("error reading public key %w ", err)
 		}

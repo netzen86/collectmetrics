@@ -12,6 +12,8 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -31,7 +33,7 @@ func CompareSign(sign1, sign2 []byte) bool {
 	return hmac.Equal(sign1, sign2)
 }
 
-func GenerateKeys() error {
+func GenerateKeys(logger zap.SugaredLogger) error {
 	var err error
 	var pemPrivFile, pemPubFile *os.File
 	var privateKey *rsa.PrivateKey
@@ -41,13 +43,23 @@ func GenerateKeys() error {
 	if err != nil {
 		return fmt.Errorf("error when create private pem file %w", err)
 	}
-	defer pemPrivFile.Close()
+	defer func() {
+		err = pemPrivFile.Close()
+		if err != nil {
+			logger.Errorf("error when closing private pem file %w", err)
+		}
+	}()
 
 	pemPubFile, err = os.Create(PubKeyFileName)
 	if err != nil {
 		return fmt.Errorf("error when create public pem file %w", err)
 	}
-	defer pemPubFile.Close()
+	defer func() {
+		err = pemPubFile.Close()
+		if err != nil {
+			logger.Errorf("error when closing public pem file %w", err)
+		}
+	}()
 
 	privateKey, err = rsa.GenerateKey(rand.Reader, lengthofKey)
 	if err != nil {
@@ -76,14 +88,19 @@ func GenerateKeys() error {
 	return nil
 }
 
-func ReadPrivedKey(filename string) (*rsa.PrivateKey, error) {
+func ReadPrivedKey(filename string, logger zap.SugaredLogger) (*rsa.PrivateKey, error) {
 	var key *rsa.PrivateKey
 
 	KeyFile, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error when read priv key file %w", err)
 	}
-	defer KeyFile.Close()
+	defer func() {
+		err = KeyFile.Close()
+		if err != nil {
+			logger.Errorf("error when closing private key file %w", err)
+		}
+	}()
 
 	pemfileinfo, _ := KeyFile.Stat()
 	pembytes := make([]byte, pemfileinfo.Size())
@@ -105,14 +122,19 @@ func ReadPrivedKey(filename string) (*rsa.PrivateKey, error) {
 	return key, nil
 }
 
-func ReadPublicKey(filename string) (*rsa.PublicKey, error) {
+func ReadPublicKey(filename string, logger zap.SugaredLogger) (*rsa.PublicKey, error) {
 	var key *rsa.PublicKey
 
 	KeyFile, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error when read priv key file %w", err)
 	}
-	defer KeyFile.Close()
+	defer func() {
+		err = KeyFile.Close()
+		if err != nil {
+			logger.Errorf("error when closing public key file %w", err)
+		}
+	}()
 
 	pemfileinfo, _ := KeyFile.Stat()
 	pembytes := make([]byte, pemfileinfo.Size())

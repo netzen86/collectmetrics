@@ -154,14 +154,18 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 }
 
 // метод для получения параметров запуска сервера из файла формата json
-func (serverCfg *ServerCfg) getSrvCfgFile() error {
+func (serverCfg *ServerCfg) getSrvCfgFile(srvlog zap.SugaredLogger) error {
 	var srvCfg configSrvFile
 	config, err := os.Open(serverCfg.SrvFileCfg)
 	if err != nil {
 		return fmt.Errorf("error when read server config file %w", err)
 	}
-	defer config.Close()
-
+	defer func() {
+		err = config.Close()
+		if err != nil {
+			srvlog.Info("error when closing server config file %v", err)
+		}
+	}()
 	fileinfo, _ := config.Stat()
 	cfgBytes := make([]byte, fileinfo.Size())
 	buffer := bufio.NewReader(config)
@@ -230,7 +234,7 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 
 	// создание приватного и публичного ключа
 	if serverCfg.KeyGenerate {
-		err = security.GenerateKeys()
+		err = security.GenerateKeys(srvlog)
 		if err != nil {
 			return fmt.Errorf("error generate rsa keys %w ", err)
 		}
@@ -238,7 +242,7 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 
 	// считываем приваиный ключ
 	if len(serverCfg.PrivKeyFileName) > 0 {
-		serverCfg.PrivKey, err = security.ReadPrivedKey(security.PrivKeyFileName)
+		serverCfg.PrivKey, err = security.ReadPrivedKey(security.PrivKeyFileName, srvlog)
 		if err != nil {
 			return fmt.Errorf("error reading priv key file %w ", err)
 		}
@@ -275,7 +279,7 @@ func (serverCfg *ServerCfg) GetServerCfg(srvlog zap.SugaredLogger) error {
 	}
 
 	if len(serverCfg.SrvFileCfg) != 0 {
-		err = serverCfg.getSrvCfgFile()
+		err = serverCfg.getSrvCfgFile(srvlog)
 		if err != nil {
 			return fmt.Errorf("error get config from file: %w", err)
 		}
