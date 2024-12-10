@@ -255,7 +255,7 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 
 	// Listen for syscall signals for process to interrupt/quit
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	serverCfg.Sig = sig
 
 	serverCfg.Wg = &sync.WaitGroup{}

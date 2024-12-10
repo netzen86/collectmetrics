@@ -146,7 +146,7 @@ func GracefulShutAgent(agentCfg *AgentCfg) {
 
 	// Listen for syscall signals for process to interrupt/quit
 	agentCfg.Sig = make(chan os.Signal, 1)
-	signal.Notify(agentCfg.Sig, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(agentCfg.Sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 }
 
 // GetAgentCfg функция получения конфигурации агента.
