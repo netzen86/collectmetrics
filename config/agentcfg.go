@@ -23,6 +23,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/security"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 // константы используещиеся для работы Агента
@@ -96,6 +97,7 @@ type AgentCfg struct {
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration      `env:"" DefVal:""`
 	ReportTik         time.Duration      `env:"" DefVal:""`
+	LocalIp           string             `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
@@ -230,6 +232,11 @@ func GetAgentCfg() (AgentCfg, error) {
 		}
 	} else {
 		agentCfg.PubKey = &rsa.PublicKey{N: big.NewInt(0), E: 0}
+	}
+
+	agentCfg.LocalIp, err = utils.GetLocalIP()
+	if err != nil {
+		return AgentCfg{}, fmt.Errorf("error when getting local ip %w ", err)
 	}
 
 	// установка интервалов получения и отправки метрик

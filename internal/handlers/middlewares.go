@@ -56,7 +56,7 @@ func AccecsList(network netip.Prefix) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ipAddrStr := r.Header.Get(api.ACLHeader)
 			switch {
-			case len(ipAddrStr) != 0:
+			case len(ipAddrStr) != 0 && network.IsValid():
 				ipAddr, err := netip.ParseAddr(ipAddrStr)
 				if err != nil {
 					http.Error(w, fmt.Sprintf("%v\n",
