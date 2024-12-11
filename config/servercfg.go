@@ -169,6 +169,9 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	// получаем разрешенную для подключений подсеть
 	if len(os.Getenv(envTS)) != 0 {
 		serverCfg.TrustedSubnet, err = netip.ParsePrefix(os.Getenv(envTS))
+		if err != nil {
+			return fmt.Errorf("error when get trusted subnet from env %w", err)
+		}
 	}
 
 	return nil
