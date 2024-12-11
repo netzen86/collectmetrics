@@ -211,7 +211,6 @@ func JSONUpdateMMHandle(storage repositories.Repo, filename,
 		var err error
 
 		// читаем тело запроса
-		srvlog.Infoln("READING BODY")
 		readedbytes, err := buf.ReadFrom(r.Body)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%s %v\n", http.StatusText(400), "error body data reading"), 400)

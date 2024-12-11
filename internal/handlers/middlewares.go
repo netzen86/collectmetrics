@@ -59,9 +59,9 @@ func AccecsList(network netip.Prefix) func(http.Handler) http.Handler {
 			case len(ipAddrStr) != 0:
 				ipAddr, err := netip.ParseAddr(ipAddrStr)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("%v %v\n",
-						http.StatusText(http.StatusInternalServerError),
-						http.StatusInternalServerError), 500)
+					http.Error(w, fmt.Sprintf("%v\n",
+						http.StatusText(http.StatusInternalServerError)),
+						http.StatusInternalServerError)
 					return
 				}
 				if !network.Contains(ipAddr) {
@@ -69,6 +69,7 @@ func AccecsList(network netip.Prefix) func(http.Handler) http.Handler {
 						http.StatusText(http.StatusForbidden)), http.StatusForbidden)
 					return
 				}
+				next.ServeHTTP(w, r)
 			default:
 				next.ServeHTTP(w, r)
 			}
