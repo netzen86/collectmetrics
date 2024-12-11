@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -69,6 +70,7 @@ type ServerCfg struct {
 	StoreInterval      int                `env:"STORE_INTERVAL" DefVal:"300s"`
 	KeyGenerate        bool               `env:"" DefVal:"false"`
 	Restore            bool               `env:"RESTORE" DefVal:"true"`
+	ACLNetwork         netip.Prefix       `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
@@ -259,6 +261,11 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	serverCfg.Sig = sig
 
 	serverCfg.Wg = &sync.WaitGroup{}
+
+	serverCfg.ACLNetwork, err = netip.ParsePrefix("10.0.0.1/24")
+	if err != nil {
+		return fmt.Errorf("error this is not prefix %w ", err)
+	}
 
 	// лог значений полученных из переменных окружения и флагов
 	srvlog.Infoln("!!! SERVER CONFIGURED !!!",
