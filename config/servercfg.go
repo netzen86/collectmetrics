@@ -40,15 +40,17 @@ const (
 	envKey     string = "KEY"
 	envPRIVKEY string = "CRYPTO_KEY"
 	envDB      string = "DATABASE_DSN"
+	envTS      string = "TRUSTED_SUBNET"
 )
 
 type configSrvFile struct {
-	Adderss   string `json:"address,omitempty"`
-	StoreFile string `json:"store_file,omitempty"`
-	Dsn       string `json:"database_dsn,omitempty"`
-	CryptoKey string `json:"crypto_key,omitempty"`
-	StorInter int    `json:"store_interval,omitempty"`
-	Restore   bool   `json:"restore,omitempty"`
+	Adderss       string `json:"address,omitempty"`
+	StoreFile     string `json:"store_file,omitempty"`
+	Dsn           string `json:"database_dsn,omitempty"`
+	CryptoKey     string `json:"crypto_key,omitempty"`
+	StorInter     int    `json:"store_interval,omitempty"`
+	Restore       bool   `json:"restore,omitempty"`
+	TrustedSubnet string `json:"trusted_subnet,omitempty"`
 }
 
 // ServerCfg структура для конфигурации Сервера.
@@ -70,14 +72,18 @@ type ServerCfg struct {
 	StoreInterval      int                `env:"STORE_INTERVAL" DefVal:"300s"`
 	KeyGenerate        bool               `env:"" DefVal:"false"`
 	Restore            bool               `env:"RESTORE" DefVal:"true"`
-	ACLNetwork         netip.Prefix       `env:"" DefVal:""`
+	TrustedSubnet      netip.Prefix       `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов
 func (serverCfg *ServerCfg) parseSrvFlags() error {
+	var err error
 
 	// имя файла для сохранения метрик по умолчанию
 	serverCfg.FileStoragePathDef = "servermetrics.json"
+
+	// переменная для ACL
+	var trustedSubStr string
 
 	// опредаляем флаги
 	flag.StringVar(&serverCfg.Endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
@@ -86,7 +92,7 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
 	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Load private key for decrypting.")
 	flag.StringVar(&serverCfg.SrvFileCfg, "config", "", "Load configuration from file.")
-
+	flag.StringVar(&trustedSubStr, "t", "", "set allowed network for connection to server.")
 	flag.BoolVar(&serverCfg.KeyGenerate, "g", false, "Used to generate private and public keys.")
 	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
@@ -98,6 +104,13 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		return fmt.Errorf("not args allowed")
+	}
+
+	if len(trustedSubStr) != 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(trustedSubStr)
+		if err != nil {
+			return fmt.Errorf("error this is not prefix %w ", err)
+		}
 	}
 
 	// для замены имени файла по умолчанию
@@ -152,6 +165,12 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	if len(os.Getenv(envDB)) != 0 {
 		serverCfg.DBconstring = os.Getenv(envDB)
 	}
+
+	// получаем разрешенную для подключений подсеть
+	if len(os.Getenv(envTS)) != 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(os.Getenv(envTS))
+	}
+
 	return nil
 }
 
@@ -197,6 +216,12 @@ func (serverCfg *ServerCfg) getSrvCfgFile(srvlog zap.SugaredLogger) error {
 	}
 	if len(serverCfg.PrivKeyFileName) == 0 {
 		serverCfg.PrivKeyFileName = srvCfg.CryptoKey
+	}
+	if len(serverCfg.TrustedSubnet.String()) == 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(srvCfg.TrustedSubnet)
+		if err != nil {
+			return fmt.Errorf("error when parsing ip prefix %w", err)
+		}
 	}
 	return nil
 }
@@ -261,11 +286,6 @@ func (serverCfg *ServerCfg) initSrv(srvlog zap.SugaredLogger) error {
 	serverCfg.Sig = sig
 
 	serverCfg.Wg = &sync.WaitGroup{}
-
-	serverCfg.ACLNetwork, err = netip.ParsePrefix("10.0.0.1/24")
-	if err != nil {
-		return fmt.Errorf("error this is not prefix %w ", err)
-	}
 
 	// лог значений полученных из переменных окружения и флагов
 	srvlog.Infoln("!!! SERVER CONFIGURED !!!",
