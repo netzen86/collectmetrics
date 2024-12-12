@@ -234,7 +234,7 @@ func GetAgentCfg() (AgentCfg, error) {
 		agentCfg.PubKey = &rsa.PublicKey{N: big.NewInt(0), E: 0}
 	}
 
-	agentCfg.LocalIp, err = utils.GetLocalIP()
+	agentCfg.LocalIp, err = utils.GetLocalIP(agentCfg.Logger)
 	if err != nil {
 		return AgentCfg{}, fmt.Errorf("error when getting local ip %w ", err)
 	}

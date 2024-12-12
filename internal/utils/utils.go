@@ -146,12 +146,17 @@ func PrintBuildInfos() {
 	fmt.Printf("Build commit: %s\n\n", buildCommit)
 }
 
-func GetLocalIP() (string, error) {
+func GetLocalIP(logger zap.SugaredLogger) (string, error) {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		return "", fmt.Errorf("error when get local ip %w", err)
 	}
-	defer conn.Close()
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			logger.Errorf("error when clogse gz %w", err)
+		}
+	}()
 
 	localAddress := conn.LocalAddr().(*net.UDPAddr)
 
