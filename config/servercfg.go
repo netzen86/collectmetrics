@@ -48,9 +48,9 @@ type configSrvFile struct {
 	StoreFile     string `json:"store_file,omitempty"`
 	Dsn           string `json:"database_dsn,omitempty"`
 	CryptoKey     string `json:"crypto_key,omitempty"`
+	TrustedSubnet string `json:"trusted_subnet,omitempty"`
 	StorInter     int    `json:"store_interval,omitempty"`
 	Restore       bool   `json:"restore,omitempty"`
-	TrustedSubnet string `json:"trusted_subnet,omitempty"`
 }
 
 // ServerCfg структура для конфигурации Сервера.
@@ -62,17 +62,17 @@ type ServerCfg struct {
 	Wg                 *sync.WaitGroup    `env:"" DefVal:""`
 	Sig                chan os.Signal     `env:"" DefVal:""`
 	ServerStopCtx      context.CancelFunc `env:"" DefVal:""`
-	FileStoragePathDef string             `env:"" DefVal:"FileStoragePath"`
+	TrustedSubnet      netip.Prefix       `env:"" DefVal:""`
 	PrivKeyFileName    string             `env:"CRYPTO_KEY" DefVal:""`
 	DBconstring        string             `env:"DATABASE_DSN" DefVal:""`
 	SignKeyString      string             `env:"KEY" DefVal:""`
 	SrvFileCfg         string             `env:"" DefVal:""`
 	FileStoragePath    string             `env:"FILE_STORAGE_PATH" DefVal:""`
 	Endpoint           string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	FileStoragePathDef string             `env:"" DefVal:"FileStoragePath"`
 	StoreInterval      int                `env:"STORE_INTERVAL" DefVal:"300s"`
 	KeyGenerate        bool               `env:"" DefVal:"false"`
 	Restore            bool               `env:"RESTORE" DefVal:"true"`
-	TrustedSubnet      netip.Prefix       `env:"" DefVal:""`
 }
 
 // метод для получения параметров запуска сервера из флагов

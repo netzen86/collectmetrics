@@ -87,17 +87,17 @@ type AgentCfg struct {
 	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
 	Sig               chan os.Signal     `env:"" DefVal:""`
 	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
-	AgnFileCfg        string             `env:"" DefVal:""`
+	SignKeyString     string             `env:"KEY" DefVal:""`
 	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
 	ContentEncoding   string             `env:"" DefVal:""`
-	SignKeyString     string             `env:"KEY" DefVal:""`
+	AgnFileCfg        string             `env:"" DefVal:""`
 	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	LocalIp           string             `env:"" DefVal:""`
 	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration      `env:"" DefVal:""`
 	ReportTik         time.Duration      `env:"" DefVal:""`
-	LocalIp           string             `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
