@@ -92,7 +92,7 @@ type AgentCfg struct {
 	ContentEncoding   string             `env:"" DefVal:""`
 	AgnFileCfg        string             `env:"" DefVal:""`
 	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
-	LocalIp           string             `env:"" DefVal:""`
+	LocalIP           string             `env:"" DefVal:""`
 	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
@@ -234,7 +234,7 @@ func GetAgentCfg() (AgentCfg, error) {
 		agentCfg.PubKey = &rsa.PublicKey{N: big.NewInt(0), E: 0}
 	}
 
-	agentCfg.LocalIp, err = utils.GetLocalIP(agentCfg.Logger)
+	agentCfg.LocalIP, err = utils.GetLocalIP(agentCfg.Logger)
 	if err != nil {
 		return AgentCfg{}, fmt.Errorf("error when getting local ip %w ", err)
 	}

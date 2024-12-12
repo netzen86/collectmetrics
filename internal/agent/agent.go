@@ -208,7 +208,7 @@ func JSONdecode(resp *http.Response, logger zap.SugaredLogger) {
 }
 
 // JSONSendMetrics функция для отправки метрик
-func JSONSendMetrics(url, signKey, localIp string, metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger) error {
+func JSONSendMetrics(url, signKey, localIP string, metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger) error {
 	var data, sign []byte
 	var err error
 
@@ -248,7 +248,7 @@ func JSONSendMetrics(url, signKey, localIp string, metrics api.Metrics, pubKey *
 	request.Header.Add("Content-Encoding", api.Gz)
 	request.Header.Add("Content-Type", api.Js)
 	request.Header.Add("Accept-Encoding", api.Gz)
-	request.Header.Add(api.ACLHeader, localIp)
+	request.Header.Add(api.ACLHeader, localIP)
 	// если передан публичный ключ добавляем к заголовку парамер что контент зашифрован
 	if pubKey.Size() != 0 {
 		request.Header.Add("CryptRSA", api.CryptRSA)
@@ -279,13 +279,13 @@ func JSONSendMetrics(url, signKey, localIp string, metrics api.Metrics, pubKey *
 	return nil
 }
 
-func workerSM(endpoint, signKey, localIp string,
+func workerSM(endpoint, signKey, localIP string,
 	metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger, errCh chan<- error) {
 	retrybuilder := func() func() error {
 		return func() error {
 			err := JSONSendMetrics(
 				fmt.Sprintf(config.UpdateAddress, endpoint),
-				signKey, localIp, metrics, pubKey, logger)
+				signKey, localIP, metrics, pubKey, logger)
 
 			if err != nil {
 				logger.Infof("error when sm in internal/agent %w", err)
@@ -317,7 +317,7 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 
 		wg.Add(1)
 		go func(metric api.Metrics) {
-			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIp,
+			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
 				metric, agentCfg.PubKey, agentCfg.Logger, errCh)
 			defer wg.Done()
 		}(<-jobs)
