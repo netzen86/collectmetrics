@@ -143,6 +143,14 @@ func getAgnCfgFile(agentCfg *AgentCfg) error {
 	return nil
 }
 
+func validRateLimit(ratelimit int, logger zap.SugaredLogger) bool {
+	if 0 == ratelimit || ratelimit > 32 {
+		logger.Infoln("rate limit must be greater than 0 and less than 32")
+		return false
+	}
+	return true
+}
+
 func GracefulShutAgent(agentCfg *AgentCfg) {
 	agentPCtx, agentPStopCtx := context.WithCancel(context.Background())
 	agentCfg.AgentPCtx = agentPCtx
@@ -243,6 +251,11 @@ func GetAgentCfg() (AgentCfg, error) {
 	agentCfg.LocalIP, err = utils.GetLocalIP(agentCfg.Logger)
 	if err != nil {
 		return AgentCfg{}, fmt.Errorf("error when getting local ip %w ", err)
+	}
+
+	if !validRateLimit(agentCfg.RateLimit, agentCfg.Logger) {
+		agentCfg.Logger.Infoln("setting rate limit to default value = 5")
+		agentCfg.RateLimit = ratelimit
 	}
 
 	// установка интервалов получения и отправки метрик

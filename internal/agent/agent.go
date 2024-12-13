@@ -157,7 +157,8 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 		select {
 		case <-agentCfg.AgentPCtx.Done():
 			shutdown = true
-			agentCfg.Logger.Info("-=*** STOP SAVING METRICS ***=-")
+			close(results)
+			agentCfg.Logger.Info("-=*** STOP POOLING METRICS ***=-")
 			stopWithTimer(agentCfg.AgentSCtx, agentCfg.AgentSStopCtx, agentCfg.Logger)
 		default:
 		}
@@ -280,13 +281,20 @@ func JSONSendMetrics(url, signKey, localIP string, metrics api.Metrics, pubKey *
 	return nil
 }
 
-func workerSM(endpoint, signKey, localIP string,
-	metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger, errCh chan<- error) {
+func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
+	pubKey *rsa.PublicKey, logger zap.SugaredLogger,
+	errCh chan<- error, wg *sync.WaitGroup) {
+	defer wg.Done()
+	metric, ok := <-jobs
+	if !ok {
+		return
+	}
+
 	retrybuilder := func() func() error {
 		return func() error {
 			err := JSONSendMetrics(
 				fmt.Sprintf(config.UpdateAddress, endpoint),
-				signKey, localIP, metrics, pubKey, logger)
+				signKey, localIP, metric, pubKey, logger)
 
 			if err != nil {
 				logger.Infof("error when sm in internal/agent %w", err)
@@ -309,28 +317,33 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 	wg := sync.WaitGroup{}
 	shutdown := false
 
-	for metric := range metrics {
-		if shutdown {
-			break
-		}
-		agentCfg.Logger.Infoln(agentCfg.AgentSCtx)
-		<-time.After(agentCfg.ReportTik)
-		jobs <- metric
+	for !shutdown {
 
-		wg.Add(1)
-		go func(metric api.Metrics) {
-			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
-				metric, agentCfg.PubKey, agentCfg.Logger, errCh)
-			defer wg.Done()
-		}(<-jobs)
+		<-time.After(agentCfg.ReportTik)
+
+		for range agentCfg.RateLimit {
+			wg.Add(1)
+			go workerSM(jobs, agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
+				agentCfg.PubKey, agentCfg.Logger, errCh, &wg)
+		}
+
+		for range agentCfg.RateLimit {
+			metric, ok := <-metrics
+			if !ok {
+				break
+			}
+			jobs <- metric
+		}
+		wg.Wait()
+
 		select {
 		case <-agentCfg.AgentSCtx.Done():
 			agentCfg.Logger.Info("-=*** STOP SENDING METIRICS ***=-")
+			close(jobs)
 			shutdown = true
 		default:
 		}
 	}
-	wg.Wait()
 }
 
 func sigMon(sig chan os.Signal, agentCtx context.Context,
