@@ -82,11 +82,13 @@ type configAgnFile struct {
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
-	AgentCtx          context.Context    `env:"" DefVal:""`
+	AgentSCtx         context.Context    `env:"" DefVal:""`
+	AgentPCtx         context.Context    `env:"" DefVal:""`
 	Logger            zap.SugaredLogger  `env:"" DefVal:""`
 	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
 	Sig               chan os.Signal     `env:"" DefVal:""`
-	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
+	AgentSStopCtx     context.CancelFunc `env:"" DefVal:""`
+	AgentPStopCtx     context.CancelFunc `env:"" DefVal:""`
 	SignKeyString     string             `env:"KEY" DefVal:""`
 	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
 	ContentEncoding   string             `env:"" DefVal:""`
@@ -142,9 +144,13 @@ func getAgnCfgFile(agentCfg *AgentCfg) error {
 }
 
 func GracefulShutAgent(agentCfg *AgentCfg) {
-	agentCtx, agentStopCtx := context.WithCancel(context.Background())
-	agentCfg.AgentCtx = agentCtx
-	agentCfg.AgentStopCtx = agentStopCtx
+	agentPCtx, agentPStopCtx := context.WithCancel(context.Background())
+	agentCfg.AgentPCtx = agentPCtx
+	agentCfg.AgentPStopCtx = agentPStopCtx
+
+	agentSCtx, agentSStopCtx := context.WithCancel(context.Background())
+	agentCfg.AgentSCtx = agentSCtx
+	agentCfg.AgentSStopCtx = agentSStopCtx
 
 	// Listen for syscall signals for process to interrupt/quit
 	agentCfg.Sig = make(chan os.Signal, 1)

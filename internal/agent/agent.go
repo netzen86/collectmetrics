@@ -62,7 +62,7 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 
 // CollectMetrics функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
-	results chan api.Metrics, errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
+	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
 	shutdown := false
@@ -155,9 +155,10 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 		close(jobsCounter)
 		wg.Wait()
 		select {
-		case <-agentCtx.Done():
-			agentCfg.Logger.Info("stop saving metrics")
+		case <-agentCfg.AgentPCtx.Done():
 			shutdown = true
+			agentCfg.Logger.Info("-=*** STOP SAVING METRICS ***=-")
+			stopWithTimer(agentCfg.AgentSCtx, agentCfg.AgentSStopCtx, agentCfg.Logger)
 		default:
 		}
 	}
@@ -302,7 +303,7 @@ func workerSM(endpoint, signKey, localIP string,
 
 // SendMetrics функция для отправки метрик
 func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
-	errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
+	errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	jobs := make(chan api.Metrics, agentCfg.RateLimit)
 	wg := sync.WaitGroup{}
@@ -312,6 +313,7 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 		if shutdown {
 			break
 		}
+		agentCfg.Logger.Infoln(agentCfg.AgentSCtx)
 		<-time.After(agentCfg.ReportTik)
 		jobs <- metric
 
@@ -322,8 +324,8 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 			defer wg.Done()
 		}(<-jobs)
 		select {
-		case <-agentCtx.Done():
-			agentCfg.Logger.Info("stop sending metrics")
+		case <-agentCfg.AgentSCtx.Done():
+			agentCfg.Logger.Info("-=*** STOP SENDING METIRICS ***=-")
 			shutdown = true
 		default:
 		}
@@ -331,9 +333,15 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 	wg.Wait()
 }
 
-func SigMon(sig chan os.Signal, agentCtx context.Context,
+func sigMon(sig chan os.Signal, agentCtx context.Context,
 	agentStopCtx context.CancelFunc, logger zap.SugaredLogger) {
 	<-sig
+	stopWithTimer(agentCtx, agentStopCtx, logger)
+}
+
+func stopWithTimer(agentCtx context.Context,
+	agentStopCtx context.CancelFunc, logger zap.SugaredLogger) {
+
 	// Shutdown signal with grace period of 30 seconds
 	shutdownCtx, cancel := context.WithTimeout(agentCtx, 30*time.Second)
 	defer cancel()
@@ -356,13 +364,13 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	metrics := make(chan api.Metrics, numJobs)
 	rwg := &sync.WaitGroup{}
 
-	go SigMon(agentCfg.Sig, agentCfg.AgentCtx, agentCfg.AgentStopCtx, agentCfg.Logger)
+	go sigMon(agentCfg.Sig, agentCfg.AgentPCtx, agentCfg.AgentPStopCtx, agentCfg.Logger)
 
 	rwg.Add(1)
-	go CollectMetrics(&counter, agentCfg, metrics, errCh, agentCfg.AgentCtx, rwg)
+	go CollectMetrics(&counter, agentCfg, metrics, errCh, rwg)
 
 	rwg.Add(1)
-	go SendMetrics(metrics, agentCfg, errCh, agentCfg.AgentCtx, rwg)
+	go SendMetrics(metrics, agentCfg, errCh, rwg)
 
 	rwg.Wait()
 	return nil

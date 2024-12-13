@@ -32,18 +32,19 @@ func BenchmarkSendMetrics(b *testing.B) {
 	params := args{
 		counter: new(int64),
 		agentCfg: config.AgentCfg{
-			PollTik: 1 * time.Millisecond,
-			Logger:  testLogger,
+			PollTik:   1 * time.Millisecond,
+			Logger:    testLogger,
+			AgentPCtx: context.Background(),
 		},
 		results:   make(chan api.Metrics, 32),
 		chkResult: api.MetricsMap{Metrics: make(map[string]api.Metrics, 32)},
 		errCh:     make(chan error),
 		wg:        new(sync.WaitGroup),
-		agentCxt:  context.Background(),
 	}
 
 	b.Run("pool metric bench", func(b *testing.B) {
-		go CollectMetrics(params.counter, params.agentCfg, params.results, params.errCh, params.agentCxt, params.wg)
+		go CollectMetrics(params.counter, params.agentCfg,
+			params.results, params.errCh, params.wg)
 
 		for len(params.chkResult.Metrics) < 31 {
 			metric := <-params.results
@@ -69,7 +70,7 @@ func TestSendMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SendMetrics(tt.args.metrics, tt.args.agentCfg, tt.args.errCh, tt.args.agentCtx, tt.args.rwg)
+			SendMetrics(tt.args.metrics, tt.args.agentCfg, tt.args.errCh, tt.args.rwg)
 		})
 	}
 }
@@ -100,18 +101,19 @@ func TestCollectMetrics(t *testing.T) {
 	params := args{
 		counter: new(int64),
 		agentCfg: config.AgentCfg{
-			PollTik: 1 * time.Millisecond,
-			Logger:  testLogger,
+			PollTik:   1 * time.Millisecond,
+			Logger:    testLogger,
+			AgentPCtx: context.Background(),
 		},
 		results:    make(chan api.Metrics, 32),
 		chkResult1: api.MetricsMap{Metrics: make(map[string]api.Metrics, 32)},
 		chkResult2: api.MetricsMap{Metrics: make(map[string]api.Metrics, 32)},
 		errCh:      make(chan error),
 		wg:         new(sync.WaitGroup),
-		AgentCtx:   context.Background(),
 	}
 
-	go CollectMetrics(params.counter, params.agentCfg, params.results, params.errCh, params.AgentCtx, params.wg)
+	go CollectMetrics(params.counter, params.agentCfg,
+		params.results, params.errCh, params.wg)
 
 	for len(params.chkResult1.Metrics) < 32 {
 		metric := <-params.results
@@ -151,13 +153,13 @@ func ExampleCollectMetrics() {
 
 	// оъявляем структуру с полями необходимыми для работы функции CollectMetrics
 	agentCfg := config.AgentCfg{
-		PollTik:  1 * time.Millisecond,
-		Logger:   testLogger,
-		AgentCtx: context.Background(),
+		PollTik:   1 * time.Millisecond,
+		Logger:    testLogger,
+		AgentPCtx: context.Background(),
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	// запускаем функцию CollectMetrics
-	go CollectMetrics(new(int64), agentCfg, make(chan api.Metrics, 32), make(chan error), agentCfg.AgentCtx, &wg)
+	go CollectMetrics(new(int64), agentCfg, make(chan api.Metrics, 32), make(chan error), &wg)
 }

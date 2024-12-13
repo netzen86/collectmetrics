@@ -51,7 +51,6 @@ func GzipCompress(data []byte) ([]byte, error) {
 
 func GzipDecompress(buf *bytes.Buffer, logger zap.SugaredLogger) error {
 	// переменная buf будет читать входящие данные и распаковывать их
-	logger.Infoln("*** DECOMPRESSING ***")
 	gz, err := gzip.NewReader(bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("!!!%s!!! unpacking data error", err)
