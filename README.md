@@ -53,3 +53,13 @@ git fetch template && git checkout template/main .github
     "crypto_key": "/path/to/key.pem" // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
 }
 ```
+
+* Генерируем go файлы для сервера из topo файла
+
+из корня проекта запускаем данную команду
+
+```
+protoc --go_out=. --go_opt=paths=source_relative \
+  --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+  proto/server/server.proto
+```
