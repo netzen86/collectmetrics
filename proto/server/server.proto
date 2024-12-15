@@ -6,7 +6,7 @@ option go_package = "server/proto/server";
 
 
 message Metrics {
-  double	Value = 1;  
+  double Value = 1;  
   int64 Delta = 2;   
   string ID = 3;        
   string MType = 4;   
