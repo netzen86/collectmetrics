@@ -33,6 +33,10 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 		log.Fatalf("error when get logger %v", err)
 	}
 
+	response.Metric.ID = in.Metric.ID
+	response.Metric.MType = in.Metric.MType
+	response.Error = err.Error()
+
 	switch {
 	case in.Metric.MType == api.Counter:
 		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
@@ -42,9 +46,6 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 		}
 		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Metric.ID, srvlog)
 		response.Metric.Delta = delta
-		response.Metric.ID = in.Metric.ID
-		response.Metric.MType = in.Metric.MType
-		response.Error = err.Error()
 	case in.Metric.MType == api.Gauge:
 		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
 			in.Metric.ID, in.Metric.Value, srvlog)
@@ -53,9 +54,6 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 		}
 		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Metric.ID, srvlog)
 		response.Metric.Value = value
-		response.Metric.ID = in.Metric.ID
-		response.Metric.MType = in.Metric.MType
-		response.Error = err.Error()
 	}
 	return &response, err
 }
@@ -63,6 +61,32 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 func (srv *MetricsServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (*pb.GetMetricResponse, error) {
 	var response pb.GetMetricResponse
 	var err error
+	var delta int64
+	var value float64
+
+	srvlog, err := logger.Logger()
+	if err != nil {
+		log.Fatalf("error when get logger %v", err)
+	}
+
+	response.Metric.ID = in.Name
+	response.Metric.MType = in.Type
+	response.Error = err.Error()
+
+	switch {
+	case in.Type == api.Counter:
+		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Name, srvlog)
+		if err != nil {
+			srvlog.Warnf("error when getting metiric %w", err)
+		}
+		response.Metric.Delta = delta
+	case in.Type == api.Gauge:
+		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Name, srvlog)
+		if err != nil {
+			srvlog.Warnf("error when getting metiric %w", err)
+		}
+		response.Metric.Value = value
+	}
 
 	return &response, err
 }
