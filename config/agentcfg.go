@@ -144,7 +144,7 @@ func getAgnCfgFile(agentCfg *AgentCfg) error {
 }
 
 func validRateLimit(ratelimit int, logger zap.SugaredLogger) bool {
-	if 0 == ratelimit || ratelimit > 32 {
+	if ratelimit == 0 || ratelimit > 32 {
 		logger.Infoln("rate limit must be greater than 0 and less than 32")
 		return false
 	}
