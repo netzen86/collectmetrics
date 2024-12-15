@@ -27,6 +27,7 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 	var err error
 	var delta int64
 	var value float64
+	response.Metric = &pb.Metrics{}
 	_, cntSummed := srv.serverCfg.Storage.(*files.Filestorage)
 
 	srvlog, err := logger.Logger()
@@ -36,13 +37,13 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 
 	response.Metric.ID = in.Metric.ID
 	response.Metric.MType = in.Metric.MType
-	response.Error = err.Error()
 
 	switch {
 	case in.Metric.MType == api.Counter:
 		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
 			in.Metric.ID, in.Metric.Delta, srvlog)
 		if err != nil {
+			response.Error = err.Error()
 			srvlog.Warnf("error when updating metric %w", err)
 		}
 		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Metric.ID, srvlog)
@@ -51,6 +52,7 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
 			in.Metric.ID, in.Metric.Value, srvlog)
 		if err != nil {
+			response.Error = err.Error()
 			srvlog.Warnf("error updating metiric %w", err)
 		}
 		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Metric.ID, srvlog)
@@ -64,6 +66,7 @@ func (srv *MetricsServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest
 	var err error
 	var delta int64
 	var value float64
+	response.Metric = &pb.Metrics{}
 
 	srvlog, err := logger.Logger()
 	if err != nil {
@@ -72,20 +75,23 @@ func (srv *MetricsServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest
 
 	response.Metric.ID = in.Name
 	response.Metric.MType = in.Type
-	response.Error = err.Error()
 
 	switch {
 	case in.Type == api.Counter:
 		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Name, srvlog)
 		if err != nil {
+			response.Error = err.Error()
 			srvlog.Warnf("error when getting metiric %w", err)
 		}
+		srvlog.Infoln("COUNTER VALUE", delta)
 		response.Metric.Delta = delta
 	case in.Type == api.Gauge:
 		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Name, srvlog)
 		if err != nil {
+			response.Error = err.Error()
 			srvlog.Warnf("error when getting metiric %w", err)
 		}
+		srvlog.Infoln("GAUGE VALUE", value)
 		response.Metric.Value = value
 	}
 
