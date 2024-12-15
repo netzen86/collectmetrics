@@ -19,16 +19,22 @@ import (
 
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
+	pb "github.com/netzen86/collectmetrics/proto/server"
 )
 
 // константы используещиеся для работы Агента
 const (
 	addressServerAgent string        = "localhost:8080"
+	AgentgRPCEndpoint  string        = "localhost:3200"
+	AgentgRPCProto     string        = "tcp"
+	EnablegRPC         bool          = false
 	pollInterval       time.Duration = 5
 	reportInterval     time.Duration = 0
 	ratelimit          int           = 5
@@ -100,6 +106,21 @@ type AgentCfg struct {
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration      `env:"" DefVal:""`
 	ReportTik         time.Duration      `env:"" DefVal:""`
+	EnablegRPC        bool               `env:"" DefVal:""`
+	CligRPC           pb.MetricClient    `env:"" DefVal:""`
+}
+
+// функция для создания клиента gRPC сервера
+func GetgRPCCli() (pb.MetricClient, error) {
+	// устанавливаем соединение с сервером
+	conn, err := grpc.NewClient(AgentgRPCEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("error when connect to server %w", err)
+	}
+	// получаем переменную интерфейсного типа MetricClient,
+	// через которую будем отправлять сообщения
+	cli := pb.NewMetricClient(conn)
+	return cli, nil
 }
 
 // функция для получения параметров запуска агента из файла формата json
@@ -186,6 +207,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	pflag.IntVarP(&agentCfg.PollInterval, "pollinterval", "p", int(pollInterval), "User for set poll interval in seconds.")
 	pflag.IntVarP(&agentCfg.ReportInterval, "reportinterval", "r", int(reportInterval), "User for set report interval (send to srv) in seconds.")
 	pflag.IntVarP(&agentCfg.RateLimit, "ratelimit", "l", ratelimit, "User for set report interval (send to srv) in seconds.")
+	pflag.BoolVarP(&agentCfg.EnablegRPC, "enablegrpc", "g", EnablegRPC, "Use to enable send metiric via gRPC.")
 	pflag.Parse()
 
 	if len(agentCfg.AgnFileCfg) != 0 {
@@ -256,6 +278,13 @@ func GetAgentCfg() (AgentCfg, error) {
 	if !validRateLimit(agentCfg.RateLimit, agentCfg.Logger) {
 		agentCfg.Logger.Infoln("setting rate limit to default value = 5")
 		agentCfg.RateLimit = ratelimit
+	}
+
+	if agentCfg.EnablegRPC {
+		agentCfg.CligRPC, err = GetgRPCCli()
+		if err != nil {
+			return AgentCfg{}, fmt.Errorf("error when connecting gRPC Server %w ", err)
+		}
 	}
 
 	// установка интервалов получения и отправки метрик

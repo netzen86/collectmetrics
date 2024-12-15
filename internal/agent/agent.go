@@ -24,6 +24,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
+	pb "github.com/netzen86/collectmetrics/proto/server"
 )
 
 type gaugeJobs struct {
@@ -282,8 +283,10 @@ func JSONSendMetrics(url, signKey, localIP string, metrics api.Metrics, pubKey *
 }
 
 func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
-	pubKey *rsa.PublicKey, logger zap.SugaredLogger,
+	pubKey *rsa.PublicKey, logger zap.SugaredLogger, gRPCCli pb.MetricClient, EnablegRPC bool,
 	errCh chan<- error, wg *sync.WaitGroup) {
+	var err error
+	ctx := context.Background()
 	defer wg.Done()
 	metric, ok := <-jobs
 	if !ok {
@@ -292,17 +295,40 @@ func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
 
 	retrybuilder := func() func() error {
 		return func() error {
-			err := JSONSendMetrics(
-				fmt.Sprintf(config.UpdateAddress, endpoint),
-				signKey, localIP, metric, pubKey, logger)
+			switch {
+			case EnablegRPC:
+				var pbMetric pb.AddMetricRequest
+				// var response *pb.AddMetircResponse
+				pbMetric.Metric = &pb.Metrics{}
 
-			if err != nil {
-				logger.Infof("error when sm in internal/agent %w", err)
+				pbMetric.Metric.ID = metric.ID
+				pbMetric.Metric.MType = metric.MType
+
+				if metric.MType == api.Counter {
+					pbMetric.Metric.Delta = *metric.Delta
+				} else if metric.MType == api.Gauge {
+					pbMetric.Metric.Value = *metric.Value
+				}
+
+				response, err := gRPCCli.AddMetric(ctx, &pbMetric)
+				if err != nil {
+					logger.Infof("error when sm gRPC in internal/agent %v", err)
+				}
+				logger.Infoln(response.Metric.ID, response.Metric.MType,
+					response.Metric.Delta, response.Metric.Value)
+			default:
+				err = JSONSendMetrics(
+					fmt.Sprintf(config.UpdateAddress, endpoint),
+					signKey, localIP, metric, pubKey, logger)
+
+				if err != nil {
+					logger.Infof("error when sm in internal/agent %v", err)
+				}
 			}
 			return nil
 		}
 	}
-	err := utils.RetryFunc(retrybuilder)
+	err = utils.RetryFunc(retrybuilder)
 	if err != nil {
 		errCh <- fmt.Errorf("fail when sm in agent %w", err)
 		return
@@ -324,7 +350,8 @@ func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
 		for range agentCfg.RateLimit {
 			wg.Add(1)
 			go workerSM(jobs, agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
-				agentCfg.PubKey, agentCfg.Logger, errCh, &wg)
+				agentCfg.PubKey, agentCfg.Logger, agentCfg.CligRPC,
+				agentCfg.EnablegRPC, errCh, &wg)
 		}
 
 		for range agentCfg.RateLimit {
