@@ -9,6 +9,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/repositories/files"
 	pb "github.com/netzen86/collectmetrics/proto/server"
+	"google.golang.org/grpc"
 )
 
 type MetricsServer struct {
@@ -89,4 +90,36 @@ func (srv *MetricsServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest
 	}
 
 	return &response, err
+}
+
+func (srv *MetricsServer) ListMetricsName(ctx context.Context, in *pb.ListMetricsNameRequest) (*pb.ListMetricsNameResponse, error) {
+	var response pb.ListMetricsNameResponse
+	var err error
+	var metrics api.MetricsMap
+
+	srvlog, err := logger.Logger()
+	if err != nil {
+		log.Fatalf("error when get logger %v", err)
+	}
+
+	metrics, err = srv.serverCfg.Storage.GetAllMetrics(ctx, srvlog)
+	if err != nil {
+		srvlog.Warnf("error when getting all mtrics name %v", err)
+	}
+
+	for key := range metrics.Metrics {
+		response.Name = append(response.Name, key)
+	}
+
+	return &response, err
+}
+
+func GetgRPCSrv(srvCfg config.ServerCfg) *grpc.Server {
+	var metricSRV MetricsServer
+	metricSRV.serverCfg = &srvCfg
+	// создаём gRPC-сервер без зарегистрированной службы
+	s := grpc.NewServer()
+	// регистрируем сервис
+	pb.RegisterMetricServer(s, &metricSRV)
+	return s
 }
