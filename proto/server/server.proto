@@ -23,7 +23,8 @@ message AddMetircResponse {
 
 message GetMetricRequest {
   string name = 1;
-}
+  string type = 2;
+ }
 
 message GetMetricResponse {
   Metrics metric = 1;
