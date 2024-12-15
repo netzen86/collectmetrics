@@ -283,7 +283,7 @@ func JSONSendMetrics(url, signKey, localIP string, metrics api.Metrics, pubKey *
 }
 
 func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
-	pubKey *rsa.PublicKey, logger zap.SugaredLogger, gRPCCli pb.MetricClient, EnablegRPC bool,
+	pubKey *rsa.PublicKey, logger zap.SugaredLogger, gRPCCli pb.MetricClient, enablegRPC bool,
 	errCh chan<- error, wg *sync.WaitGroup) {
 	var err error
 	ctx := context.Background()
@@ -296,9 +296,9 @@ func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
 	retrybuilder := func() func() error {
 		return func() error {
 			switch {
-			case EnablegRPC:
+			case enablegRPC:
 				var pbMetric pb.AddMetricRequest
-				// var response *pb.AddMetircResponse
+				var response *pb.AddMetircResponse
 				pbMetric.Metric = &pb.Metrics{}
 
 				pbMetric.Metric.ID = metric.ID
@@ -310,7 +310,7 @@ func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
 					pbMetric.Metric.Value = *metric.Value
 				}
 
-				response, err := gRPCCli.AddMetric(ctx, &pbMetric)
+				response, err = gRPCCli.AddMetric(ctx, &pbMetric)
 				if err != nil {
 					logger.Infof("error when sm gRPC in internal/agent %v", err)
 				}

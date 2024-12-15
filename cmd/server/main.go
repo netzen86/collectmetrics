@@ -79,7 +79,7 @@ func main() {
 		cfg.ServerStopCtx, httpServer, gSRV, srvlog)
 
 	go func() {
-		if err := gSRV.Serve(listen); err != nil {
+		if err = gSRV.Serve(listen); err != nil {
 			srvlog.Fatalf("error when run gRPC server %v", err)
 		}
 	}()

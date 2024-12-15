@@ -90,27 +90,27 @@ type configAgnFile struct {
 type AgentCfg struct {
 	AgentSCtx         context.Context    `env:"" DefVal:""`
 	AgentPCtx         context.Context    `env:"" DefVal:""`
+	CligRPC           pb.MetricClient    `env:"" DefVal:""`
 	Logger            zap.SugaredLogger  `env:"" DefVal:""`
 	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
 	Sig               chan os.Signal     `env:"" DefVal:""`
 	AgentSStopCtx     context.CancelFunc `env:"" DefVal:""`
 	AgentPStopCtx     context.CancelFunc `env:"" DefVal:""`
-	SignKeyString     string             `env:"KEY" DefVal:""`
-	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
-	ContentEncoding   string             `env:"" DefVal:""`
 	AgnFileCfg        string             `env:"" DefVal:""`
+	ContentEncoding   string             `env:"" DefVal:""`
+	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
 	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
 	LocalIP           string             `env:"" DefVal:""`
+	SignKeyString     string             `env:"KEY" DefVal:""`
 	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
 	PollTik           time.Duration      `env:"" DefVal:""`
 	ReportTik         time.Duration      `env:"" DefVal:""`
 	EnablegRPC        bool               `env:"" DefVal:""`
-	CligRPC           pb.MetricClient    `env:"" DefVal:""`
 }
 
-// функция для создания клиента gRPC сервера
+// GetgRPCCli функция для создания клиента gRPC сервера
 func GetgRPCCli() (pb.MetricClient, error) {
 	// устанавливаем соединение с сервером
 	conn, err := grpc.NewClient(AgentgRPCEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))

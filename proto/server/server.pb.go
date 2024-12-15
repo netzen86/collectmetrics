@@ -22,13 +22,12 @@ const (
 
 type Metrics struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	ID            string `protobuf:"bytes,3,opt,name=ID,proto3" json:"ID,omitempty"`
+	MType         string `protobuf:"bytes,4,opt,name=MType,proto3" json:"MType,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Value float64 `protobuf:"fixed64,1,opt,name=Value,proto3" json:"Value,omitempty"`
-	Delta int64   `protobuf:"varint,2,opt,name=Delta,proto3" json:"Delta,omitempty"`
-	ID    string  `protobuf:"bytes,3,opt,name=ID,proto3" json:"ID,omitempty"`
-	MType string  `protobuf:"bytes,4,opt,name=MType,proto3" json:"MType,omitempty"`
+	Value         float64 `protobuf:"fixed64,1,opt,name=Value,proto3" json:"Value,omitempty"`
+	Delta         int64   `protobuf:"varint,2,opt,name=Delta,proto3" json:"Delta,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Metrics) Reset() {
@@ -91,10 +90,9 @@ func (x *Metrics) GetMType() string {
 
 type AddMetricRequest struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddMetricRequest) Reset() {
@@ -136,11 +134,10 @@ func (x *AddMetricRequest) GetMetric() *Metrics {
 
 type AddMetircResponse struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	Error         string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
-	Error  string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddMetircResponse) Reset() {
@@ -189,11 +186,10 @@ func (x *AddMetircResponse) GetError() string {
 
 type GetMetricRequest struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type          string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMetricRequest) Reset() {
@@ -242,11 +238,10 @@ func (x *GetMetricRequest) GetType() string {
 
 type GetMetricResponse struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	Error         string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
-	Error  string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetMetricResponse) Reset() {
@@ -295,8 +290,8 @@ func (x *GetMetricResponse) GetError() string {
 
 type ListMetricsNameRequest struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListMetricsNameRequest) Reset() {
@@ -331,10 +326,9 @@ func (*ListMetricsNameRequest) Descriptor() ([]byte, []int) {
 
 type ListMetricsNameResponse struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	Name []string `protobuf:"bytes,1,rep,name=name,proto3" json:"name,omitempty"`
+	Name          []string `protobuf:"bytes,1,rep,name=name,proto3" json:"name,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListMetricsNameResponse) Reset() {
