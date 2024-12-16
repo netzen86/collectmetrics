@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
 	"github.com/netzen86/collectmetrics/config"
 	"github.com/netzen86/collectmetrics/internal/api"
@@ -67,7 +68,7 @@ func RestoreM(ctx context.Context, serverCfg config.ServerCfg,
 }
 
 func GracefulSrv(sig chan os.Signal, serverCtx context.Context,
-	serverStopCtx context.CancelFunc, httpSrv *http.Server, srvlog zap.SugaredLogger) {
+	serverStopCtx context.CancelFunc, httpSrv *http.Server, gSRV *grpc.Server, srvlog zap.SugaredLogger) {
 	<-sig
 	// Shutdown signal with grace period of 30 seconds
 	shutdownCtx, cancel := context.WithTimeout(serverCtx, 30*time.Second)
@@ -87,5 +88,6 @@ func GracefulSrv(sig chan os.Signal, serverCtx context.Context,
 	if err != nil {
 		srvlog.Infof("error when graceful shutdown %w", err)
 	}
+	gSRV.Stop()
 	serverStopCtx()
 }

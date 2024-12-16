@@ -24,6 +24,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/security"
 	"github.com/netzen86/collectmetrics/internal/utils"
+	pb "github.com/netzen86/collectmetrics/proto/server"
 )
 
 type gaugeJobs struct {
@@ -62,7 +63,7 @@ func workerCounter(job <-chan counterJobs, results chan<- api.Metrics, wg *sync.
 
 // CollectMetrics функция сбора метрик
 func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
-	results chan api.Metrics, errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
+	results chan api.Metrics, errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	var memStats runtime.MemStats
 	shutdown := false
@@ -155,9 +156,11 @@ func CollectMetrics(counter *int64, agentCfg config.AgentCfg,
 		close(jobsCounter)
 		wg.Wait()
 		select {
-		case <-agentCtx.Done():
-			agentCfg.Logger.Info("stop saving metrics")
+		case <-agentCfg.AgentPCtx.Done():
 			shutdown = true
+			close(results)
+			agentCfg.Logger.Info("-=*** STOP POOLING METRICS ***=-")
+			stopWithTimer(agentCfg.AgentSCtx, agentCfg.AgentSStopCtx, agentCfg.Logger)
 		default:
 		}
 	}
@@ -279,21 +282,53 @@ func JSONSendMetrics(url, signKey, localIP string, metrics api.Metrics, pubKey *
 	return nil
 }
 
-func workerSM(endpoint, signKey, localIP string,
-	metrics api.Metrics, pubKey *rsa.PublicKey, logger zap.SugaredLogger, errCh chan<- error) {
+func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
+	pubKey *rsa.PublicKey, logger zap.SugaredLogger, gRPCCli pb.MetricClient, enablegRPC bool,
+	errCh chan<- error, wg *sync.WaitGroup) {
+	var err error
+	ctx := context.Background()
+	defer wg.Done()
+	metric, ok := <-jobs
+	if !ok {
+		return
+	}
+
 	retrybuilder := func() func() error {
 		return func() error {
-			err := JSONSendMetrics(
-				fmt.Sprintf(config.UpdateAddress, endpoint),
-				signKey, localIP, metrics, pubKey, logger)
+			switch {
+			case enablegRPC:
+				var pbMetric pb.AddMetricRequest
+				var response *pb.AddMetircResponse
+				pbMetric.Metric = &pb.Metrics{}
 
-			if err != nil {
-				logger.Infof("error when sm in internal/agent %w", err)
+				pbMetric.Metric.Id = metric.ID
+				pbMetric.Metric.Mtype = metric.MType
+
+				if metric.MType == api.Counter {
+					pbMetric.Metric.Delta = *metric.Delta
+				} else if metric.MType == api.Gauge {
+					pbMetric.Metric.Value = *metric.Value
+				}
+
+				response, err = gRPCCli.AddMetric(ctx, &pbMetric)
+				if err != nil {
+					logger.Infof("error when sm gRPC in internal/agent %v", err)
+				}
+				logger.Infoln(response.Metric.Id, response.Metric.Mtype,
+					response.Metric.Delta, response.Metric.Value)
+			default:
+				err = JSONSendMetrics(
+					fmt.Sprintf(config.UpdateAddress, endpoint),
+					signKey, localIP, metric, pubKey, logger)
+
+				if err != nil {
+					logger.Infof("error when sm in internal/agent %v", err)
+				}
 			}
 			return nil
 		}
 	}
-	err := utils.RetryFunc(retrybuilder)
+	err = utils.RetryFunc(retrybuilder)
 	if err != nil {
 		errCh <- fmt.Errorf("fail when sm in agent %w", err)
 		return
@@ -302,38 +337,51 @@ func workerSM(endpoint, signKey, localIP string,
 
 // SendMetrics функция для отправки метрик
 func SendMetrics(metrics <-chan api.Metrics, agentCfg config.AgentCfg,
-	errCh chan<- error, agentCtx context.Context, rwg *sync.WaitGroup) {
+	errCh chan<- error, rwg *sync.WaitGroup) {
 	defer rwg.Done()
 	jobs := make(chan api.Metrics, agentCfg.RateLimit)
 	wg := sync.WaitGroup{}
 	shutdown := false
 
-	for metric := range metrics {
-		if shutdown {
-			break
-		}
-		<-time.After(agentCfg.ReportTik)
-		jobs <- metric
+	for !shutdown {
 
-		wg.Add(1)
-		go func(metric api.Metrics) {
-			workerSM(agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
-				metric, agentCfg.PubKey, agentCfg.Logger, errCh)
-			defer wg.Done()
-		}(<-jobs)
+		<-time.After(agentCfg.ReportTik)
+
+		for range agentCfg.RateLimit {
+			wg.Add(1)
+			go workerSM(jobs, agentCfg.Endpoint, agentCfg.SignKeyString, agentCfg.LocalIP,
+				agentCfg.PubKey, agentCfg.Logger, agentCfg.CligRPC,
+				agentCfg.EnablegRPC, errCh, &wg)
+		}
+
+		for range agentCfg.RateLimit {
+			metric, ok := <-metrics
+			if !ok {
+				break
+			}
+			jobs <- metric
+		}
+		wg.Wait()
+
 		select {
-		case <-agentCtx.Done():
-			agentCfg.Logger.Info("stop sending metrics")
+		case <-agentCfg.AgentSCtx.Done():
+			agentCfg.Logger.Info("-=*** STOP SENDING METIRICS ***=-")
+			close(jobs)
 			shutdown = true
 		default:
 		}
 	}
-	wg.Wait()
 }
 
-func SigMon(sig chan os.Signal, agentCtx context.Context,
+func sigMon(sig chan os.Signal, agentCtx context.Context,
 	agentStopCtx context.CancelFunc, logger zap.SugaredLogger) {
 	<-sig
+	stopWithTimer(agentCtx, agentStopCtx, logger)
+}
+
+func stopWithTimer(agentCtx context.Context,
+	agentStopCtx context.CancelFunc, logger zap.SugaredLogger) {
+
 	// Shutdown signal with grace period of 30 seconds
 	shutdownCtx, cancel := context.WithTimeout(agentCtx, 30*time.Second)
 	defer cancel()
@@ -356,13 +404,13 @@ func RunAgent(agentCfg config.AgentCfg) error {
 	metrics := make(chan api.Metrics, numJobs)
 	rwg := &sync.WaitGroup{}
 
-	go SigMon(agentCfg.Sig, agentCfg.AgentCtx, agentCfg.AgentStopCtx, agentCfg.Logger)
+	go sigMon(agentCfg.Sig, agentCfg.AgentPCtx, agentCfg.AgentPStopCtx, agentCfg.Logger)
 
 	rwg.Add(1)
-	go CollectMetrics(&counter, agentCfg, metrics, errCh, agentCfg.AgentCtx, rwg)
+	go CollectMetrics(&counter, agentCfg, metrics, errCh, rwg)
 
 	rwg.Add(1)
-	go SendMetrics(metrics, agentCfg, errCh, agentCfg.AgentCtx, rwg)
+	go SendMetrics(metrics, agentCfg, errCh, rwg)
 
 	rwg.Wait()
 	return nil

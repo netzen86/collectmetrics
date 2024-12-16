@@ -30,6 +30,8 @@ import (
 // константы используещиеся для работы Сервера.
 const (
 	addressServer    string = "localhost:8080"
+	EndpointRPC      string = "localhost:3200"
+	ProtoTCP         string = "tcp"
 	storeIntervalDef int    = 300
 	// имена переменных окружения
 	envAdd     string = "ADDRESS"

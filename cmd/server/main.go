@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 
@@ -67,7 +68,21 @@ func main() {
 	gw := router.GetGateway(cfg, srvlog)
 	httpServer := &http.Server{Addr: cfg.Endpoint, Handler: gw}
 
-	go server.GracefulSrv(cfg.Sig, cfg.ServerCtx, cfg.ServerStopCtx, httpServer, srvlog)
+	// определяем порт для gRPC сервера
+	listen, err := net.Listen(config.ProtoTCP, config.EndpointRPC)
+	if err != nil {
+		srvlog.Fatalf("error when setup net listen %v", err)
+	}
+	gSRV := server.GetgRPCSrv(cfg)
+
+	go server.GracefulSrv(cfg.Sig, cfg.ServerCtx,
+		cfg.ServerStopCtx, httpServer, gSRV, srvlog)
+
+	go func() {
+		if err = gSRV.Serve(listen); err != nil {
+			srvlog.Fatalf("error when run gRPC server %v", err)
+		}
+	}()
 
 	// запуск обработчика http запросов
 	err = httpServer.ListenAndServe()

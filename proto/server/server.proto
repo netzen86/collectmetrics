@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package server;
+
+option go_package = "server/proto/server";
+
+
+message Metrics {
+  double value = 1;  
+  int64  delta = 2;   
+  string id    = 3;        
+  string mtype = 4;   
+}
+
+message AddMetricRequest {
+  Metrics metric = 1;
+}
+
+message AddMetircResponse {
+  Metrics metric = 1;
+  string  error  = 2;
+}
+
+message GetMetricRequest {
+  string name = 1;
+  string type = 2;
+ }
+
+message GetMetricResponse {
+  Metrics metric = 1;
+  string  error  = 2;
+}
+
+message ListMetricsNameRequest {
+}
+
+message ListMetricsNameResponse {
+  repeated string name = 1;
+
+}
+
+service Metric {
+  rpc AddMetric(AddMetricRequest) returns (AddMetircResponse);
+  rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
+  rpc ListMetricsName(ListMetricsNameRequest) returns (ListMetricsNameResponse);
+}
