@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net/netip"
 	"os"
 	"os/signal"
 	"strconv"
@@ -39,15 +40,17 @@ const (
 	envKey     string = "KEY"
 	envPRIVKEY string = "CRYPTO_KEY"
 	envDB      string = "DATABASE_DSN"
+	envTS      string = "TRUSTED_SUBNET"
 )
 
 type configSrvFile struct {
-	Adderss   string `json:"address,omitempty"`
-	StoreFile string `json:"store_file,omitempty"`
-	Dsn       string `json:"database_dsn,omitempty"`
-	CryptoKey string `json:"crypto_key,omitempty"`
-	StorInter int    `json:"store_interval,omitempty"`
-	Restore   bool   `json:"restore,omitempty"`
+	Adderss       string `json:"address,omitempty"`
+	StoreFile     string `json:"store_file,omitempty"`
+	Dsn           string `json:"database_dsn,omitempty"`
+	CryptoKey     string `json:"crypto_key,omitempty"`
+	TrustedSubnet string `json:"trusted_subnet,omitempty"`
+	StorInter     int    `json:"store_interval,omitempty"`
+	Restore       bool   `json:"restore,omitempty"`
 }
 
 // ServerCfg структура для конфигурации Сервера.
@@ -59,13 +62,14 @@ type ServerCfg struct {
 	Wg                 *sync.WaitGroup    `env:"" DefVal:""`
 	Sig                chan os.Signal     `env:"" DefVal:""`
 	ServerStopCtx      context.CancelFunc `env:"" DefVal:""`
-	FileStoragePathDef string             `env:"" DefVal:"FileStoragePath"`
+	TrustedSubnet      netip.Prefix       `env:"" DefVal:""`
 	PrivKeyFileName    string             `env:"CRYPTO_KEY" DefVal:""`
 	DBconstring        string             `env:"DATABASE_DSN" DefVal:""`
 	SignKeyString      string             `env:"KEY" DefVal:""`
 	SrvFileCfg         string             `env:"" DefVal:""`
 	FileStoragePath    string             `env:"FILE_STORAGE_PATH" DefVal:""`
 	Endpoint           string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	FileStoragePathDef string             `env:"" DefVal:"FileStoragePath"`
 	StoreInterval      int                `env:"STORE_INTERVAL" DefVal:"300s"`
 	KeyGenerate        bool               `env:"" DefVal:"false"`
 	Restore            bool               `env:"RESTORE" DefVal:"true"`
@@ -73,9 +77,13 @@ type ServerCfg struct {
 
 // метод для получения параметров запуска сервера из флагов
 func (serverCfg *ServerCfg) parseSrvFlags() error {
+	var err error
 
 	// имя файла для сохранения метрик по умолчанию
 	serverCfg.FileStoragePathDef = "servermetrics.json"
+
+	// переменная для ACL
+	var trustedSubStr string
 
 	// опредаляем флаги
 	flag.StringVar(&serverCfg.Endpoint, "a", addressServer, "Used to set the address and port on which the server runs.")
@@ -84,7 +92,7 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	flag.StringVar(&serverCfg.SignKeyString, "k", "", "Used to set key for calc hash.")
 	flag.StringVar(&serverCfg.PrivKeyFileName, "crypto-key", "", "Load private key for decrypting.")
 	flag.StringVar(&serverCfg.SrvFileCfg, "config", "", "Load configuration from file.")
-
+	flag.StringVar(&trustedSubStr, "t", "", "set allowed network for connection to server.")
 	flag.BoolVar(&serverCfg.KeyGenerate, "g", false, "Used to generate private and public keys.")
 	flag.BoolVar(&serverCfg.Restore, "r", true, "Used to set restore metrics.")
 	flag.IntVar(&serverCfg.StoreInterval, "i", storeIntervalDef, "Used for set save metrics on disk.")
@@ -96,6 +104,13 @@ func (serverCfg *ServerCfg) parseSrvFlags() error {
 	if len(flag.Args()) != 0 {
 		flag.PrintDefaults()
 		return fmt.Errorf("not args allowed")
+	}
+
+	if len(trustedSubStr) != 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(trustedSubStr)
+		if err != nil {
+			return fmt.Errorf("error this is not prefix %w ", err)
+		}
 	}
 
 	// для замены имени файла по умолчанию
@@ -150,6 +165,15 @@ func (serverCfg *ServerCfg) getSrvEnv() error {
 	if len(os.Getenv(envDB)) != 0 {
 		serverCfg.DBconstring = os.Getenv(envDB)
 	}
+
+	// получаем разрешенную для подключений подсеть
+	if len(os.Getenv(envTS)) != 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(os.Getenv(envTS))
+		if err != nil {
+			return fmt.Errorf("error when get trusted subnet from env %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -195,6 +219,12 @@ func (serverCfg *ServerCfg) getSrvCfgFile(srvlog zap.SugaredLogger) error {
 	}
 	if len(serverCfg.PrivKeyFileName) == 0 {
 		serverCfg.PrivKeyFileName = srvCfg.CryptoKey
+	}
+	if len(serverCfg.TrustedSubnet.String()) == 0 {
+		serverCfg.TrustedSubnet, err = netip.ParsePrefix(srvCfg.TrustedSubnet)
+		if err != nil {
+			return fmt.Errorf("error when parsing ip prefix %w", err)
+		}
 	}
 	return nil
 }

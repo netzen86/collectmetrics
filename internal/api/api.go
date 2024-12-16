@@ -11,6 +11,7 @@ const (
 	TemplatePath string = "/web/template/metrics.html"
 	Gauge        string = "gauge"
 	Counter      string = "counter"
+	ACLHeader    string = "X-Real-IP"
 )
 
 // Metrics структура для передачи метрик

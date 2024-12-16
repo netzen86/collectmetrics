@@ -23,6 +23,7 @@ import (
 	"github.com/netzen86/collectmetrics/internal/api"
 	"github.com/netzen86/collectmetrics/internal/logger"
 	"github.com/netzen86/collectmetrics/internal/security"
+	"github.com/netzen86/collectmetrics/internal/utils"
 )
 
 // константы используещиеся для работы Агента
@@ -86,11 +87,12 @@ type AgentCfg struct {
 	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
 	Sig               chan os.Signal     `env:"" DefVal:""`
 	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
-	AgnFileCfg        string             `env:"" DefVal:""`
+	SignKeyString     string             `env:"KEY" DefVal:""`
 	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
 	ContentEncoding   string             `env:"" DefVal:""`
-	SignKeyString     string             `env:"KEY" DefVal:""`
+	AgnFileCfg        string             `env:"" DefVal:""`
 	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	LocalIP           string             `env:"" DefVal:""`
 	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
 	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
 	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
@@ -230,6 +232,11 @@ func GetAgentCfg() (AgentCfg, error) {
 		}
 	} else {
 		agentCfg.PubKey = &rsa.PublicKey{N: big.NewInt(0), E: 0}
+	}
+
+	agentCfg.LocalIP, err = utils.GetLocalIP(agentCfg.Logger)
+	if err != nil {
+		return AgentCfg{}, fmt.Errorf("error when getting local ip %w ", err)
 	}
 
 	// установка интервалов получения и отправки метрик

@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -143,4 +144,21 @@ func PrintBuildInfos() {
 	fmt.Printf("\nBuild version: %s\n", buildVersion)
 	fmt.Printf("Build date: %s\n", buildDate)
 	fmt.Printf("Build commit: %s\n\n", buildCommit)
+}
+
+func GetLocalIP(logger zap.SugaredLogger) (string, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "", fmt.Errorf("error when get local ip %w", err)
+	}
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			logger.Errorf("error when clogse gz %w", err)
+		}
+	}()
+
+	localAddress := conn.LocalAddr().(*net.UDPAddr)
+
+	return localAddress.IP.String(), nil
 }

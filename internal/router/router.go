@@ -14,7 +14,7 @@ func GetGateway(cfg config.ServerCfg, srvlog zap.SugaredLogger) chi.Router {
 
 	gw := chi.NewRouter()
 
-	gw.Use(handlers.WithLogging)
+	gw.Use(handlers.WithLogging, handlers.AccecsList(cfg.TrustedSubnet))
 
 	gw.Route("/", func(gw chi.Router) {
 		gw.Post("/", handlers.BadRequest)
