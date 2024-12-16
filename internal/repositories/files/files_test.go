@@ -51,9 +51,9 @@ func TestConsumer_ReadMetric(t *testing.T) {
 		logger  zap.SugaredLogger
 	}
 	tests := []struct {
-		name    string
 		fields  fields
 		args    args
+		name    string
 		wantErr bool
 	}{
 		// TODO: Add test cases.

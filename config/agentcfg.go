@@ -6,13 +6,15 @@ package config
 
 import (
 	"bufio"
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -71,36 +73,44 @@ const (
 )
 
 type configAgnFile struct {
-	Adderss    string `json:"address,omitempty"`         // аналог переменной окружения ADDRESS или флага -a
-	RepInterv  int    `json:"report_interval,omitempty"` // аналог переменной окружения REPORT_INTERVAL или флага -r
-	PolIntervv int    `json:"poll_interval,omitempty"`   // аналог переменной окружения POLL_INTERVAL или флага -p
-	CryKey     string `json:"crypto_key,omitempty"`      // аналог переменной окружения CRYPTO_KEY или флага -crypto-key
+	Adderss    string `json:"address,omitempty"`
+	CryKey     string `json:"crypto_key,omitempty"`
+	RepInterv  int    `json:"report_interval,omitempty"`
+	PolIntervv int    `json:"poll_interval,omitempty"`
 }
 
 // AgentCfg структура для конфигурации Агента
 type AgentCfg struct {
-	Logger            zap.SugaredLogger `env:"" DefVal:""`
-	Endpoint          string            `env:"ADDRESS" DefVal:"localhost:8080"`
-	SignKeyString     string            `env:"KEY" DefVal:""`
-	ContentEncoding   string            `env:"" DefVal:""`
-	PollInterval      int               `env:"POLL_INTERVAL" DefVal:"5"`
-	ReportInterval    int               `env:"REPORT_INTERVAL" DefVal:"0"`
-	RateLimit         int               `env:"RATE_LIMIT" DefVal:"5"`
-	PollTik           time.Duration     `env:"" DefVal:""`
-	ReportTik         time.Duration     `env:"" DefVal:""`
-	PublicKeyFilename string            `env:"CRYPTO_KEY" DefVal:""`
-	PubKey            *rsa.PublicKey    `env:"" DefVal:""`
-	AgnFileCfg        string            `env:"" DefVal:""`
+	AgentCtx          context.Context    `env:"" DefVal:""`
+	Logger            zap.SugaredLogger  `env:"" DefVal:""`
+	PubKey            *rsa.PublicKey     `env:"" DefVal:""`
+	Sig               chan os.Signal     `env:"" DefVal:""`
+	AgentStopCtx      context.CancelFunc `env:"" DefVal:""`
+	AgnFileCfg        string             `env:"" DefVal:""`
+	PublicKeyFilename string             `env:"CRYPTO_KEY" DefVal:""`
+	ContentEncoding   string             `env:"" DefVal:""`
+	SignKeyString     string             `env:"KEY" DefVal:""`
+	Endpoint          string             `env:"ADDRESS" DefVal:"localhost:8080"`
+	PollInterval      int                `env:"POLL_INTERVAL" DefVal:"5"`
+	ReportInterval    int                `env:"REPORT_INTERVAL" DefVal:"0"`
+	RateLimit         int                `env:"RATE_LIMIT" DefVal:"5"`
+	PollTik           time.Duration      `env:"" DefVal:""`
+	ReportTik         time.Duration      `env:"" DefVal:""`
 }
 
 // функция для получения параметров запуска агента из файла формата json
-func getSrvCfgFile(agentCfg *AgentCfg) error {
+func getAgnCfgFile(agentCfg *AgentCfg) error {
 	var agnCfg configAgnFile
 	config, err := os.Open(agentCfg.AgnFileCfg)
 	if err != nil {
 		return fmt.Errorf("error when read server config file %w", err)
 	}
-	defer config.Close()
+	defer func() {
+		err = config.Close()
+		if err != nil {
+			agentCfg.Logger.Infof("error when close agent cfg %v", err)
+		}
+	}()
 
 	fileinfo, _ := config.Stat()
 	cfgBytes := make([]byte, fileinfo.Size())
@@ -129,10 +139,22 @@ func getSrvCfgFile(agentCfg *AgentCfg) error {
 	return nil
 }
 
+func GracefulShutAgent(agentCfg *AgentCfg) {
+	agentCtx, agentStopCtx := context.WithCancel(context.Background())
+	agentCfg.AgentCtx = agentCtx
+	agentCfg.AgentStopCtx = agentStopCtx
+
+	// Listen for syscall signals for process to interrupt/quit
+	agentCfg.Sig = make(chan os.Signal, 1)
+	signal.Notify(agentCfg.Sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+}
+
 // GetAgentCfg функция получения конфигурации агента.
 func GetAgentCfg() (AgentCfg, error) {
 	var agentCfg AgentCfg
 	var err error
+
+	GracefulShutAgent(&agentCfg)
 
 	agentCfg.Logger, err = logger.Logger()
 	if err != nil {
@@ -151,12 +173,11 @@ func GetAgentCfg() (AgentCfg, error) {
 	pflag.Parse()
 
 	if len(agentCfg.AgnFileCfg) != 0 {
-		err = getSrvCfgFile(&agentCfg)
+		err = getAgnCfgFile(&agentCfg)
 		if err != nil {
 			return AgentCfg{}, fmt.Errorf("when get gonfig from file %w", err)
 		}
 	}
-	log.Println(agentCfg.Endpoint)
 
 	// если переданы аргументы не флаги печатаем подсказку
 	if len(pflag.Args()) != 0 {
@@ -203,7 +224,7 @@ func GetAgentCfg() (AgentCfg, error) {
 	}
 
 	if len(agentCfg.PublicKeyFilename) != 0 {
-		agentCfg.PubKey, err = security.ReadPublicKey(agentCfg.PublicKeyFilename)
+		agentCfg.PubKey, err = security.ReadPublicKey(agentCfg.PublicKeyFilename, agentCfg.Logger)
 		if err != nil {
 			return AgentCfg{}, fmt.Errorf("error reading public key %w ", err)
 		}
