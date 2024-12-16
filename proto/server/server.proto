@@ -6,10 +6,10 @@ option go_package = "server/proto/server";
 
 
 message Metrics {
-  double Value = 1;  
-  int64 Delta = 2;   
-  string ID = 3;        
-  string MType = 4;   
+  double value = 1;  
+  int64  delta = 2;   
+  string id    = 3;        
+  string mtype = 4;   
 }
 
 message AddMetricRequest {
@@ -18,7 +18,7 @@ message AddMetricRequest {
 
 message AddMetircResponse {
   Metrics metric = 1;
-  string error = 2;
+  string  error  = 2;
 }
 
 message GetMetricRequest {
@@ -28,7 +28,7 @@ message GetMetricRequest {
 
 message GetMetricResponse {
   Metrics metric = 1;
-  string error = 2;
+  string  error  = 2;
 }
 
 message ListMetricsNameRequest {

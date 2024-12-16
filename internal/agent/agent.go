@@ -301,8 +301,8 @@ func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
 				var response *pb.AddMetircResponse
 				pbMetric.Metric = &pb.Metrics{}
 
-				pbMetric.Metric.ID = metric.ID
-				pbMetric.Metric.MType = metric.MType
+				pbMetric.Metric.Id = metric.ID
+				pbMetric.Metric.Mtype = metric.MType
 
 				if metric.MType == api.Counter {
 					pbMetric.Metric.Delta = *metric.Delta
@@ -314,7 +314,7 @@ func workerSM(jobs <-chan api.Metrics, endpoint, signKey, localIP string,
 				if err != nil {
 					logger.Infof("error when sm gRPC in internal/agent %v", err)
 				}
-				logger.Infoln(response.Metric.ID, response.Metric.MType,
+				logger.Infoln(response.Metric.Id, response.Metric.Mtype,
 					response.Metric.Delta, response.Metric.Value)
 			default:
 				err = JSONSendMetrics(

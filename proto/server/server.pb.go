@@ -22,12 +22,13 @@ const (
 
 type Metrics struct {
 	state         protoimpl.MessageState
-	ID            string `protobuf:"bytes,3,opt,name=ID,proto3" json:"ID,omitempty"`
-	MType         string `protobuf:"bytes,4,opt,name=MType,proto3" json:"MType,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	Value         float64 `protobuf:"fixed64,1,opt,name=Value,proto3" json:"Value,omitempty"`
-	Delta         int64   `protobuf:"varint,2,opt,name=Delta,proto3" json:"Delta,omitempty"`
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Value float64 `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
+	Delta int64   `protobuf:"varint,2,opt,name=delta,proto3" json:"delta,omitempty"`
+	Id    string  `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Mtype string  `protobuf:"bytes,4,opt,name=mtype,proto3" json:"mtype,omitempty"`
 }
 
 func (x *Metrics) Reset() {
@@ -74,25 +75,26 @@ func (x *Metrics) GetDelta() int64 {
 	return 0
 }
 
-func (x *Metrics) GetID() string {
+func (x *Metrics) GetId() string {
 	if x != nil {
-		return x.ID
+		return x.Id
 	}
 	return ""
 }
 
-func (x *Metrics) GetMType() string {
+func (x *Metrics) GetMtype() string {
 	if x != nil {
-		return x.MType
+		return x.Mtype
 	}
 	return ""
 }
 
 type AddMetricRequest struct {
 	state         protoimpl.MessageState
-	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
-	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
 }
 
 func (x *AddMetricRequest) Reset() {
@@ -134,10 +136,11 @@ func (x *AddMetricRequest) GetMetric() *Metrics {
 
 type AddMetircResponse struct {
 	state         protoimpl.MessageState
-	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
-	Error         string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	Error  string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *AddMetircResponse) Reset() {
@@ -186,10 +189,11 @@ func (x *AddMetircResponse) GetError() string {
 
 type GetMetricRequest struct {
 	state         protoimpl.MessageState
-	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type          string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (x *GetMetricRequest) Reset() {
@@ -238,10 +242,11 @@ func (x *GetMetricRequest) GetType() string {
 
 type GetMetricResponse struct {
 	state         protoimpl.MessageState
-	Metric        *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
-	Error         string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metric *Metrics `protobuf:"bytes,1,opt,name=metric,proto3" json:"metric,omitempty"`
+	Error  string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *GetMetricResponse) Reset() {
@@ -290,8 +295,8 @@ func (x *GetMetricResponse) GetError() string {
 
 type ListMetricsNameRequest struct {
 	state         protoimpl.MessageState
-	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
 }
 
 func (x *ListMetricsNameRequest) Reset() {
@@ -326,9 +331,10 @@ func (*ListMetricsNameRequest) Descriptor() ([]byte, []int) {
 
 type ListMetricsNameResponse struct {
 	state         protoimpl.MessageState
-	unknownFields protoimpl.UnknownFields
-	Name          []string `protobuf:"bytes,1,rep,name=name,proto3" json:"name,omitempty"`
 	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name []string `protobuf:"bytes,1,rep,name=name,proto3" json:"name,omitempty"`
 }
 
 func (x *ListMetricsNameResponse) Reset() {
@@ -374,11 +380,11 @@ var file_proto_server_server_proto_rawDesc = []byte{
 	0x0a, 0x19, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2f, 0x73,
 	0x65, 0x72, 0x76, 0x65, 0x72, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x06, 0x73, 0x65, 0x72,
 	0x76, 0x65, 0x72, 0x22, 0x5b, 0x0a, 0x07, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x12, 0x14,
-	0x0a, 0x05, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x01, 0x52, 0x05, 0x56,
-	0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x44, 0x65, 0x6c, 0x74, 0x61, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x03, 0x52, 0x05, 0x44, 0x65, 0x6c, 0x74, 0x61, 0x12, 0x0e, 0x0a, 0x02, 0x49, 0x44,
-	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x49, 0x44, 0x12, 0x14, 0x0a, 0x05, 0x4d, 0x54,
-	0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x4d, 0x54, 0x79, 0x70, 0x65,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x01, 0x52, 0x05, 0x76,
+	0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x64, 0x65, 0x6c, 0x74, 0x61, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x05, 0x64, 0x65, 0x6c, 0x74, 0x61, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64,
+	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x14, 0x0a, 0x05, 0x6d, 0x74,
+	0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6d, 0x74, 0x79, 0x70, 0x65,
 	0x22, 0x3b, 0x0a, 0x10, 0x41, 0x64, 0x64, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x12, 0x27, 0x0a, 0x06, 0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x2e, 0x4d, 0x65,

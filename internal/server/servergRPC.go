@@ -35,27 +35,27 @@ func (srv *MetricsServer) AddMetric(ctx context.Context, in *pb.AddMetricRequest
 		log.Fatalf("error when get logger %v", err)
 	}
 
-	response.Metric.ID = in.Metric.ID
-	response.Metric.MType = in.Metric.MType
+	response.Metric.Id = in.Metric.Id
+	response.Metric.Mtype = in.Metric.Mtype
 
 	switch {
-	case in.Metric.MType == api.Counter:
-		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
-			in.Metric.ID, in.Metric.Delta, srvlog)
+	case in.Metric.Mtype == api.Counter:
+		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.Mtype,
+			in.Metric.Id, in.Metric.Delta, srvlog)
 		if err != nil {
 			response.Error = err.Error()
 			srvlog.Warnf("error when updating metric %w", err)
 		}
-		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Metric.ID, srvlog)
+		delta, err = srv.serverCfg.Storage.GetCounterMetric(ctx, in.Metric.Id, srvlog)
 		response.Metric.Delta = delta
-	case in.Metric.MType == api.Gauge:
-		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.MType,
-			in.Metric.ID, in.Metric.Value, srvlog)
+	case in.Metric.Mtype == api.Gauge:
+		err = srv.serverCfg.Storage.UpdateParam(ctx, cntSummed, in.Metric.Mtype,
+			in.Metric.Id, in.Metric.Value, srvlog)
 		if err != nil {
 			response.Error = err.Error()
 			srvlog.Warnf("error updating metiric %w", err)
 		}
-		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Metric.ID, srvlog)
+		value, err = srv.serverCfg.Storage.GetGaugeMetric(ctx, in.Metric.Id, srvlog)
 		response.Metric.Value = value
 	}
 	return &response, err
@@ -73,8 +73,8 @@ func (srv *MetricsServer) GetMetric(ctx context.Context, in *pb.GetMetricRequest
 		log.Fatalf("error when get logger %v", err)
 	}
 
-	response.Metric.ID = in.Name
-	response.Metric.MType = in.Type
+	response.Metric.Id = in.Name
+	response.Metric.Mtype = in.Type
 
 	switch {
 	case in.Type == api.Counter:
